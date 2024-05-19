@@ -43,6 +43,8 @@ def main() -> None:
         for event in pg.event.get():
             if event.type == pg.QUIT:
                 running = False
+
+            # mouse event cases
             elif event.type == pg.MOUSEBUTTONDOWN:
                 m_cord = pg.mouse.get_pos()
                 m_col, m_row = m_cord[0] // SQ_SIZE, m_cord[1] // SQ_SIZE
@@ -58,6 +60,11 @@ def main() -> None:
                     game_state.makeMove(move)
                     sq_selected = ()
                     player_clicks = []
+
+            # key event cases
+            elif event.type == pg.KEYDOWN:
+                if event.key == pg.K_z:
+                    game_state.undoMove()
 
         drawGameState(screen, game_state)
         clk.tick(FPS)

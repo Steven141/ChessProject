@@ -32,6 +32,14 @@ class GameState():
         self.whites_turn = not self.whites_turn
 
 
+    def undoMove(self) -> None:
+        if len(self.move_log) != 0:
+            move = self.move_log.pop()
+            self.board[move.end_r][move.end_c] = move.piece_captured
+            self.board[move.start_r][move.start_c] = move.piece_moved
+            self.whites_turn = not self.whites_turn
+
+
 class Move():
     # the following converts between cordinate and rank notation
     rank_to_rows = {'1': 7, '2': 6, '3': 5, '4': 4,
