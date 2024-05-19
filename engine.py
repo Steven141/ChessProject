@@ -4,6 +4,7 @@ File contains data stored from chess game.
 Keeps track of possible moves and old moves.
 """
 
+
 class GameState():
     def __init__(self) -> None:
         """
@@ -21,6 +22,14 @@ class GameState():
             ['wP', 'wP', 'wP', 'wP', 'wP', 'wP', 'wP', 'wP'],
             ['wR', 'wN', 'wB', 'wQ', 'wK', 'wB', 'wN', 'wR'],
         ]
+        self.move_functions = {
+            'P': self.getPawnMoves,
+            'R': self.getRookMoves,
+            'N': self.getKnightMoves,
+            'B': self.getBishopMoves,
+            'Q': self.getQueenMoves,
+            'K': self.getKingMoves,
+        }
         self.move_log = []
         self.whites_turn = True
 
@@ -40,6 +49,62 @@ class GameState():
             self.whites_turn = not self.whites_turn
 
 
+    """
+    Get all moves considering checks
+    """
+    def getValidMoves(self) -> None:
+        return self.getPossibleMoves() # fix later
+
+
+    """
+    Get all moves without concidering checks
+    """
+    def getPossibleMoves(self) -> list:
+        moves = []
+        for r in range(len(self.board)):
+            for c in range(len(self.board[r])):
+                p_turn = self.board[r][c][0]
+                if (p_turn == 'w' and self.whites_turn) or (p_turn == 'b' and not self.whites_turn):
+                    piece = self.board[r][c][1]
+                    self.move_functions[piece](r, c, moves)
+        return moves
+
+
+    def getPawnMoves(self, r, c, moves) -> None:
+        if self.whites_turn:
+            if self.board[r-1][c] == '--': # one sq advance
+                moves.append(Move((r,c), (r-1,c), self.board))
+                if r == 6 and self.board[r-2][c] == '--': # two sq advance
+                    moves.append(Move((r,c), (r-2, c), self.board))
+            if c > 0 and self.board[r-1][c-1][0] == 'b': # left capture
+                moves.append(Move((r,c), (r-1, c-1), self.board))
+            if c < len(self.board[r])-1 and self.board[r-1][c+1][0] == 'b': # right capture
+                moves.append(Move((r,c), (r-1, c+1), self.board))
+
+        else:
+            pass
+
+
+    def getRookMoves(self, r, c, moves) -> None:
+        pass
+
+
+    def getKnightMoves(self, r, c, moves) -> None:
+        pass
+
+
+    def getBishopMoves(self, r, c, moves) -> None:
+        pass
+
+
+    def getQueenMoves(self, r, c, moves) -> None:
+        pass
+
+
+    def getKingMoves(self, r, c, moves) -> None:
+        pass
+
+
 class Move():
     # the following converts between cordinate and rank notation
     rank_to_rows = {'1': 7, '2': 6, '3': 5, '4': 4,
@@ -55,6 +120,11 @@ class Move():
         self.end_r, self.end_c = end_sq[0], end_sq[1]
         self.piece_moved = board[self.start_r][self.start_c]
         self.piece_captured = board[self.end_r][self.end_c]
+        self.move_id = self.start_r*1000 + self.start_c*100 + self.end_r*10 + self.end_c
+
+
+    def __eq__(self, value: object) -> bool:
+        return isinstance(value, Move) and (self.move_id == value.move_id)
 
 
     def getChessNotation(self) -> str:

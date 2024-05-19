@@ -34,6 +34,9 @@ def main() -> None:
     clk = pg.time.Clock()
     screen.fill(pg.Color('white'))
     game_state = engine.GameState()
+    valid_moves = game_state.getValidMoves()
+    move_made = False # flag for when move is made
+
     loadImages()
     running = True
     sq_selected: tuple[str] = () # last click of user (row, col)
@@ -57,7 +60,9 @@ def main() -> None:
                 if len(player_clicks) == 2:
                     move = engine.Move(player_clicks[0], player_clicks[1], game_state.board)
                     print(move.getChessNotation())
-                    game_state.makeMove(move)
+                    if move in valid_moves:
+                        game_state.makeMove(move)
+                        move_made = True
                     sq_selected = ()
                     player_clicks = []
 
@@ -65,6 +70,11 @@ def main() -> None:
             elif event.type == pg.KEYDOWN:
                 if event.key == pg.K_z:
                     game_state.undoMove()
+                    move_made = True
+
+        if move_made:
+            valid_moves = game_state.getValidMoves()
+            move_made = False
 
         drawGameState(screen, game_state)
         clk.tick(FPS)
