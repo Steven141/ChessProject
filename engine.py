@@ -147,11 +147,20 @@ class GameState():
 
 
     def getQueenMoves(self, r, c, moves) -> None:
-        pass
+        self.getRookMoves(r, c, moves)
+        self.getBishopMoves(r, c, moves)
 
 
     def getKingMoves(self, r, c, moves) -> None:
-        pass
+        enemy_color = 'b' if self.whites_turn else 'w'
+        dirs = ((-1, -1), (-1, 0), (-1, 1), (0, -1), (0, 1), (1, -1), (1, 0), (1, 1))
+        for i in range(len(dirs)):
+            end_r = r + dirs[i][0]
+            end_c = c + dirs[i][1]
+            if 0 <= end_r < len(self.board) and 0 <= end_c < len(self.board[r]):
+                end_piece = self.board[end_r][end_c]
+                if end_piece == '--' or end_piece[0] == enemy_color:
+                    moves.append(Move((r,c), (end_r, end_c), self.board))
 
 
 class Move():
