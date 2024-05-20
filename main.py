@@ -60,12 +60,13 @@ def main() -> None:
                 if len(player_clicks) == 2:
                     move = engine.Move(player_clicks[0], player_clicks[1], game_state.board)
                     print(move.getChessNotation())
-                    if move in valid_moves:
-                        game_state.makeMove(move)
-                        move_made = True
-                        sq_selected = ()
-                        player_clicks = []
-                    else:
+                    for i in range(len(valid_moves)):
+                        if move == valid_moves[i]:
+                            game_state.makeMove(valid_moves[i])
+                            move_made = True
+                            sq_selected = ()
+                            player_clicks = []
+                    if not move_made:
                         player_clicks = [sq_selected]
 
             # key event cases
