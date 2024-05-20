@@ -63,8 +63,10 @@ def main() -> None:
                     if move in valid_moves:
                         game_state.makeMove(move)
                         move_made = True
-                    sq_selected = ()
-                    player_clicks = []
+                        sq_selected = ()
+                        player_clicks = []
+                    else:
+                        player_clicks = [sq_selected]
 
             # key event cases
             elif event.type == pg.KEYDOWN:
