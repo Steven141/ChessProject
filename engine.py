@@ -5,6 +5,9 @@ Keeps track of possible moves and old moves.
 """
 
 
+import copy
+
+
 class GameState():
     def __init__(self) -> None:
         """
@@ -37,6 +40,8 @@ class GameState():
         self.checkmate = False
         self.stalemate = False
         self.enpassant_possible = () # cord where enpassant possible
+        self.current_castling_rights = CastleRights(True, True, True, True)
+        self.castle_rights_log = [copy.deepcopy(self.current_castling_rights)]
 
 
     def makeMove(self, move) -> None:
@@ -61,6 +66,10 @@ class GameState():
         else:
             self.enpassant_possible = ()
 
+        # update castling rights ie. rook or king move
+        self.updateCastleRights(move)
+        self.castle_rights_log.append(copy.deepcopy(self.current_castling_rights))
+
 
     def undoMove(self) -> None:
         if len(self.move_log) != 0:
@@ -81,6 +90,34 @@ class GameState():
                 self.enpassant_possible = (move.end_r, move.end_c)
             if move.piece_moved[1] == 'P' and abs(move.end_r - move.start_r) == 2: # undo two sq pawn advances
                 self.enpassant_possible = ()
+
+            # undo castling rights
+            self.castle_rights_log.pop()
+            self.current_castling_rights = self.castle_rights_log[-1]
+
+
+    """
+    Update castling rights given a move
+    """
+    def updateCastleRights(self, move) -> None:
+        if move.piece_moved == 'wK':
+            self.current_castling_rights.wqs = False
+            self.current_castling_rights.wks = False
+        elif move.piece_moved == 'bK':
+            self.current_castling_rights.bqs = False
+            self.current_castling_rights.bks = False
+        elif move.piece_moved == 'wR':
+            if move.start_r == 7:
+                if move.start_c == 0:
+                    self.current_castling_rights.wqs = False
+                elif move.start_c == 7:
+                    self.current_castling_rights.wks = False
+        elif move.piece_moved == 'bR':
+            if move.start_r == 0:
+                if move.start_c == 0:
+                    self.current_castling_rights.bqs = False
+                elif move.start_c == 7:
+                    self.current_castling_rights.bks = False
 
 
     """
@@ -256,6 +293,14 @@ class GameState():
                 end_piece = self.board[end_r][end_c]
                 if end_piece == '--' or end_piece[0] == enemy_color:
                     moves.append(Move((r,c), (end_r, end_c), self.board))
+
+
+class CastleRights():
+    def __init__(self, wks, bks, wqs, bqs) -> None:
+        self.wks = wks
+        self.bks = bks
+        self.wqs = wqs
+        self.bqs = bqs
 
 
 class Move():
