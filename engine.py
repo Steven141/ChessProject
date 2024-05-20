@@ -72,7 +72,6 @@ class GameState():
 
     def getPawnMoves(self, r, c, moves) -> None:
         # TODO: try combining if-else later
-
         if self.whites_turn:
             if self.board[r-1][c] == '--': # one sq advance
                 moves.append(Move((r,c), (r-1,c), self.board))
@@ -119,7 +118,24 @@ class GameState():
 
 
     def getBishopMoves(self, r, c, moves) -> None:
-        pass
+        # TODO: try combining with rook moves
+        enemy_color = 'b' if self.whites_turn else 'w'
+        dirs = ((-1, -1), (1, 1), (-1, 1), (1, -1))
+        for d in dirs:
+            for i in range(1, len(self.board)):
+                end_r = r + d[0] * i
+                end_c = c + d[1] * i
+                if 0 <= end_r < len(self.board) and 0 <= end_c < len(self.board[r]):
+                    end_piece = self.board[end_r][end_c]
+                    if end_piece == '--':
+                        moves.append(Move((r,c), (end_r, end_c), self.board))
+                    elif end_piece[0] == enemy_color:
+                        moves.append(Move((r,c), (end_r, end_c), self.board))
+                        break
+                    else:
+                        break
+                else:
+                    break
 
 
     def getQueenMoves(self, r, c, moves) -> None:
