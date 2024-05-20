@@ -114,7 +114,15 @@ class GameState():
 
 
     def getKnightMoves(self, r, c, moves) -> None:
-        pass
+        enemy_color = 'b' if self.whites_turn else 'w'
+        dirs = ((-2, -1), (-2, 1), (-1, -2), (-1, 2), (1, -2), (1, 2), (2, -1), (2, 1))
+        for d in dirs:
+            end_r = r + d[0]
+            end_c = c + d[1]
+            if 0 <= end_r < len(self.board) and 0 <= end_c < len(self.board[r]):
+                end_piece = self.board[end_r][end_c]
+                if end_piece == '--' or end_piece[0] == enemy_color:
+                    moves.append(Move((r,c), (end_r, end_c), self.board))
 
 
     def getBishopMoves(self, r, c, moves) -> None:
