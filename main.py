@@ -6,7 +6,7 @@ Handles user input and displays current game state information.
 
 
 import pygame as pg
-import engine
+import engine, ai_move_finder
 
 
 WIDTH = HEIGHT = 512
@@ -43,15 +43,18 @@ def main() -> None:
     sq_selected: tuple[str] = () # last click of user (row, col)
     player_clicks: list[tuple[str]] = [] # keep track of selected squares
     game_over = False
+    player_one = False # True if human is playing white. False if AI is playing
+    player_two = False # True if human is playing black. False if AI is playing
 
     while running:
+        is_human_turn = (game_state.whites_turn and player_one) or (not game_state.whites_turn and player_two)
         for event in pg.event.get():
             if event.type == pg.QUIT:
                 running = False
 
             # mouse event cases
             elif event.type == pg.MOUSEBUTTONDOWN:
-                if not game_over:
+                if not game_over and is_human_turn:
                     m_cord = pg.mouse.get_pos()
                     m_col, m_row = m_cord[0] // SQ_SIZE, m_cord[1] // SQ_SIZE
                     if sq_selected == (m_row, m_col): # same square clicked twice
@@ -86,6 +89,13 @@ def main() -> None:
                     player_clicks = []
                     move_made = False
                     animate = False
+
+        # AI move finder
+        if not game_over and not is_human_turn:
+            ai_move = ai_move_finder.findRandomMove(valid_moves)
+            game_state.makeMove(ai_move)
+            move_made = True
+            animate = True
 
         if move_made:
             if animate:
