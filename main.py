@@ -79,16 +79,42 @@ def main() -> None:
             valid_moves = game_state.getValidMoves()
             move_made = False
 
-        drawGameState(screen, game_state)
+        drawGameState(screen, game_state, valid_moves, sq_selected)
         clk.tick(FPS)
         pg.display.flip()
 
 
-def drawGameState(screen, game_state) -> None:
+"""
+Highlight square selected and moves for piece selected
+"""
+def highlightSquares(screen, game_state, valid_moves, sq_selected) -> None:
+    if sq_selected != ():
+        r, c = sq_selected
+        if game_state.board[r][c][0] == ('w' if game_state.whites_turn else 'b'):
+            # highlight selected square
+            s = pg.Surface((SQ_SIZE, SQ_SIZE))
+            s.set_alpha(100) # transperancy: 0 = transparent, 255 = opaque
+            s.fill(pg.Color('blue'))
+            screen.blit(s, (c*SQ_SIZE, r*SQ_SIZE))
+            # highlight moves from that square
+            s.fill(pg.Color('yellow'))
+            for move in valid_moves:
+                if move.start_r == r and move.start_c == c:
+                    screen.blit(s, (move.end_c*SQ_SIZE, move.end_r*SQ_SIZE))
+
+
+"""
+Responsible for all the graphics within a current game state
+"""
+def drawGameState(screen, game_state, valid_moves, sq_selected) -> None:
     drawBoard(screen)
+    highlightSquares(screen, game_state, valid_moves, sq_selected)
     drawPieces(screen, game_state.board)
 
 
+"""
+Draw the squares on the board
+"""
 def drawBoard(screen) -> None:
     colors = (pg.Color('white'), pg.Color('gray'))
     for r in range(BOARD_DIM):
@@ -97,6 +123,9 @@ def drawBoard(screen) -> None:
             pg.draw.rect(screen, color, pg.Rect(c*SQ_SIZE, r*SQ_SIZE, WIDTH, HEIGHT))
 
 
+"""
+Draw the pieces on the board
+"""
 def drawPieces(screen, board) -> None:
     for r in range(BOARD_DIM):
         for c in range(BOARD_DIM):
