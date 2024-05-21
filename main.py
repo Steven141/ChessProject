@@ -42,6 +42,7 @@ def main() -> None:
     running = True
     sq_selected: tuple[str] = () # last click of user (row, col)
     player_clicks: list[tuple[str]] = [] # keep track of selected squares
+    game_over = False
 
     while running:
         for event in pg.event.get():
@@ -50,32 +51,40 @@ def main() -> None:
 
             # mouse event cases
             elif event.type == pg.MOUSEBUTTONDOWN:
-                m_cord = pg.mouse.get_pos()
-                m_col, m_row = m_cord[0] // SQ_SIZE, m_cord[1] // SQ_SIZE
-                if sq_selected == (m_row, m_col): # same square clicked twice
-                    sq_selected = ()
-                    player_clicks = []
-                else:
-                    sq_selected = (m_row, m_col)
-                    player_clicks.append(sq_selected)
-                if len(player_clicks) == 2:
-                    move = engine.Move(player_clicks[0], player_clicks[1], game_state.board)
-                    print(move.getChessNotation())
-                    for i in range(len(valid_moves)):
-                        if move == valid_moves[i]:
-                            game_state.makeMove(valid_moves[i])
-                            move_made = True
-                            animate = True
-                            sq_selected = ()
-                            player_clicks = []
-                    if not move_made:
-                        player_clicks = [sq_selected]
+                if not game_over:
+                    m_cord = pg.mouse.get_pos()
+                    m_col, m_row = m_cord[0] // SQ_SIZE, m_cord[1] // SQ_SIZE
+                    if sq_selected == (m_row, m_col): # same square clicked twice
+                        sq_selected = ()
+                        player_clicks = []
+                    else:
+                        sq_selected = (m_row, m_col)
+                        player_clicks.append(sq_selected)
+                    if len(player_clicks) == 2:
+                        move = engine.Move(player_clicks[0], player_clicks[1], game_state.board)
+                        print(move.getChessNotation())
+                        for i in range(len(valid_moves)):
+                            if move == valid_moves[i]:
+                                game_state.makeMove(valid_moves[i])
+                                move_made = True
+                                animate = True
+                                sq_selected = ()
+                                player_clicks = []
+                        if not move_made:
+                            player_clicks = [sq_selected]
 
             # key event cases
             elif event.type == pg.KEYDOWN:
-                if event.key == pg.K_z:
+                if event.key == pg.K_z: # undo
                     game_state.undoMove()
                     move_made = True
+                    animate = False
+                if event.key == pg.K_r: # reset
+                    game_state = engine.GameState()
+                    valid_moves = game_state.getValidMoves()
+                    sq_selected = ()
+                    player_clicks = []
+                    move_made = False
                     animate = False
 
         if move_made:
@@ -86,6 +95,17 @@ def main() -> None:
             animate = False
 
         drawGameState(screen, game_state, valid_moves, sq_selected)
+
+        if game_state.checkmate:
+            game_over = True
+            if game_state.whites_turn:
+                drawText(screen, 'Black wins by checkmate')
+            else:
+                drawText(screen, 'White wins by checkmate')
+        elif game_state.stalemate:
+            game_over = True
+            drawText(screen, 'Stalemate')
+
         clk.tick(FPS)
         pg.display.flip()
 
@@ -165,6 +185,15 @@ def animateMove(move, screen, board, clk) -> None:
         screen.blit(IMAGES[move.piece_moved], pg.Rect(c*SQ_SIZE, r*SQ_SIZE, SQ_SIZE, SQ_SIZE))
         pg.display.flip()
         clk.tick(60)
+
+
+def drawText(screen, text) -> None:
+    font = pg.font.SysFont('Helvitca', 32, True, False)
+    text_object = font.render(text, 0, pg.Color('Gray'))
+    text_location = pg.Rect(0, 0, WIDTH, HEIGHT).move(WIDTH/2 - text_object.get_width()/2, HEIGHT/2 - text_object.get_height()/2)
+    screen.blit(text_object, text_location)
+    text_object = font.render(text, 0, pg.Color('Black'))
+    screen.blit(text_object, text_location.move(2, 2))
 
 
 if __name__ == "__main__":
