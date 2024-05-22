@@ -10,7 +10,7 @@ from engine import Move
 piece_scores = {'K': 0, 'Q': 9, 'R': 5, 'B': 3, 'N': 3, "P": 1}
 CHECKMATE = 1000
 STALEMATE = 0
-DEPTH = 2
+DEPTH = 3
 
 
 """
@@ -21,12 +21,12 @@ def findRandomMove(valid_moves) -> Move:
 
 
 """
-Find best move based on material alone
+Find best move based on minmax algo without recursion
 
 White wants positive board score, black wants negative board score
 Greedy algo with depth 2
 """
-def findBestMove(game_state, valid_moves) -> Move:
+def findBestMoveMinMaxNoRecursion(game_state, valid_moves) -> Move:
     turn_multiplier = 1 if game_state.whites_turn else -1
     opps_min_max_score = CHECKMATE
     best_player_move = None
@@ -66,8 +66,10 @@ Helper to make first recursive call
 def findBestMove(game_state, valid_moves) -> Move:
     global next_move
     next_move = None
+    random.shuffle(valid_moves)
     # findMoveMinMax(game_state, valid_moves, DEPTH, game_state.whites_turn)
-    findMoveNegaMax(game_state, valid_moves, DEPTH, 1 if game_state.whites_turn else -1)
+    # findMoveNegaMax(game_state, valid_moves, DEPTH, 1 if game_state.whites_turn else -1)
+    findMoveNegaMaxAlphaBeta(game_state, valid_moves, DEPTH, -CHECKMATE, CHECKMATE, 1 if game_state.whites_turn else -1)
     return next_move
 
 
@@ -124,6 +126,32 @@ def findMoveNegaMax(game_state, valid_moves, depth, turn_multiplier) -> int:
             if depth == DEPTH:
                 next_move = move
         game_state.undoMove()
+    return max_score
+
+
+"""
+Recursive NegaMax algo with alpha beta pruning
+"""
+def findMoveNegaMaxAlphaBeta(game_state, valid_moves, depth, alpha, beta, turn_multiplier) -> int:
+    global next_move
+    if depth == 0:
+        return turn_multiplier * scoreBoard(game_state)
+
+    max_score = -CHECKMATE
+    for move in valid_moves:
+        game_state.makeMove(move)
+        next_moves = game_state.getValidMoves()
+        score = -findMoveNegaMaxAlphaBeta(game_state, next_moves, depth-1, -beta, -alpha, -turn_multiplier)
+        if score > max_score:
+            max_score = score
+            if depth == DEPTH:
+                next_move = move
+        game_state.undoMove()
+
+        if max_score > alpha:
+            alpha = max_score
+        if alpha >= beta:
+            break
     return max_score
 
 
