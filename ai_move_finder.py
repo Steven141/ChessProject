@@ -63,10 +63,11 @@ def findBestMove(game_state, valid_moves) -> Move:
 """
 Helper to make first recursive call
 """
-def findBestMoveMinMax(game_state, valid_moves) -> Move:
+def findBestMove(game_state, valid_moves) -> Move:
     global next_move
     next_move = None
-    findMoveMinMax(game_state, valid_moves, DEPTH, game_state.whites_turn)
+    # findMoveMinMax(game_state, valid_moves, DEPTH, game_state.whites_turn)
+    findMoveNegaMax(game_state, valid_moves, DEPTH, 1 if game_state.whites_turn else -1)
     return next_move
 
 
@@ -103,6 +104,27 @@ def findMoveMinMax(game_state, valid_moves, depth, whites_turn) -> int:
                     next_move = move
             game_state.undoMove()
         return min_score
+
+
+"""
+Recursive NegaMax algo
+"""
+def findMoveNegaMax(game_state, valid_moves, depth, turn_multiplier) -> int:
+    global next_move
+    if depth == 0:
+        return turn_multiplier * scoreBoard(game_state)
+
+    max_score = -CHECKMATE
+    for move in valid_moves:
+        game_state.makeMove(move)
+        next_moves = game_state.getValidMoves()
+        score = -findMoveNegaMax(game_state, next_moves, depth-1, -turn_multiplier)
+        if score > max_score:
+            max_score = score
+            if depth == DEPTH:
+                next_move = move
+        game_state.undoMove()
+    return max_score
 
 
 """
