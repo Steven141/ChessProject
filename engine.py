@@ -118,6 +118,9 @@ class GameState():
                     self.board[move.end_r][move.end_c-2] = self.board[move.end_r][move.end_c+1]
                     self.board[move.end_r][move.end_c+1] = '--'
 
+            self.checkmate = False
+            self.stalemate = False
+
 
 
     """

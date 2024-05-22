@@ -82,6 +82,7 @@ def main() -> None:
                     game_state.undoMove()
                     move_made = True
                     animate = False
+                    game_over = False
                 if event.key == pg.K_r: # reset
                     game_state = engine.GameState()
                     valid_moves = game_state.getValidMoves()
@@ -89,10 +90,11 @@ def main() -> None:
                     player_clicks = []
                     move_made = False
                     animate = False
+                    game_over = False
 
         # AI move finder
         if not game_over and not is_human_turn:
-            ai_move = ai_move_finder.findBestMove(game_state, valid_moves)
+            ai_move = ai_move_finder.findBestMoveMinMax(game_state, valid_moves)
             if not ai_move:
                 ai_move = ai_move_finder.findRandomMove(valid_moves)
             game_state.makeMove(ai_move)
