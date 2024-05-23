@@ -43,8 +43,8 @@ def main() -> None:
     sq_selected: tuple[str] = () # last click of user (row, col)
     player_clicks: list[tuple[str]] = [] # keep track of selected squares
     game_over = False
-    player_one = True # True if human is playing white. False if AI is playing
-    player_two = True # True if human is playing black. False if AI is playing
+    player_one = False # True if human is playing white. False if AI is playing
+    player_two = False # True if human is playing black. False if AI is playing
 
     while running:
         is_human_turn = (game_state.whites_turn and player_one) or (not game_state.whites_turn and player_two)
@@ -225,7 +225,7 @@ def animateMove(move, screen, board, clk) -> None:
         # draw moving piece
         screen.blit(IMAGES[move.piece_moved], pg.Rect(c*SQ_SIZE, r*SQ_SIZE, SQ_SIZE, SQ_SIZE))
         pg.display.flip()
-        clk.tick(100)
+        clk.tick(200)
 
 
 def drawEndGameText(screen, text) -> None:
