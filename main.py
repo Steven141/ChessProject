@@ -7,6 +7,7 @@ Handles user input and displays current game state information.
 
 import pygame as pg
 import engine, ai_move_finder
+from multiprocessing import Process, Queue
 
 
 BOARD_WIDTH = BOARD_HEIGHT = 512
@@ -44,7 +45,11 @@ def main() -> None:
     player_clicks: list[tuple[str]] = [] # keep track of selected squares
     game_over = False
     player_one = False # True if human is playing white. False if AI is playing
-    player_two = False # True if human is playing black. False if AI is playing
+    player_two = True # True if human is playing black. False if AI is playing
+
+    ai_thinking = False
+    move_finder_process = None
+    move_undone = False
 
     while running:
         is_human_turn = (game_state.whites_turn and player_one) or (not game_state.whites_turn and player_two)
@@ -54,7 +59,7 @@ def main() -> None:
 
             # mouse event cases
             elif event.type == pg.MOUSEBUTTONDOWN:
-                if not game_over and is_human_turn:
+                if not game_over:
                     m_cord = pg.mouse.get_pos()
                     m_col, m_row = m_cord[0] // SQ_SIZE, m_cord[1] // SQ_SIZE
                     if sq_selected == (m_row, m_col) or m_col > 7: # same square clicked twice or user clicked mouse log
@@ -63,7 +68,7 @@ def main() -> None:
                     else:
                         sq_selected = (m_row, m_col)
                         player_clicks.append(sq_selected)
-                    if len(player_clicks) == 2:
+                    if len(player_clicks) == 2 and is_human_turn:
                         move = engine.Move(player_clicks[0], player_clicks[1], game_state.board)
                         print(move.getChessNotation())
                         for i in range(len(valid_moves)):
@@ -83,6 +88,11 @@ def main() -> None:
                     move_made = True
                     animate = False
                     game_over = False
+                    if ai_thinking:
+                        move_finder_process.terminate()
+                        ai_thinking = False
+                    move_undone = True
+
                 if event.key == pg.K_r: # reset
                     game_state = engine.GameState()
                     valid_moves = game_state.getValidMoves()
@@ -91,15 +101,28 @@ def main() -> None:
                     move_made = False
                     animate = False
                     game_over = False
+                    if ai_thinking:
+                        move_finder_process.terminate()
+                        ai_thinking = False
 
         # AI move finder
-        if not game_over and not is_human_turn:
-            ai_move = ai_move_finder.findBestMove(game_state, valid_moves)
-            if not ai_move:
-                ai_move = ai_move_finder.findRandomMove(valid_moves)
-            game_state.makeMove(ai_move)
-            move_made = True
-            animate = True
+        if not game_over and not is_human_turn and not move_undone:
+            if not ai_thinking:
+                ai_thinking = True
+                print('Thinking...')
+                return_q = Queue() # used to pass data between threads
+                move_finder_process = Process(target=ai_move_finder.findBestMove, args=(game_state, valid_moves, return_q))
+                move_finder_process.start() # call findBestMove(game_state, valid_moves, return_q)
+
+            if not move_finder_process.is_alive():
+                print('Done thinking')
+                ai_move = return_q.get()
+                if not ai_move:
+                    ai_move = ai_move_finder.findRandomMove(valid_moves)
+                game_state.makeMove(ai_move)
+                move_made = True
+                animate = True
+                ai_thinking = False
 
         if move_made:
             if animate:
@@ -107,6 +130,7 @@ def main() -> None:
             valid_moves = game_state.getValidMoves()
             move_made = False
             animate = False
+            move_undone = False
 
         drawGameState(screen, game_state, valid_moves, sq_selected, move_log_font)
 

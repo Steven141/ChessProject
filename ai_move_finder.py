@@ -131,7 +131,7 @@ def findBestMoveMinMaxNoRecursion(game_state, valid_moves) -> Move:
 """
 Helper to make first recursive call
 """
-def findBestMove(game_state, valid_moves) -> Move:
+def findBestMove(game_state, valid_moves, return_q) -> Move:
     global next_move, move_counter
     next_move = None
     random.shuffle(valid_moves)
@@ -140,7 +140,7 @@ def findBestMove(game_state, valid_moves) -> Move:
     # findMoveNegaMax(game_state, valid_moves, DEPTH, 1 if game_state.whites_turn else -1)
     findMoveNegaMaxAlphaBeta(game_state, valid_moves, DEPTH, -CHECKMATE, CHECKMATE, 1 if game_state.whites_turn else -1)
     print(f'Number of moves: {move_counter}')
-    return next_move
+    return_q.put(next_move)
 
 
 """
