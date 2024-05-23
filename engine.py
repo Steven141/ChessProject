@@ -40,6 +40,7 @@ class GameState():
         self.checkmate = False
         self.stalemate = False
         self.enpassant_possible = () # cord where enpassant possible
+        self.enpassant_possible_log = [self.enpassant_possible]
         self.current_castling_rights = CastleRights(True, True, True, True)
         self.castle_rights_log = [copy.deepcopy(self.current_castling_rights)]
 
@@ -69,6 +70,7 @@ class GameState():
             self.enpassant_possible = ((move.start_r + move.end_r) // 2, move.end_c)
         else:
             self.enpassant_possible = ()
+        self.enpassant_possible_log.append(self.enpassant_possible)
 
         # castling move
         if move.is_castle_move:
@@ -97,13 +99,12 @@ class GameState():
             elif move.piece_moved == 'bK':
                 self.bk_location = (move.start_r, move.start_c)
 
-            # TODO: does not work for chained undos
-            if move.is_enpassant_move: # undo enpassant
+            # undo enpassant
+            if move.is_enpassant_move:
                 self.board[move.end_r][move.end_c] = '--'
                 self.board[move.start_r][move.end_c] = move.piece_captured
-                self.enpassant_possible = (move.end_r, move.end_c)
-            if move.piece_moved[1] == 'P' and abs(move.end_r - move.start_r) == 2: # undo two sq pawn advances
-                self.enpassant_possible = ()
+            self.enpassant_possible_log.pop()
+            self.enpassant_possible = self.enpassant_possible_log[-1]
 
             # undo castling rights
             self.castle_rights_log.pop()
@@ -399,6 +400,7 @@ class Move():
         # castling
         self.is_castle_move = is_castle_move
 
+        self.is_capture = self.piece_captured != '--'
         self.move_id = self.start_r*1000 + self.start_c*100 + self.end_r*10 + self.end_c
 
 
@@ -409,6 +411,27 @@ class Move():
     def getChessNotation(self) -> str:
         return f'{self.getRankFile(self.start_r, self.start_c)}{self.getRankFile(self.end_r, self.end_c)}'
 
-    
+
     def getRankFile(self, r, c) -> str:
         return f'{self.cols_to_files[c]}{self.rows_to_ranks[r]}'
+
+
+    def __str__(self) -> str:
+        # castle move
+        if self.is_castle_move:
+            return 'O-O' if self.end_c == 6 else 'O-O-O'
+
+        end_sq = self.getRankFile(self.end_r, self.end_c)
+
+        # pawn moves
+        if self.piece_moved[1] == 'P':
+            if self.is_capture:
+                return self.cols_to_files[self.start_c] + 'x' + end_sq
+            else:
+                return end_sq
+
+        # piece moves
+        move_str = self.piece_moved[1]
+        if self.is_capture:
+            move_str += 'x'
+        return move_str + end_sq

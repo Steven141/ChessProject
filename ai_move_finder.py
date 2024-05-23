@@ -64,12 +64,14 @@ def findBestMoveMinMaxNoRecursion(game_state, valid_moves) -> Move:
 Helper to make first recursive call
 """
 def findBestMove(game_state, valid_moves) -> Move:
-    global next_move
+    global next_move, move_counter
     next_move = None
     random.shuffle(valid_moves)
+    move_counter = 0
     # findMoveMinMax(game_state, valid_moves, DEPTH, game_state.whites_turn)
     # findMoveNegaMax(game_state, valid_moves, DEPTH, 1 if game_state.whites_turn else -1)
     findMoveNegaMaxAlphaBeta(game_state, valid_moves, DEPTH, -CHECKMATE, CHECKMATE, 1 if game_state.whites_turn else -1)
+    print(f'Number of moves: {move_counter}')
     return next_move
 
 
@@ -112,7 +114,8 @@ def findMoveMinMax(game_state, valid_moves, depth, whites_turn) -> int:
 Recursive NegaMax algo
 """
 def findMoveNegaMax(game_state, valid_moves, depth, turn_multiplier) -> int:
-    global next_move
+    global next_move, move_counter
+    move_counter += 1
     if depth == 0:
         return turn_multiplier * scoreBoard(game_state)
 
@@ -133,7 +136,8 @@ def findMoveNegaMax(game_state, valid_moves, depth, turn_multiplier) -> int:
 Recursive NegaMax algo with alpha beta pruning
 """
 def findMoveNegaMaxAlphaBeta(game_state, valid_moves, depth, alpha, beta, turn_multiplier) -> int:
-    global next_move
+    global next_move, move_counter
+    move_counter += 1
     if depth == 0:
         return turn_multiplier * scoreBoard(game_state)
 
