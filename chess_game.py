@@ -7,6 +7,7 @@ Handles user input and displays current game state information.
 
 import pygame as pg
 import engine, engine_advanced, ai_move_finder
+from engine_advanced import GameState
 from multiprocessing import Process, Queue
 
 
@@ -26,6 +27,10 @@ def loadImages() -> None:
             pg.image.load(f'images/{piece}.png'),
             (SQ_SIZE, SQ_SIZE),
         )
+
+
+def getGameState() -> GameState:
+    pass
 
 
 def main() -> None:

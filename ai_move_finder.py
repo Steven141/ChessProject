@@ -4,7 +4,7 @@ File contains code for the chess bot
 
 
 import random
-from engine import Move
+from engine_advanced import Move
 
 
 piece_scores = {'K': 0, 'Q': 9, 'R': 5, 'B': 3, 'N': 3, "P": 1}
