@@ -6,7 +6,7 @@ Handles user input and displays current game state information.
 
 
 import pygame as pg
-import engine, ai_move_finder
+import engine, engine_advanced, ai_move_finder
 from multiprocessing import Process, Queue
 
 
@@ -34,7 +34,7 @@ def main() -> None:
     clk = pg.time.Clock()
     screen.fill(pg.Color('white'))
     move_log_font = pg.font.SysFont('Arial', 14, False, False)
-    game_state = engine.GameState()
+    game_state = engine_advanced.GameState()
     valid_moves = game_state.getValidMoves()
     move_made = False # flag for when move is made
     animate = False
@@ -44,7 +44,7 @@ def main() -> None:
     sq_selected: tuple[str] = () # last click of user (row, col)
     player_clicks: list[tuple[str]] = [] # keep track of selected squares
     game_over = False
-    player_one = False # True if human is playing white. False if AI is playing
+    player_one = True # True if human is playing white. False if AI is playing
     player_two = True # True if human is playing black. False if AI is playing
 
     ai_thinking = False
@@ -69,7 +69,7 @@ def main() -> None:
                         sq_selected = (m_row, m_col)
                         player_clicks.append(sq_selected)
                     if len(player_clicks) == 2 and is_human_turn:
-                        move = engine.Move(player_clicks[0], player_clicks[1], game_state.board)
+                        move = engine_advanced.Move(player_clicks[0], player_clicks[1], game_state.board)
                         print(move.getChessNotation())
                         for i in range(len(valid_moves)):
                             if move == valid_moves[i]:
@@ -94,7 +94,7 @@ def main() -> None:
                     move_undone = True
 
                 if event.key == pg.K_r: # reset
-                    game_state = engine.GameState()
+                    game_state = engine_advanced.GameState()
                     valid_moves = game_state.getValidMoves()
                     sq_selected = ()
                     player_clicks = []
