@@ -165,7 +165,7 @@ class GameState():
     """
     Get all moves considering checks
     """
-    def getValidMoves(self) -> None:
+    def getValidMoves(self) -> list:
         # TODO: look to upgrade to better algo for checks
         temp_enpassant_possible = self.enpassant_possible
         temp_castle_rights = copy.deepcopy(self.current_castling_rights)

@@ -173,7 +173,7 @@ class GameState():
     """
     Get all moves considering checks
     """
-    def getValidMoves(self) -> None:
+    def getValidMoves(self) -> list:
         moves = []
         self.is_in_check, self.pins, self.checks = self.checkForPinsAndChecks()
         if self.whites_turn:
@@ -303,16 +303,6 @@ class GameState():
                     checks.append((end_r, end_c, d[0], d[1]))
 
         return is_in_check, pins, checks
-
-
-    """
-    Determine if current players is in check
-    """
-    def inCheck(self) -> bool:
-        if self.whites_turn:
-            return self.squareUnderAttack(self.wk_location[0], self.wk_location[1])
-        else:
-            return self.squareUnderAttack(self.bk_location[0], self.bk_location[1])
 
 
     """

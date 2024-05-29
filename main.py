@@ -157,7 +157,7 @@ Draw the squares on the board
 """
 def drawBoard(screen) -> None:
     global colors
-    colors = (pg.Color('white'), pg.Color('gray'))
+    colors = (pg.Color('white'), pg.Color('wheat4'))
     for r in range(BOARD_DIM):
         for c in range(BOARD_DIM):
             color = colors[(r + c) % 2]
@@ -174,7 +174,7 @@ def highlightSquares(screen, game_state, valid_moves, sq_selected) -> None:
             # highlight selected square
             s = pg.Surface((SQ_SIZE, SQ_SIZE))
             s.set_alpha(100) # transperancy: 0 = transparent, 255 = opaque
-            s.fill(pg.Color('blue'))
+            s.fill(pg.Color('red'))
             screen.blit(s, (c*SQ_SIZE, r*SQ_SIZE))
             # highlight moves from that square
             s.fill(pg.Color('yellow'))
