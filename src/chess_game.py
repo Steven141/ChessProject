@@ -29,10 +29,6 @@ def loadImages() -> None:
         )
 
 
-def getGameState() -> GameState:
-    pass
-
-
 def main() -> None:
     pg.init()
     screen = pg.display.set_mode((BOARD_WIDTH + MOVE_LOG_PANEL_WIDTH, BOARD_HEIGHT))
