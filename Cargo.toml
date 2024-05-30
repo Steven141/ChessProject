@@ -1,0 +1,14 @@
+[package]
+name = "ChessProject"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+# library crate config
+[lib]
+name = "ChessProject"
+crate-type = ["cdylib"]
+
+# pyo3 gives rust bindings for python
+[dependencies]
+pyo3 = "0.20.0"

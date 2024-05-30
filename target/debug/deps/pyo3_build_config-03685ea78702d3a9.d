@@ -1,0 +1,14 @@
+C:\Users\Steven\Documents\CodeProjects\ChessProject\target\debug\deps\libpyo3_build_config-03685ea78702d3a9.rmeta: C:\Users\Steven\.cargo\registry\src\index.crates.io-6f17d22bba15001f\pyo3-build-config-0.20.3\src\lib.rs C:\Users\Steven\.cargo\registry\src\index.crates.io-6f17d22bba15001f\pyo3-build-config-0.20.3\src\errors.rs C:\Users\Steven\.cargo\registry\src\index.crates.io-6f17d22bba15001f\pyo3-build-config-0.20.3\src\impl_.rs C:\Users\Steven\Documents\CodeProjects\ChessProject\target\debug\build\pyo3-build-config-2de70c2d6b4bbc43\out/pyo3-build-config-file.txt C:\Users\Steven\Documents\CodeProjects\ChessProject\target\debug\build\pyo3-build-config-2de70c2d6b4bbc43\out/pyo3-build-config.txt
+
+C:\Users\Steven\Documents\CodeProjects\ChessProject\target\debug\deps\libpyo3_build_config-03685ea78702d3a9.rlib: C:\Users\Steven\.cargo\registry\src\index.crates.io-6f17d22bba15001f\pyo3-build-config-0.20.3\src\lib.rs C:\Users\Steven\.cargo\registry\src\index.crates.io-6f17d22bba15001f\pyo3-build-config-0.20.3\src\errors.rs C:\Users\Steven\.cargo\registry\src\index.crates.io-6f17d22bba15001f\pyo3-build-config-0.20.3\src\impl_.rs C:\Users\Steven\Documents\CodeProjects\ChessProject\target\debug\build\pyo3-build-config-2de70c2d6b4bbc43\out/pyo3-build-config-file.txt C:\Users\Steven\Documents\CodeProjects\ChessProject\target\debug\build\pyo3-build-config-2de70c2d6b4bbc43\out/pyo3-build-config.txt
+
+C:\Users\Steven\Documents\CodeProjects\ChessProject\target\debug\deps\pyo3_build_config-03685ea78702d3a9.d: C:\Users\Steven\.cargo\registry\src\index.crates.io-6f17d22bba15001f\pyo3-build-config-0.20.3\src\lib.rs C:\Users\Steven\.cargo\registry\src\index.crates.io-6f17d22bba15001f\pyo3-build-config-0.20.3\src\errors.rs C:\Users\Steven\.cargo\registry\src\index.crates.io-6f17d22bba15001f\pyo3-build-config-0.20.3\src\impl_.rs C:\Users\Steven\Documents\CodeProjects\ChessProject\target\debug\build\pyo3-build-config-2de70c2d6b4bbc43\out/pyo3-build-config-file.txt C:\Users\Steven\Documents\CodeProjects\ChessProject\target\debug\build\pyo3-build-config-2de70c2d6b4bbc43\out/pyo3-build-config.txt
+
+C:\Users\Steven\.cargo\registry\src\index.crates.io-6f17d22bba15001f\pyo3-build-config-0.20.3\src\lib.rs:
+C:\Users\Steven\.cargo\registry\src\index.crates.io-6f17d22bba15001f\pyo3-build-config-0.20.3\src\errors.rs:
+C:\Users\Steven\.cargo\registry\src\index.crates.io-6f17d22bba15001f\pyo3-build-config-0.20.3\src\impl_.rs:
+C:\Users\Steven\Documents\CodeProjects\ChessProject\target\debug\build\pyo3-build-config-2de70c2d6b4bbc43\out/pyo3-build-config-file.txt:
+C:\Users\Steven\Documents\CodeProjects\ChessProject\target\debug\build\pyo3-build-config-2de70c2d6b4bbc43\out/pyo3-build-config.txt:
+
+# env-dep:CARGO_PKG_VERSION=0.20.3
+# env-dep:OUT_DIR=C:\\Users\\Steven\\Documents\\CodeProjects\\ChessProject\\target\\debug\\build\\pyo3-build-config-2de70c2d6b4bbc43\\out
