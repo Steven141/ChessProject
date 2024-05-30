@@ -7,7 +7,6 @@ Handles user input and displays current game state information.
 
 import pygame as pg
 import engine, engine_advanced, ai_move_finder
-from engine_advanced import GameState
 from multiprocessing import Process, Queue
 
 
