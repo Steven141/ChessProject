@@ -1,7 +1,5 @@
 """
-File contains data stored from chess game.
-
-Keeps track of possible moves and old moves.
+Advanced Engine
 """
 
 
