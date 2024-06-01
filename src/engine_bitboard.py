@@ -4,15 +4,25 @@ Bitboard Engine
 
 class GameState():
     def __init__(self) -> None:
+        # self.board = [
+        #     ['bR', 'bN', 'bB', 'bQ', 'bK', 'bB', 'bN', 'bR'],
+        #     ['bP', 'bP', 'bP', 'bP', 'bP', 'bP', 'bP', 'bP'],
+        #     ['--', '--', '--', '--', '--', '--', '--', '--'],
+        #     ['--', '--', '--', '--', '--', '--', '--', '--'],
+        #     ['--', '--', '--', '--', '--', '--', '--', '--'],
+        #     ['--', '--', '--', '--', '--', '--', '--', '--'],
+        #     ['wP', 'wP', 'wP', 'wP', 'wP', 'wP', 'wP', 'wP'],
+        #     ['wR', 'wN', 'wB', 'wQ', 'wK', 'wB', 'wN', 'wR'],
+        # ]
         self.board = [
-            ['bR', 'bN', 'bB', 'bQ', 'bK', 'bB', 'bN', 'bR'],
-            ['bP', 'bP', 'bP', 'bP', 'bP', 'bP', 'bP', 'bP'],
+            ['--', '--', '--', '--', '--', '--', '--', '--'],
+            ['--', '--', '--', '--', '--', '--', '--', '--'],
+            ['--', '--', '--', '--', '--', '--', '--', '--'],
+            ['--', 'wP', 'bP', '--', 'bP', 'wP', 'bP', '--'],
             ['--', '--', '--', '--', '--', '--', '--', '--'],
             ['--', '--', '--', '--', '--', '--', '--', '--'],
             ['--', '--', '--', '--', '--', '--', '--', '--'],
             ['--', '--', '--', '--', '--', '--', '--', '--'],
-            ['wP', 'wP', 'wP', 'wP', 'wP', 'wP', 'wP', 'wP'],
-            ['wR', 'wN', 'wB', 'wQ', 'wK', 'wB', 'wN', 'wR'],
         ]
         # piece bitboards
         self.wP = self.wN = self.wB = self.wR = self.wQ = self.wK = 0
@@ -46,9 +56,9 @@ class GameState():
         return int_rep
     
 
-    def drawBoard(self) -> None:
+    def drawGameArray(self) -> None:
         new_board = [['--']*8 for _ in range(8)]
-        for i in range(64):
+        for i in range(64): # i = 0 -> board[0][0] -> bitboard_as_bin[0]
             shift = 64 - 1 - i
             if (self.wP >> shift) & 1 == 1:
                 new_board[i // 8][i % 8] = 'wP'
@@ -78,6 +88,16 @@ class GameState():
             print(*r)
 
 
+    def drawArrayFromBitboard(self, bitboard) -> None:
+        new_board = [['0']*8 for _ in range(8)]
+        for i in range(64):
+            shift = 64 - 1 - i
+            if (bitboard >> shift) & 1 == 1:
+                new_board[i // 8][i % 8] = '1'
+        for r in new_board:
+            print(*r)
+
+
 class Moves():
     def __init__(self) -> None:
         # specific bitboards
@@ -99,24 +119,114 @@ class Moves():
         self.black_pieces = 0 # black pieces but no black king
         self.empty = 0
 
+        self.rank_masks = [
+            self.rank_1,
+            65280,
+            16711680,
+            self.rank_4,
+            self.rank_5,
+            280375465082880,
+            71776119061217280,
+            self.rank_8,
+        ] # from rank 1 to rank 8
+        self.file_masks = [
+            self.file_a,
+            4629771061636907072,
+            2314885530818453536,
+            1157442765409226768,
+            578721382704613384,
+            289360691352306692,
+            144680345676153346,
+            self.file_h,
+        ] # from file a to file h
+
 
     def possibleMovesW(self, history, wP, wN, wB, wR, wQ, wK, bP, bN, bB, bR, bQ, bK) -> str:
         self.not_white_pieces = ~(wP|wN|wB|wR|wQ|wK|bK) # avoid illegal bK capture
         self.black_pieces = bP|bN|bB|bR|bQ # avoid illegal bK capture
         self.empty = ~(wP|wN|wB|wR|wQ|wK|bP|bN|bB|bR|bQ|bK)
-        moves = self.possibleWP(history, wP)
+        move_list = self.possibleWP(history, wP, bP)
 
-        return moves
+        return move_list
 
 
-    def possibleWP(self, history, wP) -> str:
-        moves = '' # x1,y1,x2,y2
-        # continue at 5:30
-        return moves
+    def possibleWP(self, history, wP, bP) -> str:
+        # TODO: look into faster method - tut 6
+        # standard moves and captures
+        move_list = '' # r1,c1,r2,c2
+        moves = (wP << 7) & self.black_pieces & ~self.rank_8 & ~self.file_a # right capture
+        for i in range(64): # i = 0 -> board[0][0] -> bitboard_as_bin[0]
+            shift = 64 - 1 - i
+            if (moves >> shift) & 1 == 1:
+                move_list += f'{(i // 8) + 1}{(i % 8) - 1}{i // 8}{i % 8}'
+
+        moves = (wP << 9) & self.black_pieces & ~self.rank_8 & ~self.file_h # left capture
+        for i in range(64):
+            shift = 64 - 1 - i
+            if (moves >> shift) & 1 == 1:
+                move_list += f'{(i // 8) + 1}{(i % 8) + 1}{i // 8}{i % 8}'
+
+        moves = (wP << 8) & self.empty & ~self.rank_8 # move forward 1
+        for i in range(64):
+            shift = 64 - 1 - i
+            if (moves >> shift) & 1 == 1:
+                move_list += f'{(i // 8) + 1}{i % 8}{i // 8}{i % 8}'
+
+        moves = (wP << 16) & self.empty & (self.empty << 8) & self.rank_4 # move forward 2
+        for i in range(64):
+            shift = 64 - 1 - i
+            if (moves >> shift) & 1 == 1:
+                move_list += f'{(i // 8) + 2}{i % 8}{i // 8}{i % 8}'
+
+        # pawn promotion, move_list -> c1,c2,promo type,'P'
+        moves = (wP << 7) & self.black_pieces & self.rank_8 & ~self.file_a # promo by right capture
+        for i in range(64):
+            shift = 64 - 1 - i
+            if (moves >> shift) & 1 == 1:
+                c1, c2 = (i % 8) - 1, i % 8
+                move_list += f'{c1}{c2}QP{c1}{c2}RP{c1}{c2}BP{c1}{c2}NP'
+
+        moves = (wP << 9) & self.black_pieces & self.rank_8 & ~self.file_h # promo by left capture
+        for i in range(64):
+            shift = 64 - 1 - i
+            if (moves >> shift) & 1 == 1:
+                c1, c2 = (i % 8) + 1, i % 8
+                move_list += f'{c1}{c2}QP{c1}{c2}RP{c1}{c2}BP{c1}{c2}NP'
+
+        moves = (wP << 8) & self.empty & self.rank_8 # promo by move forward 1
+        for i in range(64):
+            shift = 64 - 1 - i
+            if (moves >> shift) & 1 == 1:
+                c1 = c2 = i % 8
+                move_list += f'{c1}{c2}QP{c1}{c2}RP{c1}{c2}BP{c1}{c2}NP'
+
+        # enpassant, move_list -> c1,c2,space,'E'
+        if len(history) >= 4:
+            if (history[-1] == history[-3]) and (abs(int(history[-2]) - int(history[-4])) == 2):
+                file = int(history[-1])
+                moves = (wP >> 1) & bP & self.rank_5 & ~self.file_a & self.file_masks[file] # enpassant right
+                for i in range(64):
+                    shift = 64 - 1 - i
+                    if (moves >> shift) & 1 == 1:
+                        c1, c2 = (i % 8) - 1, i % 8
+                        move_list += f'{c1}{c2} E'
+
+                moves = (wP << 1) & bP & self.rank_5 & ~self.file_h & self.file_masks[file] # enpassant left
+                for i in range(64):
+                    shift = 64 - 1 - i
+                    if (moves >> shift) & 1 == 1:
+                        c1, c2 = (i % 8) + 1, i % 8
+                        move_list += f'{c1}{c2} E'
+
+        return move_list
 
 
 g = GameState()
-g.drawBoard()
-print(g.wP)
+# g.drawGameArray()
+# g.drawArrayFromBitboard(g.wP)
+# print(g.wP)
+
 m = Moves()
-m.possibleMovesW('', g.wP, g.wN, g.wB, g.wR, g.wQ, g.wK, g.bP, g.bN, g.bB, g.bR, g.bQ, g.bK)
+move_list = m.possibleMovesW('', g.wP, g.wN, g.wB, g.wR, g.wQ, g.wK, g.bP, g.bN, g.bB, g.bR, g.bQ, g.bK)
+# g.drawArrayFromBitboard(moves)
+print(move_list)
