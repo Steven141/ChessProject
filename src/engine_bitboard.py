@@ -3,6 +3,11 @@ Bitboard Engine
 """
 
 class GameState():
+    """
+    In this 8x8 game board, the first char represents color
+    and the second char represents type of piece. Empty
+    square is denoted with '--'.
+    """
     def __init__(self) -> None:
         # self.board = [
         #     ['bR', 'bN', 'bB', 'bQ', 'bK', 'bB', 'bN', 'bR'],
@@ -19,7 +24,7 @@ class GameState():
             ['bP', 'bP', 'bP', 'bP', 'bP', 'bP', 'bP', 'bP'],
             ['--', '--', '--', '--', '--', '--', '--', '--'],
             ['--', '--', '--', '--', '--', 'bP', '--', '--'],
-            ['--', 'bP', '--', '--', 'wQ', '--', '--', '--'],
+            ['--', 'bP', '--', '--', 'wB', '--', '--', '--'],
             ['--', '--', '--', '--', '--', '--', '--', '--'],
             ['wP', 'wP', 'wP', 'wP', 'wP', 'wP', 'wP', 'wP'],
             ['wR', 'wN', 'wB', 'wQ', 'wK', 'wB', 'wN', 'wR'],
@@ -29,7 +34,10 @@ class GameState():
         self.bP = self.bN = self.bB = self.bR = self.bQ = self.bK = 0
         self.arrayToBitboard()
 
-    
+
+    """
+    Populate piece bitboards from array representation of game board
+    """
     def arrayToBitboard(self) -> None:
         for i in range(64):
             binary = '0000000000000000000000000000000000000000000000000000000000000000'
@@ -47,8 +55,11 @@ class GameState():
                 case 'bR': self.bR += BinaryOps.convertStringToBitboard(binary)
                 case 'bQ': self.bQ += BinaryOps.convertStringToBitboard(binary)
                 case 'bK': self.bK += BinaryOps.convertStringToBitboard(binary)
-    
 
+
+    """
+    Prints the current state of the game
+    """
     def drawGameArray(self) -> None:
         new_board = [['--']*8 for _ in range(8)]
         for i in range(64): # i = 0 -> board[0][0] -> bitboard_as_bin[0]
@@ -103,6 +114,7 @@ class Moves():
         self.empty = 0
         self.occupied = 0
 
+        # region based bitboard masks
         self.rank_masks = [
             self.rank_8,
             71776119061217280,
@@ -159,20 +171,34 @@ class Moves():
         ] # from top right to bottom left
 
 
+    """
+    Return a move list string containing all possible moves for white
+    """
     def possibleMovesW(self, history, wP, wN, wB, wR, wQ, wK, bP, bN, bB, bR, bQ, bK) -> str:
         self.not_white_pieces = ~(wP|wN|wB|wR|wQ|wK|bK) # avoid illegal bK capture
         self.black_pieces = bP|bN|bB|bR|bQ # avoid illegal bK capture
         self.empty = ~(wP|wN|wB|wR|wQ|wK|bP|bN|bB|bR|bQ|bK)
         self.occupied = ~self.empty
-        move_list = self.possibleWP(history, wP, bP)
-        # x = self.possibleDiagAndAntiDiagMoves(36)
-        # BinaryOps.drawArrayFromBitboard(x)
+        move_list = self.possibleWP(history, wP, bP) + self.possibleWB(wB)
 
         return move_list
 
 
+    """
+    Return a move list string containing all possible moves for a white pawn
+    """
     def possibleWP(self, history, wP, bP) -> str:
-        # TODO: look into faster method - tut 6
+        """
+        TODO: look into faster method - tut 6
+        moves = (wP << 7) & self.black_pieces & ~self.rank_8 & ~self.file_a # right capture
+        possible_move = moves & ~(moves - 1) # selects single possible move
+        while possible_move != 0:
+            possible_move_bin = BinaryOps.convertBitboardToString(possible_move)
+            idx = possible_move_bin.index('1')
+            move_list += f'{(idx // 8) + 1}{(idx % 8) - 1}{idx // 8}{idx % 8}'
+            moves &= ~possible_move
+            possible_move = moves & ~(moves - 1)
+        """
         # standard moves and captures
         move_list = '' # r1,c1,r2,c2
         moves = (wP << 7) & self.black_pieces & ~self.rank_8 & ~self.file_a # right capture
@@ -243,6 +269,30 @@ class Moves():
 
 
     """
+    Return a move list string containing all possible moves for a white bishop
+    """
+    def possibleWB(self, wB) -> str:
+        move_list = ''
+        bishop = wB & ~(wB - 1)
+
+        while bishop != 0:
+            bishop_idx = BinaryOps.convertBitboardToString(bishop).index('1')
+            moves = self.possibleDiagAndAntiDiagMoves(bishop_idx) & self.not_white_pieces
+            possible_move = moves & ~(moves - 1) # selects single possible move
+
+            while possible_move != 0:
+                move_idx = BinaryOps.convertBitboardToString(possible_move).index('1')
+                move_list += f'{bishop_idx // 8}{bishop_idx % 8}{move_idx // 8}{move_idx % 8}'
+                moves &= ~possible_move # remove current possible move
+                possible_move = moves & ~(moves - 1)
+
+            wB &= ~bishop # remove current bishop
+            bishop = wB & ~(wB - 1)
+
+        return move_list
+
+
+    """
     Returns all possible horizontal and vertical moves of piece at index piece_idx
 
     Example for formula derivation:
@@ -289,6 +339,9 @@ class Moves():
 
 
 class BinaryOps():
+    """
+    Converts a binary string to a bitboard
+    """
     @staticmethod
     def convertStringToBitboard(binary) -> int:
         int_rep = int(binary, 2)
@@ -297,6 +350,9 @@ class BinaryOps():
         return int_rep
 
 
+    """
+    Prints a bitboard in array form
+    """
     @staticmethod
     def drawArrayFromBitboard(bitboard) -> None:
         new_board = [['0']*8 for _ in range(8)]
@@ -310,6 +366,15 @@ class BinaryOps():
 
     """
     Takes an int as input and returns an int representing the reverse of the inputed binary
+    """
+    @staticmethod
+    def reverseBits(int64) -> int:
+        bin_str = BinaryOps.convertBitboardToString(int64)
+        return BinaryOps.convertStringToBitboard(bin_str[::-1])
+
+
+    """
+    Takes an int as input and returns its binary string
 
     Special Cases:
     1. append a postfix of 1 for negative numbers
@@ -321,10 +386,9 @@ class BinaryOps():
         - b -> use binary representation for the number
     """
     @staticmethod
-    def reverseBits(int64) -> int:
+    def convertBitboardToString(int64) -> str:
         consider_window = int('1'*64, 2)
-        bin_str = f'{int64 & consider_window :064b}'[::-1]
-        return BinaryOps.convertStringToBitboard(bin_str)
+        return f'{int64 & consider_window :064b}'
 
 
 g = GameState()
