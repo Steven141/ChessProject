@@ -23,8 +23,8 @@ class GameState():
             ['bR', 'bN', 'bB', 'bQ', 'bK', 'bB', 'bN', 'bR'],
             ['bP', 'bP', 'bP', 'bP', 'bP', 'bP', 'bP', 'bP'],
             ['--', '--', '--', '--', '--', '--', '--', '--'],
-            ['--', '--', '--', '--', '--', 'bP', '--', '--'],
-            ['--', 'bP', '--', '--', 'wR', '--', '--', '--'],
+            ['--', '--', '--', '--', '--', '--', '--', '--'],
+            ['--', '--', '--', '--', '--', '--', '--', '--'],
             ['--', '--', '--', '--', '--', '--', '--', '--'],
             ['wP', 'wP', 'wP', 'wP', 'wP', 'wP', 'wP', 'wP'],
             ['wR', 'wN', 'wB', 'wQ', 'wK', 'wB', 'wN', 'wR'],
@@ -107,8 +107,8 @@ class Moves():
         self.extended_centre = 66229406269440
         self.king_side = 1085102592571150095
         self.queen_side = -1085102592571150096
-        self.king_b7 = -2260560722335367168 # where b7 king can attack
-        self.knight_c6 = 5802888705324613632 # where c6 knight can attack
+        self.king_span_b7 = -2260560722335367168 # where b7 king can attack
+        self.knight_span_c6 = 5802888705324613632 # where c6 knight can attack
         self.not_white_pieces = 0 # all pieces white can capture (not black king)
         self.black_pieces = 0 # black pieces but no black king
         self.empty = 0
@@ -179,7 +179,7 @@ class Moves():
         self.black_pieces = bP|bN|bB|bR|bQ # avoid illegal bK capture
         self.empty = ~(wP|wN|wB|wR|wQ|wK|bP|bN|bB|bR|bQ|bK)
         self.occupied = ~self.empty
-        move_list = self.possibleWP(history, wP, bP) + self.possibleWB(wB) + self.possibleWQ(wQ) + self.possibleWR(wR) #+ self.possibleWN(wN) + self.possibleWK(wK)
+        move_list = self.possibleWP(history, wP, bP) + self.possibleWB(wB) + self.possibleWQ(wQ) + self.possibleWR(wR) + self.possibleWN(wN) #+ self.possibleWK(wK)
 
         return move_list
 
@@ -336,6 +336,42 @@ class Moves():
 
             wR &= ~rook # remove current rook
             rook = wR & ~(wR - 1)
+
+        return move_list
+
+
+    """
+    Return a move list string containing all possible moves for a white knight
+    """
+    def possibleWN(self, wN) -> str:
+        move_list = ''
+        knight = wN & ~(wN - 1)
+        knight_span_c6_idx = 18
+
+        while knight != 0:
+            knight_idx = BinaryOps.convertBitboardToString(knight).index('1')
+
+            # allign the knight_span_c6 mask
+            if knight_idx <= knight_span_c6_idx:
+                moves = self.knight_span_c6 << (knight_span_c6_idx - knight_idx)
+            else:
+                moves = self.knight_span_c6 >> (knight_idx - knight_span_c6_idx)
+
+            # remove moves sliding off board or allied pieces
+            if knight_idx % 8 < 4:
+                moves &= (~self.file_gh) & self.not_white_pieces
+            else:
+                moves &= (~self.file_ab) & self.not_white_pieces
+            possible_move = moves & ~(moves - 1) # selects single possible move
+
+            while possible_move != 0:
+                move_idx = BinaryOps.convertBitboardToString(possible_move).index('1')
+                move_list += f'{knight_idx // 8}{knight_idx % 8}{move_idx // 8}{move_idx % 8}'
+                moves &= ~possible_move # remove current possible move
+                possible_move = moves & ~(moves - 1)
+
+            wN &= ~knight # remove current knight
+            knight = wN & ~(wN - 1)
 
         return move_list
 
