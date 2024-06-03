@@ -165,7 +165,7 @@ class Moves():
         self.empty = ~(wP|wN|wB|wR|wQ|wK|bP|bN|bB|bR|bQ|bK)
         self.occupied = ~self.empty
         move_list = self.possibleWP(history, wP, bP)
-        # x = self.possibleHAndVMoves(36)
+        # x = self.possibleDiagAndAntiDiagMoves(36)
         # BinaryOps.drawArrayFromBitboard(x)
 
         return move_list
@@ -269,6 +269,23 @@ class Moves():
         possible_v = ((self.occupied & file_mask) - 2*binary_idx) ^ BinaryOps.reverseBits(BinaryOps.reverseBits(self.occupied & file_mask) - 2*BinaryOps.reverseBits(binary_idx))
 
         return (possible_h & rank_mask) | (possible_v & file_mask)
+
+
+    """
+    Returns all possible diagonal and anti-diagonal moves of piece at index piece_idx
+
+    See possibleHAndVMoves func description for formula derivation
+    """
+    def possibleDiagAndAntiDiagMoves(self, piece_idx) -> int:
+        # piece_idx = 0 -> top left of board -> 1000...000
+        binary_idx = 1 << (64 - 1 - piece_idx)
+        diag_mask = self.diagonal_masks[(piece_idx // 8) + (piece_idx % 8)]
+        a_diag_mask = self.anti_diagonal_masks[(piece_idx // 8) - (piece_idx % 8) + 7]
+
+        possible_d = ((self.occupied & diag_mask) - 2*binary_idx) ^ BinaryOps.reverseBits(BinaryOps.reverseBits((self.occupied & diag_mask)) - 2*BinaryOps.reverseBits(binary_idx))
+        possible_ad = ((self.occupied & a_diag_mask) - 2*binary_idx) ^ BinaryOps.reverseBits(BinaryOps.reverseBits(self.occupied & a_diag_mask) - 2*BinaryOps.reverseBits(binary_idx))
+
+        return (possible_d & diag_mask) | (possible_ad & a_diag_mask)
 
 
 class BinaryOps():
