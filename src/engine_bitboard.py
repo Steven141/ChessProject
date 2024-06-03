@@ -107,7 +107,7 @@ class Moves():
         self.extended_centre = 66229406269440
         self.king_side = 1085102592571150095
         self.queen_side = -1085102592571150096
-        self.king_span_b7 = -2260560722335367168 # where b7 king can attack
+        self.king_span_c7 = 8093091675687092224 # where c7 king can attack
         self.knight_span_c6 = 5802888705324613632 # where c6 knight can attack
         self.not_white_pieces = 0 # all pieces white can capture (not black king)
         self.black_pieces = 0 # black pieces but no black king
@@ -179,7 +179,7 @@ class Moves():
         self.black_pieces = bP|bN|bB|bR|bQ # avoid illegal bK capture
         self.empty = ~(wP|wN|wB|wR|wQ|wK|bP|bN|bB|bR|bQ|bK)
         self.occupied = ~self.empty
-        move_list = self.possibleWP(history, wP, bP) + self.possibleWB(wB) + self.possibleWQ(wQ) + self.possibleWR(wR) + self.possibleWN(wN) #+ self.possibleWK(wK)
+        move_list = self.possibleWP(history, wP, bP) + self.possibleWB(wB) + self.possibleWQ(wQ) + self.possibleWR(wR) + self.possibleWN(wN) + self.possibleWK(wK)
 
         return move_list
 
@@ -372,6 +372,42 @@ class Moves():
 
             wN &= ~knight # remove current knight
             knight = wN & ~(wN - 1)
+
+        return move_list
+
+
+    """
+    Return a move list string containing all possible moves for a white king
+    """
+    def possibleWK(self, wK) -> str:
+        move_list = ''
+        king = wK & ~(wK - 1)
+        king_span_c7_idx = 10
+
+        while king != 0:
+            king_idx = BinaryOps.convertBitboardToString(king).index('1')
+
+            # allign the king_span_c7 mask
+            if king_idx <= king_span_c7_idx:
+                moves = self.king_span_c7 << (king_span_c7_idx - king_idx)
+            else:
+                moves = self.king_span_c7 >> (king_idx - king_span_c7_idx)
+
+            # remove moves sliding off board or allied pieces
+            if king_idx % 8 < 4:
+                moves &= (~self.file_gh) & self.not_white_pieces
+            else:
+                moves &= (~self.file_ab) & self.not_white_pieces
+            possible_move = moves & ~(moves - 1) # selects single possible move
+
+            while possible_move != 0:
+                move_idx = BinaryOps.convertBitboardToString(possible_move).index('1')
+                move_list += f'{king_idx // 8}{king_idx % 8}{move_idx // 8}{move_idx % 8}'
+                moves &= ~possible_move # remove current possible move
+                possible_move = moves & ~(moves - 1)
+
+            wK &= ~king # remove current king
+            king = wK & ~(wK - 1)
 
         return move_list
 
