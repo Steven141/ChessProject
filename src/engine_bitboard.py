@@ -24,7 +24,7 @@ class GameState():
             ['bP', 'bP', 'bP', 'bP', 'bP', 'bP', 'bP', 'bP'],
             ['--', '--', '--', '--', '--', '--', '--', '--'],
             ['--', '--', '--', '--', '--', 'bP', '--', '--'],
-            ['--', 'bP', '--', '--', 'wB', '--', '--', '--'],
+            ['--', 'bP', '--', '--', 'wR', '--', '--', '--'],
             ['--', '--', '--', '--', '--', '--', '--', '--'],
             ['wP', 'wP', 'wP', 'wP', 'wP', 'wP', 'wP', 'wP'],
             ['wR', 'wN', 'wB', 'wQ', 'wK', 'wB', 'wN', 'wR'],
@@ -179,7 +179,7 @@ class Moves():
         self.black_pieces = bP|bN|bB|bR|bQ # avoid illegal bK capture
         self.empty = ~(wP|wN|wB|wR|wQ|wK|bP|bN|bB|bR|bQ|bK)
         self.occupied = ~self.empty
-        move_list = self.possibleWP(history, wP, bP) + self.possibleWB(wB)
+        move_list = self.possibleWP(history, wP, bP) + self.possibleWB(wB) + self.possibleWQ(wQ) + self.possibleWR(wR) #+ self.possibleWN(wN) + self.possibleWK(wK)
 
         return move_list
 
@@ -288,6 +288,54 @@ class Moves():
 
             wB &= ~bishop # remove current bishop
             bishop = wB & ~(wB - 1)
+
+        return move_list
+
+
+    """
+    Return a move list string containing all possible moves for a white queen
+    """
+    def possibleWQ(self, wQ) -> str:
+        move_list = ''
+        queen = wQ & ~(wQ - 1)
+
+        while queen != 0:
+            queen_idx = BinaryOps.convertBitboardToString(queen).index('1')
+            moves = (self.possibleDiagAndAntiDiagMoves(queen_idx) | self.possibleHAndVMoves(queen_idx)) & self.not_white_pieces
+            possible_move = moves & ~(moves - 1) # selects single possible move
+
+            while possible_move != 0:
+                move_idx = BinaryOps.convertBitboardToString(possible_move).index('1')
+                move_list += f'{queen_idx // 8}{queen_idx % 8}{move_idx // 8}{move_idx % 8}'
+                moves &= ~possible_move # remove current possible move
+                possible_move = moves & ~(moves - 1)
+
+            wQ &= ~queen # remove current queen
+            queen = wQ & ~(wQ - 1)
+
+        return move_list
+
+
+    """
+    Return a move list string containing all possible moves for a white rook
+    """
+    def possibleWR(self, wR) -> str:
+        move_list = ''
+        rook = wR & ~(wR - 1)
+
+        while rook != 0:
+            rook_idx = BinaryOps.convertBitboardToString(rook).index('1')
+            moves = self.possibleHAndVMoves(rook_idx) & self.not_white_pieces
+            possible_move = moves & ~(moves - 1) # selects single possible move
+
+            while possible_move != 0:
+                move_idx = BinaryOps.convertBitboardToString(possible_move).index('1')
+                move_list += f'{rook_idx // 8}{rook_idx % 8}{move_idx // 8}{move_idx % 8}'
+                moves &= ~possible_move # remove current possible move
+                possible_move = moves & ~(moves - 1)
+
+            wR &= ~rook # remove current rook
+            rook = wR & ~(wR - 1)
 
         return move_list
 
