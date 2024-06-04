@@ -4,6 +4,7 @@ Bitboard Engine
 
 MAX_BITBOARD = 9223372036854775807
 MIN_BITBOARD = -9223372036854775808
+BIT_MASK_64 = 0xFFFFFFFFFFFFFFFF
 
 class GameState():
     """
@@ -24,12 +25,12 @@ class GameState():
         # ]
         self.board = [
             ['bR', 'bN', 'bB', 'bQ', 'bK', 'bB', 'bN', 'bR'],
-            ['bP', 'bP', 'bP', 'bP', 'bP', 'bP', 'bP', 'bP'],
+            ['wP', 'wP', 'bP', '--', 'bP', 'bP', '--', 'wP'],
+            ['wP', '--', '--', '--', 'wP', '--', '--', 'wP'],
             ['--', '--', '--', '--', '--', '--', '--', '--'],
             ['--', '--', '--', '--', '--', '--', '--', '--'],
-            ['--', '--', '--', '--', '--', '--', '--', '--'],
-            ['--', '--', '--', '--', '--', '--', '--', '--'],
-            ['wP', 'wP', 'wP', 'wP', 'wP', 'wP', 'wP', 'wP'],
+            ['bP', '--', '--', '--', 'bP', '--', '--', 'bP'],
+            ['bP', 'bP', 'wP', '--', 'wP', 'wP', '--', 'bP'],
             ['wR', 'wN', 'wB', 'wQ', 'wK', 'wB', 'wN', 'wR'],
         ]
         # piece bitboards
@@ -112,8 +113,8 @@ class Moves():
         self.queen_side = -1085102592571150096
         self.king_span_c7 = 8093091675687092224 # where c7 king can attack
         self.knight_span_c6 = 5802888705324613632 # where c6 knight can attack
-        self.not_white_pieces = 0 # all pieces white can capture (not black king)
-        self.black_pieces = 0 # black pieces but no black king
+        self.not_allied_pieces = 0 # if in white func: all pieces white can capture (not black king)
+        self.enemy_pieces = 0 # if in white func: black pieces but no black king
         self.empty = 0
         self.occupied = 0
 
@@ -178,14 +179,32 @@ class Moves():
     Return a move list string containing all possible moves for white
     """
     def possibleMovesW(self, history, wP, wN, wB, wR, wQ, wK, bP, bN, bB, bR, bQ, bK) -> str:
-        self.not_white_pieces = ~(wP|wN|wB|wR|wQ|wK|bK) # avoid illegal bK capture
-        self.black_pieces = bP|bN|bB|bR|bQ # avoid illegal bK capture
+        self.not_allied_pieces = ~(wP|wN|wB|wR|wQ|wK|bK) # avoid illegal bK capture
+        self.enemy_pieces = bP|bN|bB|bR|bQ # avoid illegal bK capture
         self.empty = ~(wP|wN|wB|wR|wQ|wK|bP|bN|bB|bR|bQ|bK)
         self.occupied = ~self.empty
-        move_list = self.possibleWP(history, wP, bP) + self.possibleWB(wB) + self.possibleWQ(wQ) + self.possibleWR(wR) + self.possibleWN(wN) + self.possibleWK(wK)
+        move_list = self.possibleWP(history, wP, bP) + self.possibleB(wB) + self.possibleQ(wQ) + self.possibleR(wR) + self.possibleN(wN) + self.possibleK(wK)
+        # print(len(move_list) / 4)
+        # BinaryOps.drawArrayFromBitboard(self.unsafeForWhite(bP, bN, bB, bR, bQ, bK))
+        # print()
+        # BinaryOps.drawArrayFromBitboard(self.unsafeForBlack(wP, wN, wB, wR, wQ, wK))
 
-        self.unsafeForBlack(wP, wN, wB, wR, wQ, wK)
-        self.unsafeForWhite(bP, bN, bB, bR, bQ, bK)
+        return move_list
+
+
+    """
+    Return a move list string containing all possible moves for black
+    """
+    def possibleMovesB(self, history, wP, wN, wB, wR, wQ, wK, bP, bN, bB, bR, bQ, bK) -> str:
+        self.not_allied_pieces = ~(bP|bN|bB|bR|bQ|bK|wK) # avoid illegal wK capture
+        self.enemy_pieces = wP|wN|wB|wR|wQ # avoid illegal wK capture
+        self.empty = ~(wP|wN|wB|wR|wQ|wK|bP|bN|bB|bR|bQ|bK)
+        self.occupied = ~self.empty
+        move_list = self.possibleBP(history, wP, bP) + self.possibleB(bB) + self.possibleQ(bQ) + self.possibleR(bR) + self.possibleN(bN) + self.possibleK(bK)
+        # print(len(move_list) / 4)
+        # BinaryOps.drawArrayFromBitboard(self.unsafeForWhite(bP, bN, bB, bR, bQ, bK))
+        # print()
+        # BinaryOps.drawArrayFromBitboard(self.unsafeForBlack(wP, wN, wB, wR, wQ, wK))
 
         return move_list
 
@@ -194,164 +213,264 @@ class Moves():
     Return a move list string containing all possible moves for a white pawn
     """
     def possibleWP(self, history, wP, bP) -> str:
-        """
-        TODO: look into faster method - tut 6
-        moves = (wP << 7) & self.black_pieces & ~self.rank_8 & ~self.file_a # right capture
-        possible_move = moves & ~(moves - 1) # selects single possible move
-        while possible_move != 0:
-            possible_move_bin = BinaryOps.convertBitboardToString(possible_move)
-            idx = possible_move_bin.index('1')
-            move_list += f'{(idx // 8) + 1}{(idx % 8) - 1}{idx // 8}{idx % 8}'
-            moves &= ~possible_move
-            possible_move = moves & ~(moves - 1)
-        """
         # standard moves and captures
         move_list = '' # r1,c1,r2,c2
-        moves = (wP << 7) & self.black_pieces & ~self.rank_8 & ~self.file_a # right capture
-        for i in range(64): # i = 0 -> board[0][0] -> bitboard_as_bin[0]
-            shift = 64 - 1 - i
-            if (moves >> shift) & 1 == 1:
-                move_list += f'{(i // 8) + 1}{(i % 8) - 1}{i // 8}{i % 8}'
+        moves = ((wP << 7) & self.enemy_pieces & ~self.rank_8 & ~self.file_a) & BIT_MASK_64 # right capture
+        possible_move = (moves & ~(moves - 1)) & BIT_MASK_64 # selects single possible move
+        while possible_move != 0:
+            idx = BinaryOps.convertBitboardToString(possible_move).index('1')
+            move_list += f'{(idx // 8) + 1}{(idx % 8) - 1}{idx // 8}{idx % 8}'
+            moves &= ~possible_move # remove current move from moves
+            possible_move = (moves & ~(moves - 1)) & BIT_MASK_64 # get next possible move
 
-        moves = (wP << 9) & self.black_pieces & ~self.rank_8 & ~self.file_h # left capture
-        for i in range(64):
-            shift = 64 - 1 - i
-            if (moves >> shift) & 1 == 1:
-                move_list += f'{(i // 8) + 1}{(i % 8) + 1}{i // 8}{i % 8}'
+        moves = ((wP << 9) & self.enemy_pieces & ~self.rank_8 & ~self.file_h) & BIT_MASK_64 # left capture
+        possible_move = (moves & ~(moves - 1)) & BIT_MASK_64
+        while possible_move != 0:
+            idx = BinaryOps.convertBitboardToString(possible_move).index('1')
+            move_list += f'{(idx // 8) + 1}{(idx % 8) + 1}{idx // 8}{idx % 8}'
+            moves &= ~possible_move
+            possible_move = (moves & ~(moves - 1)) & BIT_MASK_64
 
-        moves = (wP << 8) & self.empty & ~self.rank_8 # move forward 1
-        for i in range(64):
-            shift = 64 - 1 - i
-            if (moves >> shift) & 1 == 1:
-                move_list += f'{(i // 8) + 1}{i % 8}{i // 8}{i % 8}'
+        moves = ((wP << 8) & self.empty & ~self.rank_8) & BIT_MASK_64 # move forward 1
+        possible_move = (moves & ~(moves - 1)) & BIT_MASK_64
+        while possible_move != 0:
+            idx = BinaryOps.convertBitboardToString(possible_move).index('1')
+            move_list += f'{(idx // 8) + 1}{idx % 8}{idx // 8}{idx % 8}'
+            moves &= ~possible_move
+            possible_move = (moves & ~(moves - 1)) & BIT_MASK_64
 
-        moves = (wP << 16) & self.empty & (self.empty << 8) & self.rank_4 # move forward 2
-        for i in range(64):
-            shift = 64 - 1 - i
-            if (moves >> shift) & 1 == 1:
-                move_list += f'{(i // 8) + 2}{i % 8}{i // 8}{i % 8}'
+        moves = ((wP << 16) & self.empty & (self.empty << 8) & self.rank_4) & BIT_MASK_64 # move forward 2
+        possible_move = (moves & ~(moves - 1)) & BIT_MASK_64
+        while possible_move != 0:
+            idx = BinaryOps.convertBitboardToString(possible_move).index('1')
+            move_list += f'{(idx // 8) + 2}{idx % 8}{idx // 8}{idx % 8}'
+            moves &= ~possible_move
+            possible_move = (moves & ~(moves - 1)) & BIT_MASK_64
 
         # pawn promotion, move_list -> c1,c2,promo type,'P'
-        moves = (wP << 7) & self.black_pieces & self.rank_8 & ~self.file_a # promo by right capture
-        for i in range(64):
-            shift = 64 - 1 - i
-            if (moves >> shift) & 1 == 1:
-                c1, c2 = (i % 8) - 1, i % 8
-                move_list += f'{c1}{c2}QP{c1}{c2}RP{c1}{c2}BP{c1}{c2}NP'
+        moves = ((wP << 7) & self.enemy_pieces & self.rank_8 & ~self.file_a) & BIT_MASK_64 # promo by right capture
+        possible_move = (moves & ~(moves - 1)) & BIT_MASK_64
+        while possible_move != 0:
+            idx = BinaryOps.convertBitboardToString(possible_move).index('1')
+            c1, c2 = (idx % 8) - 1, idx % 8
+            move_list += f'{c1}{c2}QP{c1}{c2}RP{c1}{c2}BP{c1}{c2}NP'
+            moves &= ~possible_move
+            possible_move = (moves & ~(moves - 1)) & BIT_MASK_64
 
-        moves = (wP << 9) & self.black_pieces & self.rank_8 & ~self.file_h # promo by left capture
-        for i in range(64):
-            shift = 64 - 1 - i
-            if (moves >> shift) & 1 == 1:
-                c1, c2 = (i % 8) + 1, i % 8
-                move_list += f'{c1}{c2}QP{c1}{c2}RP{c1}{c2}BP{c1}{c2}NP'
+        moves = ((wP << 9) & self.enemy_pieces & self.rank_8 & ~self.file_h) & BIT_MASK_64 # promo by left capture
+        possible_move = (moves & ~(moves - 1)) & BIT_MASK_64
+        while possible_move != 0:
+            idx = BinaryOps.convertBitboardToString(possible_move).index('1')
+            c1, c2 = (idx % 8) + 1, idx % 8
+            move_list += f'{c1}{c2}QP{c1}{c2}RP{c1}{c2}BP{c1}{c2}NP'
+            moves &= ~possible_move
+            possible_move = (moves & ~(moves - 1)) & BIT_MASK_64
 
-        moves = (wP << 8) & self.empty & self.rank_8 # promo by move forward 1
-        for i in range(64):
-            shift = 64 - 1 - i
-            if (moves >> shift) & 1 == 1:
-                c1 = c2 = i % 8
-                move_list += f'{c1}{c2}QP{c1}{c2}RP{c1}{c2}BP{c1}{c2}NP'
+        moves = ((wP << 8) & self.empty & self.rank_8) & BIT_MASK_64 # promo by move forward 1
+        possible_move = (moves & ~(moves - 1)) & BIT_MASK_64
+        while possible_move != 0:
+            idx = BinaryOps.convertBitboardToString(possible_move).index('1')
+            c1 = c2 = idx % 8
+            move_list += f'{c1}{c2}QP{c1}{c2}RP{c1}{c2}BP{c1}{c2}NP'
+            moves &= ~possible_move
+            possible_move = (moves & ~(moves - 1)) & BIT_MASK_64
 
         # enpassant, move_list -> c1,c2,space,'E'
         if len(history) >= 4:
             if (history[-1] == history[-3]) and (abs(int(history[-2]) - int(history[-4])) == 2):
                 file = int(history[-1])
-                moves = (wP >> 1) & bP & self.rank_5 & ~self.file_a & self.file_masks[file] # enpassant right
-                for i in range(64):
-                    shift = 64 - 1 - i
-                    if (moves >> shift) & 1 == 1:
-                        c1, c2 = (i % 8) - 1, i % 8
-                        move_list += f'{c1}{c2} E'
 
-                moves = (wP << 1) & bP & self.rank_5 & ~self.file_h & self.file_masks[file] # enpassant left
-                for i in range(64):
-                    shift = 64 - 1 - i
-                    if (moves >> shift) & 1 == 1:
-                        c1, c2 = (i % 8) + 1, i % 8
-                        move_list += f'{c1}{c2} E'
+                moves = ((wP >> 1) & bP & self.rank_5 & ~self.file_a & self.file_masks[file]) & BIT_MASK_64 # enpassant right
+                possible_move = (moves & ~(moves - 1)) & BIT_MASK_64
+                while possible_move != 0:
+                    idx = BinaryOps.convertBitboardToString(possible_move).index('1')
+                    c1, c2 = (idx % 8) - 1, idx % 8
+                    move_list += f'{c1}{c2} E'
+                    moves &= ~possible_move
+                    possible_move = (moves & ~(moves - 1)) & BIT_MASK_64
+
+                moves = ((wP << 1) & bP & self.rank_5 & ~self.file_h & self.file_masks[file]) & BIT_MASK_64 # enpassant left
+                possible_move = (moves & ~(moves - 1)) & BIT_MASK_64
+                while possible_move != 0:
+                    idx = BinaryOps.convertBitboardToString(possible_move).index('1')
+                    c1, c2 = (idx % 8) + 1, idx % 8
+                    move_list += f'{c1}{c2} E'
+                    moves &= ~possible_move
+                    possible_move = (moves & ~(moves - 1)) & BIT_MASK_64
 
         return move_list
 
 
     """
-    Return a move list string containing all possible moves for a white bishop
+    Return a move list string containing all possible moves for a black pawn
     """
-    def possibleWB(self, wB) -> str:
+    def possibleBP(self, history, wP, bP) -> str:
+        # standard moves and captures
+        move_list = '' # r1,c1,r2,c2
+        moves = ((bP >> 7) & self.enemy_pieces & ~self.rank_1 & ~self.file_h) & BIT_MASK_64 # right capture
+        possible_move = (moves & ~(moves - 1)) & BIT_MASK_64 # selects single possible move
+        while possible_move != 0:
+            idx = BinaryOps.convertBitboardToString(possible_move).index('1')
+            move_list += f'{(idx // 8) - 1}{(idx % 8) + 1}{idx // 8}{idx % 8}'
+            moves &= ~possible_move # remove current move from moves
+            possible_move = (moves & ~(moves - 1)) & BIT_MASK_64 # get next possible move
+
+        moves = ((bP >> 9) & self.enemy_pieces & ~self.rank_1 & ~self.file_a) & BIT_MASK_64 # left capture
+        possible_move = (moves & ~(moves - 1)) & BIT_MASK_64
+        while possible_move != 0:
+            idx = BinaryOps.convertBitboardToString(possible_move).index('1')
+            move_list += f'{(idx // 8) - 1}{(idx % 8) - 1}{idx // 8}{idx % 8}'
+            moves &= ~possible_move
+            possible_move = (moves & ~(moves - 1)) & BIT_MASK_64
+
+        moves = ((bP >> 8) & self.empty & ~self.rank_1) & BIT_MASK_64 # move forward 1
+        possible_move = (moves & ~(moves - 1)) & BIT_MASK_64
+        while possible_move != 0:
+            idx = BinaryOps.convertBitboardToString(possible_move).index('1')
+            move_list += f'{(idx // 8) - 1}{idx % 8}{idx // 8}{idx % 8}'
+            moves &= ~possible_move
+            possible_move = (moves & ~(moves - 1)) & BIT_MASK_64
+
+        moves = ((bP >> 16) & self.empty & (self.empty >> 8) & self.rank_5) & BIT_MASK_64 # move forward 2
+        possible_move = (moves & ~(moves - 1)) & BIT_MASK_64
+        while possible_move != 0:
+            idx = BinaryOps.convertBitboardToString(possible_move).index('1')
+            move_list += f'{(idx // 8) - 2}{idx % 8}{idx // 8}{idx % 8}'
+            moves &= ~possible_move
+            possible_move = (moves & ~(moves - 1)) & BIT_MASK_64
+
+        # pawn promotion, move_list -> c1,c2,promo type,'P'
+        moves = ((bP >> 7) & self.enemy_pieces & self.rank_1 & ~self.file_h) & BIT_MASK_64 # promo by right capture
+        possible_move = (moves & ~(moves - 1)) & BIT_MASK_64
+        while possible_move != 0:
+            idx = BinaryOps.convertBitboardToString(possible_move).index('1')
+            c1, c2 = (idx % 8) + 1, idx % 8
+            move_list += f'{c1}{c2}qP{c1}{c2}rP{c1}{c2}bP{c1}{c2}nP'
+            moves &= ~possible_move
+            possible_move = (moves & ~(moves - 1)) & BIT_MASK_64
+
+        moves = ((bP >> 9) & self.enemy_pieces & self.rank_1 & ~self.file_a) & BIT_MASK_64 # promo by left capture
+        possible_move = (moves & ~(moves - 1)) & BIT_MASK_64
+        while possible_move != 0:
+            idx = BinaryOps.convertBitboardToString(possible_move).index('1')
+            c1, c2 = (idx % 8) - 1, idx % 8
+            move_list += f'{c1}{c2}qP{c1}{c2}rP{c1}{c2}bP{c1}{c2}nP'
+            moves &= ~possible_move
+            possible_move = (moves & ~(moves - 1)) & BIT_MASK_64
+
+        moves = ((bP >> 8) & self.empty & self.rank_1) & BIT_MASK_64 # promo by move forward 1
+        possible_move = (moves & ~(moves - 1)) & BIT_MASK_64
+        while possible_move != 0:
+            idx = BinaryOps.convertBitboardToString(possible_move).index('1')
+            c1 = c2 = idx % 8
+            move_list += f'{c1}{c2}qP{c1}{c2}rP{c1}{c2}bP{c1}{c2}nP'
+            moves &= ~possible_move
+            possible_move = (moves & ~(moves - 1)) & BIT_MASK_64
+
+        # enpassant, move_list -> c1,c2,'bE'
+        if len(history) >= 4:
+            if (history[-1] == history[-3]) and (abs(int(history[-2]) - int(history[-4])) == 2):
+                file = int(history[-1])
+
+                moves = ((bP << 1) & wP & self.rank_4 & ~self.file_h & self.file_masks[file]) & BIT_MASK_64 # enpassant right
+                possible_move = (moves & ~(moves - 1)) & BIT_MASK_64
+                while possible_move != 0:
+                    idx = BinaryOps.convertBitboardToString(possible_move).index('1')
+                    c1, c2 = (idx % 8) + 1, idx % 8
+                    move_list += f'{c1}{c2}bE'
+                    moves &= ~possible_move
+                    possible_move = (moves & ~(moves - 1)) & BIT_MASK_64
+
+                moves = ((bP >> 1) & wP & self.rank_4 & ~self.file_a & self.file_masks[file]) & BIT_MASK_64 # enpassant left
+                possible_move = (moves & ~(moves - 1)) & BIT_MASK_64
+                while possible_move != 0:
+                    idx = BinaryOps.convertBitboardToString(possible_move).index('1')
+                    c1, c2 = (idx % 8) - 1, idx % 8
+                    move_list += f'{c1}{c2}bE'
+                    moves &= ~possible_move
+                    possible_move = (moves & ~(moves - 1)) & BIT_MASK_64
+
+        return move_list
+
+
+    """
+    Return a move list string containing all possible moves for a bishop
+    """
+    def possibleB(self, B) -> str:
         move_list = ''
-        bishop = wB & ~(wB - 1)
+        bishop = (B & ~(B - 1)) & BIT_MASK_64
 
         while bishop != 0:
             bishop_idx = BinaryOps.convertBitboardToString(bishop).index('1')
-            moves = self.possibleDiagAndAntiDiagMoves(bishop_idx) & self.not_white_pieces
-            possible_move = moves & ~(moves - 1) # selects single possible move
+            moves = self.possibleDiagAndAntiDiagMoves(bishop_idx) & self.not_allied_pieces
+            possible_move = (moves & ~(moves - 1)) & BIT_MASK_64 # selects single possible move
 
             while possible_move != 0:
                 move_idx = BinaryOps.convertBitboardToString(possible_move).index('1')
                 move_list += f'{bishop_idx // 8}{bishop_idx % 8}{move_idx // 8}{move_idx % 8}'
                 moves &= ~possible_move # remove current possible move
-                possible_move = moves & ~(moves - 1)
+                possible_move = (moves & ~(moves - 1)) & BIT_MASK_64
 
-            wB &= ~bishop # remove current bishop
-            bishop = wB & ~(wB - 1)
+            B &= ~bishop # remove current bishop
+            bishop = (B & ~(B - 1)) & BIT_MASK_64
 
         return move_list
 
 
     """
-    Return a move list string containing all possible moves for a white queen
+    Return a move list string containing all possible moves for a queen
     """
-    def possibleWQ(self, wQ) -> str:
+    def possibleQ(self, Q) -> str:
         move_list = ''
-        queen = wQ & ~(wQ - 1)
+        queen = (Q & ~(Q - 1)) & BIT_MASK_64
 
         while queen != 0:
             queen_idx = BinaryOps.convertBitboardToString(queen).index('1')
-            moves = (self.possibleDiagAndAntiDiagMoves(queen_idx) | self.possibleHAndVMoves(queen_idx)) & self.not_white_pieces
-            possible_move = moves & ~(moves - 1) # selects single possible move
+            moves = (self.possibleDiagAndAntiDiagMoves(queen_idx) | self.possibleHAndVMoves(queen_idx)) & self.not_allied_pieces
+            possible_move = (moves & ~(moves - 1)) & BIT_MASK_64 # selects single possible move
 
             while possible_move != 0:
                 move_idx = BinaryOps.convertBitboardToString(possible_move).index('1')
                 move_list += f'{queen_idx // 8}{queen_idx % 8}{move_idx // 8}{move_idx % 8}'
                 moves &= ~possible_move # remove current possible move
-                possible_move = moves & ~(moves - 1)
+                possible_move = (moves & ~(moves - 1)) & BIT_MASK_64
 
-            wQ &= ~queen # remove current queen
-            queen = wQ & ~(wQ - 1)
+            Q &= ~queen # remove current queen
+            queen = (Q & ~(Q - 1)) & BIT_MASK_64
 
         return move_list
 
 
     """
-    Return a move list string containing all possible moves for a white rook
+    Return a move list string containing all possible moves for a rook
     """
-    def possibleWR(self, wR) -> str:
+    def possibleR(self, R) -> str:
         move_list = ''
-        rook = wR & ~(wR - 1)
+        rook = (R & ~(R - 1)) & BIT_MASK_64
 
         while rook != 0:
             rook_idx = BinaryOps.convertBitboardToString(rook).index('1')
-            moves = self.possibleHAndVMoves(rook_idx) & self.not_white_pieces
-            possible_move = moves & ~(moves - 1) # selects single possible move
+            moves = self.possibleHAndVMoves(rook_idx) & self.not_allied_pieces
+            possible_move = (moves & ~(moves - 1)) & BIT_MASK_64 # selects single possible move
 
             while possible_move != 0:
                 move_idx = BinaryOps.convertBitboardToString(possible_move).index('1')
                 move_list += f'{rook_idx // 8}{rook_idx % 8}{move_idx // 8}{move_idx % 8}'
                 moves &= ~possible_move # remove current possible move
-                possible_move = moves & ~(moves - 1)
+                possible_move = (moves & ~(moves - 1)) & BIT_MASK_64
 
-            wR &= ~rook # remove current rook
-            rook = wR & ~(wR - 1)
+            R &= ~rook # remove current rook
+            rook = (R & ~(R - 1)) & BIT_MASK_64
 
         return move_list
 
 
     """
-    Return a move list string containing all possible moves for a white knight
+    Return a move list string containing all possible moves for a knight
     """
-    def possibleWN(self, wN) -> str:
+    def possibleN(self, N) -> str:
         move_list = ''
-        knight = wN & ~(wN - 1)
+        knight = (N & ~(N - 1)) & BIT_MASK_64
         knight_span_c6_idx = 18
 
         while knight != 0:
@@ -365,29 +484,29 @@ class Moves():
 
             # remove moves sliding off board or allied pieces
             if knight_idx % 8 < 4:
-                moves &= (~self.file_gh) & self.not_white_pieces
+                moves &= (~self.file_gh) & self.not_allied_pieces
             else:
-                moves &= (~self.file_ab) & self.not_white_pieces
-            possible_move = moves & ~(moves - 1) # selects single possible move
+                moves &= (~self.file_ab) & self.not_allied_pieces
+            possible_move = (moves & ~(moves - 1)) & BIT_MASK_64 # selects single possible move
 
             while possible_move != 0:
                 move_idx = BinaryOps.convertBitboardToString(possible_move).index('1')
                 move_list += f'{knight_idx // 8}{knight_idx % 8}{move_idx // 8}{move_idx % 8}'
                 moves &= ~possible_move # remove current possible move
-                possible_move = moves & ~(moves - 1)
+                possible_move = (moves & ~(moves - 1)) & BIT_MASK_64
 
-            wN &= ~knight # remove current knight
-            knight = wN & ~(wN - 1)
+            N &= ~knight # remove current knight
+            knight = (N & ~(N - 1)) & BIT_MASK_64
 
         return move_list
 
 
     """
-    Return a move list string containing all possible moves for a white king
+    Return a move list string containing all possible moves for a king
     """
-    def possibleWK(self, wK) -> str:
+    def possibleK(self, K) -> str:
         move_list = ''
-        king = wK & ~(wK - 1)
+        king = (K & ~(K - 1)) & BIT_MASK_64
         king_span_c7_idx = 10
 
         while king != 0:
@@ -401,19 +520,19 @@ class Moves():
 
             # remove moves sliding off board or allied pieces
             if king_idx % 8 < 4:
-                moves &= (~self.file_gh) & self.not_white_pieces
+                moves &= (~self.file_gh) & self.not_allied_pieces
             else:
-                moves &= (~self.file_ab) & self.not_white_pieces
-            possible_move = moves & ~(moves - 1) # selects single possible move
+                moves &= (~self.file_ab) & self.not_allied_pieces
+            possible_move = (moves & ~(moves - 1)) & BIT_MASK_64 # selects single possible move
 
             while possible_move != 0:
                 move_idx = BinaryOps.convertBitboardToString(possible_move).index('1')
                 move_list += f'{king_idx // 8}{king_idx % 8}{move_idx // 8}{move_idx % 8}'
                 moves &= ~possible_move # remove current possible move
-                possible_move = moves & ~(moves - 1)
+                possible_move = (moves & ~(moves - 1)) & BIT_MASK_64
 
-            wK &= ~king # remove current king
-            king = wK & ~(wK - 1)
+            K &= ~king # remove current king
+            king = (K & ~(K - 1)) & BIT_MASK_64
 
         return move_list
 
@@ -469,11 +588,11 @@ class Moves():
     """
     def unsafeForBlack(self, wP, wN, wB, wR, wQ, wK) -> int:
         # pawn threats
-        unsafe = (wP << 7) & ~self.file_a # pawn right capture
-        unsafe |= (wP << 9) & ~self.file_h # pawn left capture
+        unsafe = ((wP << 7) & ~self.file_a) & BIT_MASK_64 # pawn right capture
+        unsafe |= (((wP << 9) & ~self.file_h) & BIT_MASK_64) # pawn left capture
 
         # knight threat
-        knight = wN & ~(wN - 1)
+        knight = (wN & ~(wN - 1)) & BIT_MASK_64
         knight_span_c6_idx = 18
         while knight != 0:
             knight_idx = BinaryOps.convertBitboardToString(knight).index('1')
@@ -489,30 +608,30 @@ class Moves():
                 moves &= ~self.file_ab
             unsafe |= moves
             wN &= ~knight # remove current knight
-            knight = wN & ~(wN - 1)
+            knight = (wN & ~(wN - 1)) & BIT_MASK_64
 
         # bishop / queen threats (diagonals)
         wQB = wQ | wB
-        b_or_q = wQB & ~(wQB - 1)
+        b_or_q = (wQB & ~(wQB - 1)) & BIT_MASK_64
         while b_or_q != 0:
             b_or_q_idx = BinaryOps.convertBitboardToString(b_or_q).index('1')
             moves = self.possibleDiagAndAntiDiagMoves(b_or_q_idx)
             unsafe |= moves
             wQB &= ~b_or_q # remove current bishop or queen
-            b_or_q = wQB & ~(wQB - 1)
+            b_or_q = (wQB & ~(wQB - 1)) & BIT_MASK_64
 
         # rook / queen threats (hor and vert)
         wQR = wQ | wR
-        r_or_q = wQR & ~(wQR - 1)
+        r_or_q = (wQR & ~(wQR - 1)) & BIT_MASK_64
         while r_or_q != 0:
             r_or_q_idx = BinaryOps.convertBitboardToString(r_or_q).index('1')
             moves = self.possibleHAndVMoves(r_or_q_idx)
             unsafe |= moves
             wQR &= ~r_or_q # remove current rook or queen
-            r_or_q = wQR & ~(wQR - 1)
+            r_or_q = (wQR & ~(wQR - 1)) & BIT_MASK_64
 
         # king threats
-        king = wK & ~(wK - 1)
+        king = (wK & ~(wK - 1)) & BIT_MASK_64
         king_span_c7_idx = 10
         while king != 0:
             king_idx = BinaryOps.convertBitboardToString(king).index('1')
@@ -528,7 +647,7 @@ class Moves():
                 moves &= ~self.file_ab
             unsafe |= moves
             wK &= ~king # remove current king
-            king = wK & ~(wK - 1)
+            king = (wK & ~(wK - 1)) & BIT_MASK_64
 
         return unsafe
 
@@ -538,11 +657,11 @@ class Moves():
     """
     def unsafeForWhite(self, bP, bN, bB, bR, bQ, bK) -> int:
         # pawn threats
-        unsafe = (bP >> 7) & ~self.file_h # pawn right capture
-        unsafe |= (bP >> 9) & ~self.file_a # pawn left capture
+        unsafe = ((bP >> 7) & ~self.file_h) & BIT_MASK_64 # pawn right capture
+        unsafe |= (((bP >> 9) & ~self.file_a) & BIT_MASK_64) # pawn left capture
 
         # knight threat
-        knight = bN & ~(bN - 1)
+        knight = (bN & ~(bN - 1)) & BIT_MASK_64
         knight_span_c6_idx = 18
         while knight != 0:
             knight_idx = BinaryOps.convertBitboardToString(knight).index('1')
@@ -558,32 +677,30 @@ class Moves():
                 moves &= ~self.file_ab
             unsafe |= moves
             bN &= ~knight # remove current knight
-            knight = bN & ~(bN - 1)
+            knight = (bN & ~(bN - 1)) & BIT_MASK_64
 
         # bishop / queen threats (diagonals)
         bQB = bQ | bB
-        b_or_q = bQB & ~(bQB - 1)
+        b_or_q = (bQB & ~(bQB - 1)) & BIT_MASK_64
         while b_or_q != 0:
             b_or_q_idx = BinaryOps.convertBitboardToString(b_or_q).index('1')
             moves = self.possibleDiagAndAntiDiagMoves(b_or_q_idx)
             unsafe |= moves
             bQB &= ~b_or_q # remove current bishop or queen
-            b_or_q = bQB & ~(bQB - 1)
+            b_or_q = (bQB & ~(bQB - 1)) & BIT_MASK_64
 
         # rook / queen threats (hor and vert)
         bQR = bQ | bR
-        r_or_q = bQR & ~(bQR - 1)
+        r_or_q = (bQR & ~(bQR - 1)) & BIT_MASK_64
         while r_or_q != 0:
             r_or_q_idx = BinaryOps.convertBitboardToString(r_or_q).index('1')
             moves = self.possibleHAndVMoves(r_or_q_idx)
             unsafe |= moves
             bQR &= ~r_or_q # remove current rook or queen
-            r_or_q = bQR & ~(bQR - 1)
-            if r_or_q == MAX_BITBOARD+1: # TODO mandate everywhere that 9223372036854775808 -> -9223372036854775808
-                r_or_q *= -1
+            r_or_q = (bQR & ~(bQR - 1)) & BIT_MASK_64
 
         # king threats
-        king = bK & ~(bK - 1)
+        king = (bK & ~(bK - 1)) & BIT_MASK_64
         king_span_c7_idx = 10
         while king != 0:
             king_idx = BinaryOps.convertBitboardToString(king).index('1')
@@ -599,7 +716,7 @@ class Moves():
                 moves &= ~self.file_ab
             unsafe |= moves
             bK &= ~king # remove current king
-            king = bK & ~(bK - 1)
+            king = (bK & ~(bK - 1)) & BIT_MASK_64
 
         return unsafe
 
@@ -662,3 +779,4 @@ g.drawGameArray()
 
 m = Moves()
 move_list = m.possibleMovesW('', g.wP, g.wN, g.wB, g.wR, g.wQ, g.wK, g.bP, g.bN, g.bB, g.bR, g.bQ, g.bK)
+move_list = m.possibleMovesB('', g.wP, g.wN, g.wB, g.wR, g.wQ, g.wK, g.bP, g.bN, g.bB, g.bR, g.bQ, g.bK)
