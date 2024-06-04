@@ -2,6 +2,9 @@
 Bitboard Engine
 """
 
+MAX_BITBOARD = 9223372036854775807
+MIN_BITBOARD = -9223372036854775808
+
 class GameState():
     """
     In this 8x8 game board, the first char represents color
@@ -180,6 +183,9 @@ class Moves():
         self.empty = ~(wP|wN|wB|wR|wQ|wK|bP|bN|bB|bR|bQ|bK)
         self.occupied = ~self.empty
         move_list = self.possibleWP(history, wP, bP) + self.possibleWB(wB) + self.possibleWQ(wQ) + self.possibleWR(wR) + self.possibleWN(wN) + self.possibleWK(wK)
+
+        self.unsafeForBlack(wP, wN, wB, wR, wQ, wK)
+        self.unsafeForWhite(bP, bN, bB, bR, bQ, bK)
 
         return move_list
 
@@ -456,6 +462,146 @@ class Moves():
         possible_ad = ((self.occupied & a_diag_mask) - 2*binary_idx) ^ BinaryOps.reverseBits(BinaryOps.reverseBits(self.occupied & a_diag_mask) - 2*BinaryOps.reverseBits(binary_idx))
 
         return (possible_d & diag_mask) | (possible_ad & a_diag_mask)
+
+
+    """
+    Returns a bitboard with 1's at all squares attacked by white
+    """
+    def unsafeForBlack(self, wP, wN, wB, wR, wQ, wK) -> int:
+        # pawn threats
+        unsafe = (wP << 7) & ~self.file_a # pawn right capture
+        unsafe |= (wP << 9) & ~self.file_h # pawn left capture
+
+        # knight threat
+        knight = wN & ~(wN - 1)
+        knight_span_c6_idx = 18
+        while knight != 0:
+            knight_idx = BinaryOps.convertBitboardToString(knight).index('1')
+            # allign the knight_span_c6 mask
+            if knight_idx <= knight_span_c6_idx:
+                moves = self.knight_span_c6 << (knight_span_c6_idx - knight_idx)
+            else:
+                moves = self.knight_span_c6 >> (knight_idx - knight_span_c6_idx)
+            # remove moves sliding off board or allied pieces
+            if knight_idx % 8 < 4:
+                moves &= ~self.file_gh
+            else:
+                moves &= ~self.file_ab
+            unsafe |= moves
+            wN &= ~knight # remove current knight
+            knight = wN & ~(wN - 1)
+
+        # bishop / queen threats (diagonals)
+        wQB = wQ | wB
+        b_or_q = wQB & ~(wQB - 1)
+        while b_or_q != 0:
+            b_or_q_idx = BinaryOps.convertBitboardToString(b_or_q).index('1')
+            moves = self.possibleDiagAndAntiDiagMoves(b_or_q_idx)
+            unsafe |= moves
+            wQB &= ~b_or_q # remove current bishop or queen
+            b_or_q = wQB & ~(wQB - 1)
+
+        # rook / queen threats (hor and vert)
+        wQR = wQ | wR
+        r_or_q = wQR & ~(wQR - 1)
+        while r_or_q != 0:
+            r_or_q_idx = BinaryOps.convertBitboardToString(r_or_q).index('1')
+            moves = self.possibleHAndVMoves(r_or_q_idx)
+            unsafe |= moves
+            wQR &= ~r_or_q # remove current rook or queen
+            r_or_q = wQR & ~(wQR - 1)
+
+        # king threats
+        king = wK & ~(wK - 1)
+        king_span_c7_idx = 10
+        while king != 0:
+            king_idx = BinaryOps.convertBitboardToString(king).index('1')
+            # allign the king_span_c7 mask
+            if king_idx <= king_span_c7_idx:
+                moves = self.king_span_c7 << (king_span_c7_idx - king_idx)
+            else:
+                moves = self.king_span_c7 >> (king_idx - king_span_c7_idx)
+            # remove moves sliding off board or allied pieces
+            if king_idx % 8 < 4:
+                moves &= ~self.file_gh
+            else:
+                moves &= ~self.file_ab
+            unsafe |= moves
+            wK &= ~king # remove current king
+            king = wK & ~(wK - 1)
+
+        return unsafe
+
+
+    """
+    Returns a bitboard with 1's at all squares attacked by black
+    """
+    def unsafeForWhite(self, bP, bN, bB, bR, bQ, bK) -> int:
+        # pawn threats
+        unsafe = (bP >> 7) & ~self.file_h # pawn right capture
+        unsafe |= (bP >> 9) & ~self.file_a # pawn left capture
+
+        # knight threat
+        knight = bN & ~(bN - 1)
+        knight_span_c6_idx = 18
+        while knight != 0:
+            knight_idx = BinaryOps.convertBitboardToString(knight).index('1')
+            # allign the knight_span_c6 mask
+            if knight_idx <= knight_span_c6_idx:
+                moves = self.knight_span_c6 << (knight_span_c6_idx - knight_idx)
+            else:
+                moves = self.knight_span_c6 >> (knight_idx - knight_span_c6_idx)
+            # remove moves sliding off board or allied pieces
+            if knight_idx % 8 < 4:
+                moves &= ~self.file_gh
+            else:
+                moves &= ~self.file_ab
+            unsafe |= moves
+            bN &= ~knight # remove current knight
+            knight = bN & ~(bN - 1)
+
+        # bishop / queen threats (diagonals)
+        bQB = bQ | bB
+        b_or_q = bQB & ~(bQB - 1)
+        while b_or_q != 0:
+            b_or_q_idx = BinaryOps.convertBitboardToString(b_or_q).index('1')
+            moves = self.possibleDiagAndAntiDiagMoves(b_or_q_idx)
+            unsafe |= moves
+            bQB &= ~b_or_q # remove current bishop or queen
+            b_or_q = bQB & ~(bQB - 1)
+
+        # rook / queen threats (hor and vert)
+        bQR = bQ | bR
+        r_or_q = bQR & ~(bQR - 1)
+        while r_or_q != 0:
+            r_or_q_idx = BinaryOps.convertBitboardToString(r_or_q).index('1')
+            moves = self.possibleHAndVMoves(r_or_q_idx)
+            unsafe |= moves
+            bQR &= ~r_or_q # remove current rook or queen
+            r_or_q = bQR & ~(bQR - 1)
+            if r_or_q == MAX_BITBOARD+1: # TODO mandate everywhere that 9223372036854775808 -> -9223372036854775808
+                r_or_q *= -1
+
+        # king threats
+        king = bK & ~(bK - 1)
+        king_span_c7_idx = 10
+        while king != 0:
+            king_idx = BinaryOps.convertBitboardToString(king).index('1')
+            # allign the king_span_c7 mask
+            if king_idx <= king_span_c7_idx:
+                moves = self.king_span_c7 << (king_span_c7_idx - king_idx)
+            else:
+                moves = self.king_span_c7 >> (king_idx - king_span_c7_idx)
+            # remove moves sliding off board or allied pieces
+            if king_idx % 8 < 4:
+                moves &= ~self.file_gh
+            else:
+                moves &= ~self.file_ab
+            unsafe |= moves
+            bK &= ~king # remove current king
+            king = bK & ~(bK - 1)
+
+        return unsafe
 
 
 class BinaryOps():
