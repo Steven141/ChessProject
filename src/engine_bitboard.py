@@ -33,10 +33,16 @@ class GameState():
             ['bP', 'bP', 'wP', '--', 'wP', 'wP', '--', 'bP'],
             ['wR', 'wN', 'wB', 'wQ', 'wK', 'wB', 'wN', 'wR'],
         ]
+
         # piece bitboards
         self.wP = self.wN = self.wB = self.wR = self.wQ = self.wK = 0
         self.bP = self.bN = self.bB = self.bR = self.bQ = self.bK = 0
         self.EP = 0 # zero if no enpassant can happen
+
+        # castling variables
+        self.cwK = self.cwQ = self.cbK = self.cbQ = True
+
+        # populate bitboards
         self.arrayToBitboard()
 
 
@@ -118,6 +124,7 @@ class Moves():
         self.enemy_pieces = 0 # if in white func: black pieces but no black king
         self.empty = 0
         self.occupied = 0
+        self.castle_rooks = [63, 56, 7, 0]
 
         # region based bitboard masks
         self.rank_masks = [
@@ -179,12 +186,15 @@ class Moves():
     """
     Return a move list string containing all possible moves for white
     """
-    def possibleMovesW(self, wP, wN, wB, wR, wQ, wK, bP, bN, bB, bR, bQ, bK, EP) -> str:
+    def possibleMovesW(self, wP, wN, wB, wR, wQ, wK, bP, bN, bB, bR, bQ, bK, EP, cwK, cwQ, cbK, cbQ) -> str:
         self.not_allied_pieces = ~(wP|wN|wB|wR|wQ|wK|bK) # avoid illegal bK capture
         self.enemy_pieces = bP|bN|bB|bR|bQ # avoid illegal bK capture
         self.empty = ~(wP|wN|wB|wR|wQ|wK|bP|bN|bB|bR|bQ|bK)
         self.occupied = ~self.empty
-        move_list = self.possibleWP(wP, bP, EP) + self.possibleB(wB) + self.possibleQ(wQ) + self.possibleR(wR) + self.possibleN(wN) + self.possibleK(wK)
+        move_list = self.possibleWP(wP, bP, EP) + \
+            self.possibleB(wB) + self.possibleQ(wQ) + \
+            self.possibleR(wR) + self.possibleN(wN) + \
+            self.possibleK(wK) + self.possibleCastleW(wR, cwK, cwQ)
         # print(len(move_list) / 4)
         # BinaryOps.drawArrayFromBitboard(self.unsafeForWhite(bP, bN, bB, bR, bQ, bK))
         # print()
@@ -196,12 +206,15 @@ class Moves():
     """
     Return a move list string containing all possible moves for black
     """
-    def possibleMovesB(self, wP, wN, wB, wR, wQ, wK, bP, bN, bB, bR, bQ, bK, EP) -> str:
+    def possibleMovesB(self, wP, wN, wB, wR, wQ, wK, bP, bN, bB, bR, bQ, bK, EP, cwK, cwQ, cbK, cbQ) -> str:
         self.not_allied_pieces = ~(bP|bN|bB|bR|bQ|bK|wK) # avoid illegal wK capture
         self.enemy_pieces = wP|wN|wB|wR|wQ # avoid illegal wK capture
         self.empty = ~(wP|wN|wB|wR|wQ|wK|bP|bN|bB|bR|bQ|bK)
         self.occupied = ~self.empty
-        move_list = self.possibleBP(wP, bP, EP) + self.possibleB(bB) + self.possibleQ(bQ) + self.possibleR(bR) + self.possibleN(bN) + self.possibleK(bK)
+        move_list = self.possibleBP(wP, bP, EP) + \
+            self.possibleB(bB) + self.possibleQ(bQ) + \
+            self.possibleR(bR) + self.possibleN(bN) + \
+            self.possibleK(bK) + self.possibleCastleB(bR, cbK, cbQ)
         # print(len(move_list) / 4)
         # BinaryOps.drawArrayFromBitboard(self.unsafeForWhite(bP, bN, bB, bR, bQ, bK))
         # print()
@@ -531,6 +544,30 @@ class Moves():
 
 
     """
+    Return a move list string containing all possible castles for white
+    """
+    def possibleCastleW(self, wR, cwK, cwQ) -> str:
+        move_list = '' # king move
+        if cwK and (((1 << self.castle_rooks[0]) & wR) != 0):
+            move_list += '7476'
+        if cwQ and (((1 << self.castle_rooks[1]) & wR) != 0):
+            move_list += '7472'
+        return move_list
+
+
+    """
+    Return a move list string containing all possible castles for black
+    """
+    def possibleCastleB(self, bR, cbK, cbQ) -> str:
+        move_list = '' # king move
+        if cbK and (((1 << self.castle_rooks[2]) & bR) != 0):
+            move_list += '0406'
+        if cbQ and (((1 << self.castle_rooks[3]) & bR) != 0):
+            move_list += '0402'
+        return move_list
+
+
+    """
     Returns all possible horizontal and vertical moves of piece at index piece_idx
 
     Example for formula derivation:
@@ -771,5 +808,5 @@ g = GameState()
 g.drawGameArray()
 
 m = Moves()
-move_list = m.possibleMovesW(g.wP, g.wN, g.wB, g.wR, g.wQ, g.wK, g.bP, g.bN, g.bB, g.bR, g.bQ, g.bK, g.EP)
-move_list = m.possibleMovesB(g.wP, g.wN, g.wB, g.wR, g.wQ, g.wK, g.bP, g.bN, g.bB, g.bR, g.bQ, g.bK, g.EP)
+move_list = m.possibleMovesW(g.wP, g.wN, g.wB, g.wR, g.wQ, g.wK, g.bP, g.bN, g.bB, g.bR, g.bQ, g.bK, g.EP, g.cwK, g.cwQ, g.cbK, g.cbQ)
+move_list = m.possibleMovesB(g.wP, g.wN, g.wB, g.wR, g.wQ, g.wK, g.bP, g.bN, g.bB, g.bR, g.bQ, g.bK, g.EP, g.cwK, g.cwQ, g.cbK, g.cbQ)
