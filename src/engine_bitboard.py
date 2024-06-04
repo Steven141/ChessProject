@@ -36,6 +36,7 @@ class GameState():
         # piece bitboards
         self.wP = self.wN = self.wB = self.wR = self.wQ = self.wK = 0
         self.bP = self.bN = self.bB = self.bR = self.bQ = self.bK = 0
+        self.EP = 0 # zero if no enpassant can happen
         self.arrayToBitboard()
 
 
@@ -178,12 +179,12 @@ class Moves():
     """
     Return a move list string containing all possible moves for white
     """
-    def possibleMovesW(self, history, wP, wN, wB, wR, wQ, wK, bP, bN, bB, bR, bQ, bK) -> str:
+    def possibleMovesW(self, wP, wN, wB, wR, wQ, wK, bP, bN, bB, bR, bQ, bK, EP) -> str:
         self.not_allied_pieces = ~(wP|wN|wB|wR|wQ|wK|bK) # avoid illegal bK capture
         self.enemy_pieces = bP|bN|bB|bR|bQ # avoid illegal bK capture
         self.empty = ~(wP|wN|wB|wR|wQ|wK|bP|bN|bB|bR|bQ|bK)
         self.occupied = ~self.empty
-        move_list = self.possibleWP(history, wP, bP) + self.possibleB(wB) + self.possibleQ(wQ) + self.possibleR(wR) + self.possibleN(wN) + self.possibleK(wK)
+        move_list = self.possibleWP(wP, bP, EP) + self.possibleB(wB) + self.possibleQ(wQ) + self.possibleR(wR) + self.possibleN(wN) + self.possibleK(wK)
         # print(len(move_list) / 4)
         # BinaryOps.drawArrayFromBitboard(self.unsafeForWhite(bP, bN, bB, bR, bQ, bK))
         # print()
@@ -195,12 +196,12 @@ class Moves():
     """
     Return a move list string containing all possible moves for black
     """
-    def possibleMovesB(self, history, wP, wN, wB, wR, wQ, wK, bP, bN, bB, bR, bQ, bK) -> str:
+    def possibleMovesB(self, wP, wN, wB, wR, wQ, wK, bP, bN, bB, bR, bQ, bK, EP) -> str:
         self.not_allied_pieces = ~(bP|bN|bB|bR|bQ|bK|wK) # avoid illegal wK capture
         self.enemy_pieces = wP|wN|wB|wR|wQ # avoid illegal wK capture
         self.empty = ~(wP|wN|wB|wR|wQ|wK|bP|bN|bB|bR|bQ|bK)
         self.occupied = ~self.empty
-        move_list = self.possibleBP(history, wP, bP) + self.possibleB(bB) + self.possibleQ(bQ) + self.possibleR(bR) + self.possibleN(bN) + self.possibleK(bK)
+        move_list = self.possibleBP(wP, bP, EP) + self.possibleB(bB) + self.possibleQ(bQ) + self.possibleR(bR) + self.possibleN(bN) + self.possibleK(bK)
         # print(len(move_list) / 4)
         # BinaryOps.drawArrayFromBitboard(self.unsafeForWhite(bP, bN, bB, bR, bQ, bK))
         # print()
@@ -212,7 +213,7 @@ class Moves():
     """
     Return a move list string containing all possible moves for a white pawn
     """
-    def possibleWP(self, history, wP, bP) -> str:
+    def possibleWP(self, wP, bP, EP) -> str:
         # standard moves and captures
         move_list = '' # r1,c1,r2,c2
         moves = ((wP << 7) & self.enemy_pieces & ~self.rank_8 & ~self.file_a) & BIT_MASK_64 # right capture
@@ -276,27 +277,23 @@ class Moves():
             possible_move = (moves & ~(moves - 1)) & BIT_MASK_64
 
         # enpassant, move_list -> c1,c2,space,'E'
-        if len(history) >= 4:
-            if (history[-1] == history[-3]) and (abs(int(history[-2]) - int(history[-4])) == 2):
-                file = int(history[-1])
+        moves = ((wP >> 1) & bP & self.rank_5 & ~self.file_a & EP) & BIT_MASK_64 # enpassant right
+        possible_move = (moves & ~(moves - 1)) & BIT_MASK_64
+        while possible_move != 0:
+            idx = BinaryOps.convertBitboardToString(possible_move).index('1')
+            c1, c2 = (idx % 8) - 1, idx % 8
+            move_list += f'{c1}{c2} E'
+            moves &= ~possible_move
+            possible_move = (moves & ~(moves - 1)) & BIT_MASK_64
 
-                moves = ((wP >> 1) & bP & self.rank_5 & ~self.file_a & self.file_masks[file]) & BIT_MASK_64 # enpassant right
-                possible_move = (moves & ~(moves - 1)) & BIT_MASK_64
-                while possible_move != 0:
-                    idx = BinaryOps.convertBitboardToString(possible_move).index('1')
-                    c1, c2 = (idx % 8) - 1, idx % 8
-                    move_list += f'{c1}{c2} E'
-                    moves &= ~possible_move
-                    possible_move = (moves & ~(moves - 1)) & BIT_MASK_64
-
-                moves = ((wP << 1) & bP & self.rank_5 & ~self.file_h & self.file_masks[file]) & BIT_MASK_64 # enpassant left
-                possible_move = (moves & ~(moves - 1)) & BIT_MASK_64
-                while possible_move != 0:
-                    idx = BinaryOps.convertBitboardToString(possible_move).index('1')
-                    c1, c2 = (idx % 8) + 1, idx % 8
-                    move_list += f'{c1}{c2} E'
-                    moves &= ~possible_move
-                    possible_move = (moves & ~(moves - 1)) & BIT_MASK_64
+        moves = ((wP << 1) & bP & self.rank_5 & ~self.file_h & EP) & BIT_MASK_64 # enpassant left
+        possible_move = (moves & ~(moves - 1)) & BIT_MASK_64
+        while possible_move != 0:
+            idx = BinaryOps.convertBitboardToString(possible_move).index('1')
+            c1, c2 = (idx % 8) + 1, idx % 8
+            move_list += f'{c1}{c2} E'
+            moves &= ~possible_move
+            possible_move = (moves & ~(moves - 1)) & BIT_MASK_64
 
         return move_list
 
@@ -304,7 +301,7 @@ class Moves():
     """
     Return a move list string containing all possible moves for a black pawn
     """
-    def possibleBP(self, history, wP, bP) -> str:
+    def possibleBP(self, wP, bP, EP) -> str:
         # standard moves and captures
         move_list = '' # r1,c1,r2,c2
         moves = ((bP >> 7) & self.enemy_pieces & ~self.rank_1 & ~self.file_h) & BIT_MASK_64 # right capture
@@ -368,27 +365,23 @@ class Moves():
             possible_move = (moves & ~(moves - 1)) & BIT_MASK_64
 
         # enpassant, move_list -> c1,c2,'bE'
-        if len(history) >= 4:
-            if (history[-1] == history[-3]) and (abs(int(history[-2]) - int(history[-4])) == 2):
-                file = int(history[-1])
+        moves = ((bP << 1) & wP & self.rank_4 & ~self.file_h & EP) & BIT_MASK_64 # enpassant right
+        possible_move = (moves & ~(moves - 1)) & BIT_MASK_64
+        while possible_move != 0:
+            idx = BinaryOps.convertBitboardToString(possible_move).index('1')
+            c1, c2 = (idx % 8) + 1, idx % 8
+            move_list += f'{c1}{c2}bE'
+            moves &= ~possible_move
+            possible_move = (moves & ~(moves - 1)) & BIT_MASK_64
 
-                moves = ((bP << 1) & wP & self.rank_4 & ~self.file_h & self.file_masks[file]) & BIT_MASK_64 # enpassant right
-                possible_move = (moves & ~(moves - 1)) & BIT_MASK_64
-                while possible_move != 0:
-                    idx = BinaryOps.convertBitboardToString(possible_move).index('1')
-                    c1, c2 = (idx % 8) + 1, idx % 8
-                    move_list += f'{c1}{c2}bE'
-                    moves &= ~possible_move
-                    possible_move = (moves & ~(moves - 1)) & BIT_MASK_64
-
-                moves = ((bP >> 1) & wP & self.rank_4 & ~self.file_a & self.file_masks[file]) & BIT_MASK_64 # enpassant left
-                possible_move = (moves & ~(moves - 1)) & BIT_MASK_64
-                while possible_move != 0:
-                    idx = BinaryOps.convertBitboardToString(possible_move).index('1')
-                    c1, c2 = (idx % 8) - 1, idx % 8
-                    move_list += f'{c1}{c2}bE'
-                    moves &= ~possible_move
-                    possible_move = (moves & ~(moves - 1)) & BIT_MASK_64
+        moves = ((bP >> 1) & wP & self.rank_4 & ~self.file_a & EP) & BIT_MASK_64 # enpassant left
+        possible_move = (moves & ~(moves - 1)) & BIT_MASK_64
+        while possible_move != 0:
+            idx = BinaryOps.convertBitboardToString(possible_move).index('1')
+            c1, c2 = (idx % 8) - 1, idx % 8
+            move_list += f'{c1}{c2}bE'
+            moves &= ~possible_move
+            possible_move = (moves & ~(moves - 1)) & BIT_MASK_64
 
         return move_list
 
@@ -778,5 +771,5 @@ g = GameState()
 g.drawGameArray()
 
 m = Moves()
-move_list = m.possibleMovesW('', g.wP, g.wN, g.wB, g.wR, g.wQ, g.wK, g.bP, g.bN, g.bB, g.bR, g.bQ, g.bK)
-move_list = m.possibleMovesB('', g.wP, g.wN, g.wB, g.wR, g.wQ, g.wK, g.bP, g.bN, g.bB, g.bR, g.bQ, g.bK)
+move_list = m.possibleMovesW(g.wP, g.wN, g.wB, g.wR, g.wQ, g.wK, g.bP, g.bN, g.bB, g.bR, g.bQ, g.bK, g.EP)
+move_list = m.possibleMovesB(g.wP, g.wN, g.wB, g.wR, g.wQ, g.wK, g.bP, g.bN, g.bB, g.bR, g.bQ, g.bK, g.EP)
