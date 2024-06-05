@@ -13,26 +13,26 @@ class GameState():
     square is denoted with '--'.
     """
     def __init__(self) -> None:
-        # self.board = [
-        #     ['bR', 'bN', 'bB', 'bQ', 'bK', 'bB', 'bN', 'bR'],
-        #     ['bP', 'bP', 'bP', 'bP', 'bP', 'bP', 'bP', 'bP'],
-        #     ['--', '--', '--', '--', '--', '--', '--', '--'],
-        #     ['--', '--', '--', '--', '--', '--', '--', '--'],
-        #     ['--', '--', '--', '--', '--', '--', '--', '--'],
-        #     ['--', '--', '--', '--', '--', '--', '--', '--'],
-        #     ['wP', 'wP', 'wP', 'wP', 'wP', 'wP', 'wP', 'wP'],
-        #     ['wR', 'wN', 'wB', 'wQ', 'wK', 'wB', 'wN', 'wR'],
-        # ]
         self.board = [
             ['bR', 'bN', 'bB', 'bQ', 'bK', 'bB', 'bN', 'bR'],
-            ['wP', 'wP', 'bP', '--', 'bP', 'bP', '--', 'wP'],
-            ['wP', '--', '--', '--', 'wP', '--', '--', 'wP'],
+            ['bP', 'bP', 'bP', 'bP', 'bP', 'bP', 'bP', 'bP'],
             ['--', '--', '--', '--', '--', '--', '--', '--'],
             ['--', '--', '--', '--', '--', '--', '--', '--'],
-            ['bP', '--', '--', '--', 'bP', '--', '--', 'bP'],
-            ['bP', 'bP', 'wP', '--', 'wP', 'wP', '--', 'bP'],
+            ['--', '--', '--', '--', '--', '--', '--', '--'],
+            ['--', '--', '--', '--', '--', '--', '--', '--'],
+            ['wP', 'wP', 'wP', 'wP', 'wP', 'wP', 'wP', 'wP'],
             ['wR', 'wN', 'wB', 'wQ', 'wK', 'wB', 'wN', 'wR'],
         ]
+        # self.board = [
+        #     ['bR', 'bN', 'bB', 'bQ', 'bK', 'bB', 'bN', 'bR'],
+        #     ['wP', 'wP', 'bP', '--', 'bP', 'bP', '--', 'wP'],
+        #     ['wP', '--', '--', '--', 'wP', '--', '--', 'wP'],
+        #     ['--', '--', '--', '--', '--', '--', '--', '--'],
+        #     ['--', '--', '--', '--', '--', '--', '--', '--'],
+        #     ['bP', '--', '--', '--', 'bP', '--', '--', 'bP'],
+        #     ['bP', 'bP', 'wP', '--', 'wP', 'wP', '--', 'bP'],
+        #     ['wR', 'wN', 'wB', 'wQ', 'wK', 'wB', 'wN', 'wR'],
+        # ]
 
         # piece bitboards
         self.wP = self.wN = self.wB = self.wR = self.wQ = self.wK = 0
@@ -41,6 +41,8 @@ class GameState():
 
         # castling variables
         self.cwK = self.cwQ = self.cbK = self.cbQ = True
+
+        self.whites_turn = True
 
         # populate bitboards
         self.arrayToBitboard()
@@ -101,6 +103,96 @@ class GameState():
                 new_board[i // 8][i % 8] = 'bK'
         for r in new_board:
             print(*r)
+
+
+    """
+    Set the state of the bitboards to the FEN string
+    """
+    def importFEN(self, fen_str) -> None:
+        self.wP = self.wN = self.wB = self.wR = self.wQ = self.wK = 0
+        self.bP = self.bN = self.bB = self.bR = self.bQ = self.bK = 0
+        self.cwK = self.cwQ = self.cbK = self.cbQ = False
+        self.EP = 0
+        char_idx = 0
+        board_idx = 0
+        while fen_str[char_idx] != ' ':
+            board_idx_shift = 64 - 1 - board_idx
+            match fen_str[char_idx]:
+                case 'P':
+                    self.wP |= (1 << board_idx_shift)
+                    board_idx += 1
+                case 'p':
+                    self.bP |= (1 << board_idx_shift)
+                    board_idx += 1
+                case 'N':
+                    self.wN |= (1 << board_idx_shift)
+                    board_idx += 1
+                case 'n':
+                    self.bN |= (1 << board_idx_shift)
+                    board_idx += 1
+                case 'B':
+                    self.wB |= (1 << board_idx_shift)
+                    board_idx += 1
+                case 'b':
+                    self.bB |= (1 << board_idx_shift)
+                    board_idx += 1
+                case 'R':
+                    self.wR |= (1 << board_idx_shift)
+                    board_idx += 1
+                case 'r':
+                    self.bR |= (1 << board_idx_shift)
+                    board_idx += 1
+                case 'Q':
+                    self.wQ |= (1 << board_idx_shift)
+                    board_idx += 1
+                case 'q':
+                    self.bQ |= (1 << board_idx_shift)
+                    board_idx += 1
+                case 'K':
+                    self.wK |= (1 << board_idx_shift)
+                    board_idx += 1
+                case 'k':
+                    self.bK |= (1 << board_idx_shift)
+                    board_idx += 1
+                case '1': board_idx += 1
+                case '2': board_idx += 2
+                case '3': board_idx += 3
+                case '4': board_idx += 4
+                case '5': board_idx += 5
+                case '6': board_idx += 6
+                case '7': board_idx += 7
+                case '8': board_idx += 8
+            char_idx += 1
+
+        char_idx += 1
+        self.whites_turn = fen_str[char_idx] == 'w'
+        char_idx += 2
+
+        while fen_str[char_idx] != ' ':
+            match fen_str[char_idx]:
+                case 'K': self.cwK = True
+                case 'Q': self.cwQ = True
+                case 'k': self.cbK = True
+                case 'q': self.cbQ = True
+            char_idx += 1
+
+        # TODO Combine
+        file_masks = [
+            -9187201950435737472,
+            4629771061636907072,
+            2314885530818453536,
+            1157442765409226768,
+            578721382704613384,
+            289360691352306692,
+            144680345676153346,
+            72340172838076673,
+        ] # from file a to file h
+
+        char_idx += 1
+        if fen_str[char_idx] != '-':
+            self.EP = file_masks[ord(fen_str[char_idx]) - ord('a')]
+            char_idx += 1
+        # rest of FEN not used
 
 
 class Moves():
@@ -184,6 +276,67 @@ class Moves():
 
 
     """
+    """
+    def makeMove(self, bitboard, move, p_type) -> int:
+        if move[3].isnumeric(): # regular move
+            start_shift = 64 - 1 - (int(move[0]) * 8 + int(move[1]))
+            end_shift = 64 - 1 - (int(move[2]) * 8 + int(move[3]))
+            if (bitboard >> start_shift) & 1 == 1:
+                bitboard &= ~(1 << start_shift) # remove moving piece from board
+                bitboard |= (1 << end_shift) # add at new position
+            else:
+                bitboard &= ~(1 << end_shift) # remove piece at end
+
+        elif move[3] == 'P': # pawn promo
+            if move[2].isupper(): # white promo
+                start_bitboard = self.file_masks[int(move[0])] & self.rank_masks[1]
+                start_shift = 64 - 1 - BinaryOps.convertBitboardToString(start_bitboard).index('1')
+                end_bitboard = self.file_masks[int(move[1])] & self.rank_masks[0]
+                end_shift = 64 - 1 - BinaryOps.convertBitboardToString(end_bitboard).index('1')
+            else: # black promo
+                start_bitboard = self.file_masks[int(move[0])] & self.rank_masks[6]
+                start_shift = 64 - 1 - BinaryOps.convertBitboardToString(start_bitboard).index('1')
+                end_bitboard = self.file_masks[int(move[1])] & self.rank_masks[7]
+                end_shift = 64 - 1 - BinaryOps.convertBitboardToString(end_bitboard).index('1')
+            if p_type == move[2]:
+                bitboard &= ~(1 << start_shift)
+                bitboard |= (1 << end_shift)
+            else:
+                bitboard &= ~(1 << end_shift)
+
+        elif move[3] == 'E': # enpassant
+            if move[2] == 'w': # white
+                start_bitboard = self.file_masks[int(move[0])] & self.rank_masks[3]
+                start_shift = 64 - 1 - BinaryOps.convertBitboardToString(start_bitboard).index('1')
+                end_bitboard = self.file_masks[int(move[1])] & self.rank_masks[2]
+                end_shift = 64 - 1 - BinaryOps.convertBitboardToString(end_bitboard).index('1')
+                bitboard &= ~(1 << (self.file_masks[int(move[1])] & self.rank_masks[3]))
+            else: # black
+                start_bitboard = self.file_masks[int(move[0])] & self.rank_masks[4]
+                start_shift = 64 - 1 - BinaryOps.convertBitboardToString(start_bitboard).index('1')
+                end_bitboard = self.file_masks[int(move[1])] & self.rank_masks[5]
+                end_shift = 64 - 1 - BinaryOps.convertBitboardToString(end_bitboard).index('1')
+                bitboard &= ~(1 << (self.file_masks[int(move[1])] & self.rank_masks[4]))
+            if (bitboard >> start_shift) & 1 == 1:
+                bitboard &= ~(1 << start_shift)
+                bitboard |= (1 << end_shift)
+        else:
+            print('ERROR: INVALID MOVE TYPE')
+
+        return bitboard
+
+
+    """
+    Return biboard of file where enpassant possible
+    """
+    def makeMoveEP(self, bitboard, move) -> int:
+        start_shift = 64 - 1 - (int(move[0]) * 8 + int(move[1]))
+        if move[3].isnumeric() and (abs(int(move[0]) - int(move[2])) == 2) and ((bitboard >> start_shift) & 1) == 1:
+            return self.file_masks[int(move[1])]
+        return 0
+
+
+    """
     Return a move list string containing all possible moves for white
     """
     def possibleMovesW(self, wP, wN, wB, wR, wQ, wK, bP, bN, bB, bR, bQ, bK, EP, cwK, cwQ, cbK, cbQ) -> str:
@@ -195,11 +348,6 @@ class Moves():
             self.possibleB(wB) + self.possibleQ(wQ) + \
             self.possibleR(wR) + self.possibleN(wN) + \
             self.possibleK(wK) + self.possibleCastleW(wR, cwK, cwQ)
-        # print(len(move_list) / 4)
-        # BinaryOps.drawArrayFromBitboard(self.unsafeForWhite(bP, bN, bB, bR, bQ, bK))
-        # print()
-        # BinaryOps.drawArrayFromBitboard(self.unsafeForBlack(wP, wN, wB, wR, wQ, wK))
-
         return move_list
 
 
@@ -215,11 +363,6 @@ class Moves():
             self.possibleB(bB) + self.possibleQ(bQ) + \
             self.possibleR(bR) + self.possibleN(bN) + \
             self.possibleK(bK) + self.possibleCastleB(bR, cbK, cbQ)
-        # print(len(move_list) / 4)
-        # BinaryOps.drawArrayFromBitboard(self.unsafeForWhite(bP, bN, bB, bR, bQ, bK))
-        # print()
-        # BinaryOps.drawArrayFromBitboard(self.unsafeForBlack(wP, wN, wB, wR, wQ, wK))
-
         return move_list
 
 
@@ -289,13 +432,13 @@ class Moves():
             moves &= ~possible_move
             possible_move = (moves & ~(moves - 1)) & BIT_MASK_64
 
-        # enpassant, move_list -> c1,c2,space,'E'
+        # enpassant, move_list -> c1,c2,'wE'
         moves = ((wP >> 1) & bP & self.rank_5 & ~self.file_a & EP) & BIT_MASK_64 # enpassant right
         possible_move = (moves & ~(moves - 1)) & BIT_MASK_64
         while possible_move != 0:
             idx = BinaryOps.convertBitboardToString(possible_move).index('1')
             c1, c2 = (idx % 8) - 1, idx % 8
-            move_list += f'{c1}{c2} E'
+            move_list += f'{c1}{c2}wE'
             moves &= ~possible_move
             possible_move = (moves & ~(moves - 1)) & BIT_MASK_64
 
@@ -304,7 +447,7 @@ class Moves():
         while possible_move != 0:
             idx = BinaryOps.convertBitboardToString(possible_move).index('1')
             c1, c2 = (idx % 8) + 1, idx % 8
-            move_list += f'{c1}{c2} E'
+            move_list += f'{c1}{c2}wE'
             moves &= ~possible_move
             possible_move = (moves & ~(moves - 1)) & BIT_MASK_64
 
@@ -804,9 +947,9 @@ class BinaryOps():
         return f'{int64 & consider_window :064b}'
 
 
-g = GameState()
-g.drawGameArray()
+# g = GameState()
+# g.drawGameArray()
 
-m = Moves()
-move_list = m.possibleMovesW(g.wP, g.wN, g.wB, g.wR, g.wQ, g.wK, g.bP, g.bN, g.bB, g.bR, g.bQ, g.bK, g.EP, g.cwK, g.cwQ, g.cbK, g.cbQ)
-move_list = m.possibleMovesB(g.wP, g.wN, g.wB, g.wR, g.wQ, g.wK, g.bP, g.bN, g.bB, g.bR, g.bQ, g.bK, g.EP, g.cwK, g.cwQ, g.cbK, g.cbQ)
+# m = Moves()
+# move_list = m.possibleMovesW(g.wP, g.wN, g.wB, g.wR, g.wQ, g.wK, g.bP, g.bN, g.bB, g.bR, g.bQ, g.bK, g.EP, g.cwK, g.cwQ, g.cbK, g.cbQ)
+# move_list = m.possibleMovesB(g.wP, g.wN, g.wB, g.wR, g.wQ, g.wK, g.bP, g.bN, g.bB, g.bR, g.bQ, g.bK, g.EP, g.cwK, g.cwQ, g.cbK, g.cbQ)
