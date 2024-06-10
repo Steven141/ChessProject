@@ -7,7 +7,6 @@ from bitboard import BitBoard
 
 MAX_BITBOARD = 9223372036854775807
 MIN_BITBOARD = -9223372036854775808
-BIT_MASK_64 = BitBoard(-1)
 PIECE_NAMES = ['wP', 'wN', 'wB', 'wR', 'wQ', 'wK', 'bP', 'bN', 'bB', 'bR', 'bQ', 'bK']
 BB_1 = BitBoard(1)
 
@@ -369,84 +368,84 @@ class Moves():
     def possibleWP(self, wP, bP, EP) -> str:
         # standard moves and captures
         move_list = '' # r1,c1,r2,c2
-        moves = ((wP << 7) & self.enemy_pieces & ~self.rank_8 & ~self.file_a) & BIT_MASK_64 # right capture
-        possible_move = (moves & ~(moves - 1)) & BIT_MASK_64 # selects single possible move
+        moves = ((wP << 7) & self.enemy_pieces & ~self.rank_8 & ~self.file_a) # right capture
+        possible_move = (moves & ~(moves - 1)) # selects single possible move
         while possible_move != 0:
             idx = possible_move.asBinaryString().index('1')
             move_list += f'{(idx // 8) + 1}{(idx % 8) - 1}{idx // 8}{idx % 8}'
             moves &= ~possible_move # remove current move from moves
-            possible_move = (moves & ~(moves - 1)) & BIT_MASK_64 # get next possible move
+            possible_move = (moves & ~(moves - 1)) # get next possible move
 
-        moves = ((wP << 9) & self.enemy_pieces & ~self.rank_8 & ~self.file_h) & BIT_MASK_64 # left capture
-        possible_move = (moves & ~(moves - 1)) & BIT_MASK_64
+        moves = ((wP << 9) & self.enemy_pieces & ~self.rank_8 & ~self.file_h) # left capture
+        possible_move = (moves & ~(moves - 1))
         while possible_move != 0:
             idx = possible_move.asBinaryString().index('1')
             move_list += f'{(idx // 8) + 1}{(idx % 8) + 1}{idx // 8}{idx % 8}'
             moves &= ~possible_move
-            possible_move = (moves & ~(moves - 1)) & BIT_MASK_64
+            possible_move = (moves & ~(moves - 1))
 
-        moves = ((wP << 8) & self.empty & ~self.rank_8) & BIT_MASK_64 # move forward 1
-        possible_move = (moves & ~(moves - 1)) & BIT_MASK_64
+        moves = ((wP << 8) & self.empty & ~self.rank_8) # move forward 1
+        possible_move = (moves & ~(moves - 1))
         while possible_move != 0:
             idx = possible_move.asBinaryString().index('1')
             move_list += f'{(idx // 8) + 1}{idx % 8}{idx // 8}{idx % 8}'
             moves &= ~possible_move
-            possible_move = (moves & ~(moves - 1)) & BIT_MASK_64
+            possible_move = (moves & ~(moves - 1))
 
-        moves = ((wP << 16) & self.empty & (self.empty << 8) & self.rank_4) & BIT_MASK_64 # move forward 2
-        possible_move = (moves & ~(moves - 1)) & BIT_MASK_64
+        moves = ((wP << 16) & self.empty & (self.empty << 8) & self.rank_4) # move forward 2
+        possible_move = (moves & ~(moves - 1))
         while possible_move != 0:
             idx = possible_move.asBinaryString().index('1')
             move_list += f'{(idx // 8) + 2}{idx % 8}{idx // 8}{idx % 8}'
             moves &= ~possible_move
-            possible_move = (moves & ~(moves - 1)) & BIT_MASK_64
+            possible_move = (moves & ~(moves - 1))
 
         # pawn promotion, move_list -> c1,c2,promo type,'P'
-        moves = ((wP << 7) & self.enemy_pieces & self.rank_8 & ~self.file_a) & BIT_MASK_64 # promo by right capture
-        possible_move = (moves & ~(moves - 1)) & BIT_MASK_64
+        moves = ((wP << 7) & self.enemy_pieces & self.rank_8 & ~self.file_a) # promo by right capture
+        possible_move = (moves & ~(moves - 1))
         while possible_move != 0:
             idx = possible_move.asBinaryString().index('1')
             c1, c2 = (idx % 8) - 1, idx % 8
             move_list += f'{c1}{c2}QP{c1}{c2}RP{c1}{c2}BP{c1}{c2}NP'
             moves &= ~possible_move
-            possible_move = (moves & ~(moves - 1)) & BIT_MASK_64
+            possible_move = (moves & ~(moves - 1))
 
-        moves = ((wP << 9) & self.enemy_pieces & self.rank_8 & ~self.file_h) & BIT_MASK_64 # promo by left capture
-        possible_move = (moves & ~(moves - 1)) & BIT_MASK_64
+        moves = ((wP << 9) & self.enemy_pieces & self.rank_8 & ~self.file_h) # promo by left capture
+        possible_move = (moves & ~(moves - 1))
         while possible_move != 0:
             idx = possible_move.asBinaryString().index('1')
             c1, c2 = (idx % 8) + 1, idx % 8
             move_list += f'{c1}{c2}QP{c1}{c2}RP{c1}{c2}BP{c1}{c2}NP'
             moves &= ~possible_move
-            possible_move = (moves & ~(moves - 1)) & BIT_MASK_64
+            possible_move = (moves & ~(moves - 1))
 
-        moves = ((wP << 8) & self.empty & self.rank_8) & BIT_MASK_64 # promo by move forward 1
-        possible_move = (moves & ~(moves - 1)) & BIT_MASK_64
+        moves = ((wP << 8) & self.empty & self.rank_8) # promo by move forward 1
+        possible_move = (moves & ~(moves - 1))
         while possible_move != 0:
             idx = possible_move.asBinaryString().index('1')
             c1 = c2 = idx % 8
             move_list += f'{c1}{c2}QP{c1}{c2}RP{c1}{c2}BP{c1}{c2}NP'
             moves &= ~possible_move
-            possible_move = (moves & ~(moves - 1)) & BIT_MASK_64
+            possible_move = (moves & ~(moves - 1))
 
         # enpassant, move_list -> c1,c2,'wE'
-        moves = ((wP >> 1) & bP & self.rank_5 & ~self.file_a & EP) & BIT_MASK_64 # enpassant right
-        possible_move = (moves & ~(moves - 1)) & BIT_MASK_64
+        moves = ((wP >> 1) & bP & self.rank_5 & ~self.file_a & EP) # enpassant right
+        possible_move = (moves & ~(moves - 1))
         while possible_move != 0:
             idx = possible_move.asBinaryString().index('1')
             c1, c2 = (idx % 8) - 1, idx % 8
             move_list += f'{c1}{c2}wE'
             moves &= ~possible_move
-            possible_move = (moves & ~(moves - 1)) & BIT_MASK_64
+            possible_move = (moves & ~(moves - 1))
 
-        moves = ((wP << 1) & bP & self.rank_5 & ~self.file_h & EP) & BIT_MASK_64 # enpassant left
-        possible_move = (moves & ~(moves - 1)) & BIT_MASK_64
+        moves = ((wP << 1) & bP & self.rank_5 & ~self.file_h & EP) # enpassant left
+        possible_move = (moves & ~(moves - 1))
         while possible_move != 0:
             idx = possible_move.asBinaryString().index('1')
             c1, c2 = (idx % 8) + 1, idx % 8
             move_list += f'{c1}{c2}wE'
             moves &= ~possible_move
-            possible_move = (moves & ~(moves - 1)) & BIT_MASK_64
+            possible_move = (moves & ~(moves - 1))
 
         return move_list
 
@@ -457,84 +456,84 @@ class Moves():
     def possibleBP(self, wP, bP, EP) -> str:
         # standard moves and captures
         move_list = '' # r1,c1,r2,c2
-        moves = ((bP >> 7) & self.enemy_pieces & ~self.rank_1 & ~self.file_h) & BIT_MASK_64 # right capture
-        possible_move = (moves & ~(moves - 1)) & BIT_MASK_64 # selects single possible move
+        moves = ((bP >> 7) & self.enemy_pieces & ~self.rank_1 & ~self.file_h) # right capture
+        possible_move = (moves & ~(moves - 1)) # selects single possible move
         while possible_move != 0:
             idx = possible_move.asBinaryString().index('1')
             move_list += f'{(idx // 8) - 1}{(idx % 8) + 1}{idx // 8}{idx % 8}'
             moves &= ~possible_move # remove current move from moves
-            possible_move = (moves & ~(moves - 1)) & BIT_MASK_64 # get next possible move
+            possible_move = (moves & ~(moves - 1)) # get next possible move
 
-        moves = ((bP >> 9) & self.enemy_pieces & ~self.rank_1 & ~self.file_a) & BIT_MASK_64 # left capture
-        possible_move = (moves & ~(moves - 1)) & BIT_MASK_64
+        moves = ((bP >> 9) & self.enemy_pieces & ~self.rank_1 & ~self.file_a) # left capture
+        possible_move = (moves & ~(moves - 1))
         while possible_move != 0:
             idx = possible_move.asBinaryString().index('1')
             move_list += f'{(idx // 8) - 1}{(idx % 8) - 1}{idx // 8}{idx % 8}'
             moves &= ~possible_move
-            possible_move = (moves & ~(moves - 1)) & BIT_MASK_64
+            possible_move = (moves & ~(moves - 1))
 
-        moves = ((bP >> 8) & self.empty & ~self.rank_1) & BIT_MASK_64 # move forward 1
-        possible_move = (moves & ~(moves - 1)) & BIT_MASK_64
+        moves = ((bP >> 8) & self.empty & ~self.rank_1) # move forward 1
+        possible_move = (moves & ~(moves - 1))
         while possible_move != 0:
             idx = possible_move.asBinaryString().index('1')
             move_list += f'{(idx // 8) - 1}{idx % 8}{idx // 8}{idx % 8}'
             moves &= ~possible_move
-            possible_move = (moves & ~(moves - 1)) & BIT_MASK_64
+            possible_move = (moves & ~(moves - 1))
 
-        moves = ((bP >> 16) & self.empty & (self.empty >> 8) & self.rank_5) & BIT_MASK_64 # move forward 2
-        possible_move = (moves & ~(moves - 1)) & BIT_MASK_64
+        moves = ((bP >> 16) & self.empty & (self.empty >> 8) & self.rank_5) # move forward 2
+        possible_move = (moves & ~(moves - 1))
         while possible_move != 0:
             idx = possible_move.asBinaryString().index('1')
             move_list += f'{(idx // 8) - 2}{idx % 8}{idx // 8}{idx % 8}'
             moves &= ~possible_move
-            possible_move = (moves & ~(moves - 1)) & BIT_MASK_64
+            possible_move = (moves & ~(moves - 1))
 
         # pawn promotion, move_list -> c1,c2,promo type,'P'
-        moves = ((bP >> 7) & self.enemy_pieces & self.rank_1 & ~self.file_h) & BIT_MASK_64 # promo by right capture
-        possible_move = (moves & ~(moves - 1)) & BIT_MASK_64
+        moves = ((bP >> 7) & self.enemy_pieces & self.rank_1 & ~self.file_h) # promo by right capture
+        possible_move = (moves & ~(moves - 1))
         while possible_move != 0:
             idx = possible_move.asBinaryString().index('1')
             c1, c2 = (idx % 8) + 1, idx % 8
             move_list += f'{c1}{c2}qP{c1}{c2}rP{c1}{c2}bP{c1}{c2}nP'
             moves &= ~possible_move
-            possible_move = (moves & ~(moves - 1)) & BIT_MASK_64
+            possible_move = (moves & ~(moves - 1))
 
-        moves = ((bP >> 9) & self.enemy_pieces & self.rank_1 & ~self.file_a) & BIT_MASK_64 # promo by left capture
-        possible_move = (moves & ~(moves - 1)) & BIT_MASK_64
+        moves = ((bP >> 9) & self.enemy_pieces & self.rank_1 & ~self.file_a) # promo by left capture
+        possible_move = (moves & ~(moves - 1))
         while possible_move != 0:
             idx = possible_move.asBinaryString().index('1')
             c1, c2 = (idx % 8) - 1, idx % 8
             move_list += f'{c1}{c2}qP{c1}{c2}rP{c1}{c2}bP{c1}{c2}nP'
             moves &= ~possible_move
-            possible_move = (moves & ~(moves - 1)) & BIT_MASK_64
+            possible_move = (moves & ~(moves - 1))
 
-        moves = ((bP >> 8) & self.empty & self.rank_1) & BIT_MASK_64 # promo by move forward 1
-        possible_move = (moves & ~(moves - 1)) & BIT_MASK_64
+        moves = ((bP >> 8) & self.empty & self.rank_1) # promo by move forward 1
+        possible_move = (moves & ~(moves - 1))
         while possible_move != 0:
             idx = possible_move.asBinaryString().index('1')
             c1 = c2 = idx % 8
             move_list += f'{c1}{c2}qP{c1}{c2}rP{c1}{c2}bP{c1}{c2}nP'
             moves &= ~possible_move
-            possible_move = (moves & ~(moves - 1)) & BIT_MASK_64
+            possible_move = (moves & ~(moves - 1))
 
         # enpassant, move_list -> c1,c2,'bE'
-        moves = ((bP << 1) & wP & self.rank_4 & ~self.file_h & EP) & BIT_MASK_64 # enpassant right
-        possible_move = (moves & ~(moves - 1)) & BIT_MASK_64
+        moves = ((bP << 1) & wP & self.rank_4 & ~self.file_h & EP) # enpassant right
+        possible_move = (moves & ~(moves - 1))
         while possible_move != 0:
             idx = possible_move.asBinaryString().index('1')
             c1, c2 = (idx % 8) + 1, idx % 8
             move_list += f'{c1}{c2}bE'
             moves &= ~possible_move
-            possible_move = (moves & ~(moves - 1)) & BIT_MASK_64
+            possible_move = (moves & ~(moves - 1))
 
-        moves = ((bP >> 1) & wP & self.rank_4 & ~self.file_a & EP) & BIT_MASK_64 # enpassant left
-        possible_move = (moves & ~(moves - 1)) & BIT_MASK_64
+        moves = ((bP >> 1) & wP & self.rank_4 & ~self.file_a & EP) # enpassant left
+        possible_move = (moves & ~(moves - 1))
         while possible_move != 0:
             idx = possible_move.asBinaryString().index('1')
             c1, c2 = (idx % 8) - 1, idx % 8
             move_list += f'{c1}{c2}bE'
             moves &= ~possible_move
-            possible_move = (moves & ~(moves - 1)) & BIT_MASK_64
+            possible_move = (moves & ~(moves - 1))
 
         return move_list
 
@@ -544,21 +543,21 @@ class Moves():
     """
     def possibleB(self, B) -> str:
         move_list = ''
-        bishop = (B & ~(B - 1)) & BIT_MASK_64
+        bishop = (B & ~(B - 1))
 
         while bishop != 0:
             bishop_idx = bishop.asBinaryString().index('1')
             moves = self.possibleDiagAndAntiDiagMoves(bishop_idx) & self.not_allied_pieces
-            possible_move = (moves & ~(moves - 1)) & BIT_MASK_64 # selects single possible move
+            possible_move = (moves & ~(moves - 1)) # selects single possible move
 
             while possible_move != 0:
                 move_idx = possible_move.asBinaryString().index('1')
                 move_list += f'{bishop_idx // 8}{bishop_idx % 8}{move_idx // 8}{move_idx % 8}'
                 moves &= ~possible_move # remove current possible move
-                possible_move = (moves & ~(moves - 1)) & BIT_MASK_64
+                possible_move = (moves & ~(moves - 1))
 
             B &= ~bishop # remove current bishop
-            bishop = (B & ~(B - 1)) & BIT_MASK_64
+            bishop = (B & ~(B - 1))
 
         return move_list
 
@@ -568,21 +567,21 @@ class Moves():
     """
     def possibleQ(self, Q) -> str:
         move_list = ''
-        queen = (Q & ~(Q - 1)) & BIT_MASK_64
+        queen = (Q & ~(Q - 1))
 
         while queen != 0:
             queen_idx = queen.asBinaryString().index('1')
             moves = (self.possibleDiagAndAntiDiagMoves(queen_idx) | self.possibleHAndVMoves(queen_idx)) & self.not_allied_pieces
-            possible_move = (moves & ~(moves - 1)) & BIT_MASK_64 # selects single possible move
+            possible_move = (moves & ~(moves - 1)) # selects single possible move
 
             while possible_move != 0:
                 move_idx = possible_move.asBinaryString().index('1')
                 move_list += f'{queen_idx // 8}{queen_idx % 8}{move_idx // 8}{move_idx % 8}'
                 moves &= ~possible_move # remove current possible move
-                possible_move = (moves & ~(moves - 1)) & BIT_MASK_64
+                possible_move = (moves & ~(moves - 1))
 
             Q &= ~queen # remove current queen
-            queen = (Q & ~(Q - 1)) & BIT_MASK_64
+            queen = (Q & ~(Q - 1))
 
         return move_list
 
@@ -592,21 +591,21 @@ class Moves():
     """
     def possibleR(self, R) -> str:
         move_list = ''
-        rook = (R & ~(R - 1)) & BIT_MASK_64
+        rook = (R & ~(R - 1))
 
         while rook != 0:
             rook_idx = rook.asBinaryString().index('1')
             moves = self.possibleHAndVMoves(rook_idx) & self.not_allied_pieces
-            possible_move = (moves & ~(moves - 1)) & BIT_MASK_64 # selects single possible move
+            possible_move = (moves & ~(moves - 1)) # selects single possible move
 
             while possible_move != 0:
                 move_idx = possible_move.asBinaryString().index('1')
                 move_list += f'{rook_idx // 8}{rook_idx % 8}{move_idx // 8}{move_idx % 8}'
                 moves &= ~possible_move # remove current possible move
-                possible_move = (moves & ~(moves - 1)) & BIT_MASK_64
+                possible_move = (moves & ~(moves - 1))
 
             R &= ~rook # remove current rook
-            rook = (R & ~(R - 1)) & BIT_MASK_64
+            rook = (R & ~(R - 1))
 
         return move_list
 
@@ -616,7 +615,7 @@ class Moves():
     """
     def possibleN(self, N) -> str:
         move_list = ''
-        knight = (N & ~(N - 1)) & BIT_MASK_64
+        knight = (N & ~(N - 1))
         knight_span_c6_idx = 18
 
         while knight != 0:
@@ -633,16 +632,16 @@ class Moves():
                 moves &= (~self.file_gh) & self.not_allied_pieces
             else:
                 moves &= (~self.file_ab) & self.not_allied_pieces
-            possible_move = (moves & ~(moves - 1)) & BIT_MASK_64 # selects single possible move
+            possible_move = (moves & ~(moves - 1)) # selects single possible move
 
             while possible_move != 0:
                 move_idx = possible_move.asBinaryString().index('1')
                 move_list += f'{knight_idx // 8}{knight_idx % 8}{move_idx // 8}{move_idx % 8}'
                 moves &= ~possible_move # remove current possible move
-                possible_move = (moves & ~(moves - 1)) & BIT_MASK_64
+                possible_move = (moves & ~(moves - 1))
 
             N &= ~knight # remove current knight
-            knight = (N & ~(N - 1)) & BIT_MASK_64
+            knight = (N & ~(N - 1))
 
         return move_list
 
@@ -652,7 +651,7 @@ class Moves():
     """
     def possibleK(self, K) -> str:
         move_list = ''
-        king = (K & ~(K - 1)) & BIT_MASK_64
+        king = (K & ~(K - 1))
         king_span_c7_idx = 10
 
         while king != 0:
@@ -669,16 +668,16 @@ class Moves():
                 moves &= (~self.file_gh) & self.not_allied_pieces
             else:
                 moves &= (~self.file_ab) & self.not_allied_pieces
-            possible_move = (moves & ~(moves - 1)) & BIT_MASK_64 # selects single possible move
+            possible_move = (moves & ~(moves - 1)) # selects single possible move
 
             while possible_move != 0:
                 move_idx = possible_move.asBinaryString().index('1')
                 move_list += f'{king_idx // 8}{king_idx % 8}{move_idx // 8}{move_idx % 8}'
                 moves &= ~possible_move # remove current possible move
-                possible_move = (moves & ~(moves - 1)) & BIT_MASK_64
+                possible_move = (moves & ~(moves - 1))
 
             K &= ~king # remove current king
-            king = (K & ~(K - 1)) & BIT_MASK_64
+            king = (K & ~(K - 1))
 
         return move_list
 
@@ -757,11 +756,11 @@ class Moves():
     def unsafeForBlack(self, wP, wN, wB, wR, wQ, wK, bP, bN, bB, bR, bQ, bK) -> int:
         self.occupied = wP|wN|wB|wR|wQ|wK|bP|bN|bB|bR|bQ|bK
         # pawn threats
-        unsafe = ((wP << 7) & ~self.file_a) & BIT_MASK_64 # pawn right capture
-        unsafe |= (((wP << 9) & ~self.file_h) & BIT_MASK_64) # pawn left capture
+        unsafe = ((wP << 7) & ~self.file_a) # pawn right capture
+        unsafe |= (((wP << 9) & ~self.file_h)) # pawn left capture
 
         # knight threat
-        knight = (wN & ~(wN - 1)) & BIT_MASK_64
+        knight = (wN & ~(wN - 1))
         knight_span_c6_idx = 18
         while knight != 0:
             knight_idx = knight.asBinaryString().index('1')
@@ -777,30 +776,30 @@ class Moves():
                 moves &= ~self.file_ab
             unsafe |= moves
             wN &= ~knight # remove current knight
-            knight = (wN & ~(wN - 1)) & BIT_MASK_64
+            knight = (wN & ~(wN - 1))
 
         # bishop / queen threats (diagonals)
         wQB = wQ | wB
-        b_or_q = (wQB & ~(wQB - 1)) & BIT_MASK_64
+        b_or_q = (wQB & ~(wQB - 1))
         while b_or_q != 0:
             b_or_q_idx = b_or_q.asBinaryString().index('1')
             moves = self.possibleDiagAndAntiDiagMoves(b_or_q_idx)
             unsafe |= moves
             wQB &= ~b_or_q # remove current bishop or queen
-            b_or_q = (wQB & ~(wQB - 1)) & BIT_MASK_64
+            b_or_q = (wQB & ~(wQB - 1))
 
         # rook / queen threats (hor and vert)
         wQR = wQ | wR
-        r_or_q = (wQR & ~(wQR - 1)) & BIT_MASK_64
+        r_or_q = (wQR & ~(wQR - 1))
         while r_or_q != 0:
             r_or_q_idx = r_or_q.asBinaryString().index('1')
             moves = self.possibleHAndVMoves(r_or_q_idx)
             unsafe |= moves
             wQR &= ~r_or_q # remove current rook or queen
-            r_or_q = (wQR & ~(wQR - 1)) & BIT_MASK_64
+            r_or_q = (wQR & ~(wQR - 1))
 
         # king threats
-        king = (wK & ~(wK - 1)) & BIT_MASK_64
+        king = (wK & ~(wK - 1))
         king_span_c7_idx = 10
         while king != 0:
             king_idx = king.asBinaryString().index('1')
@@ -816,7 +815,7 @@ class Moves():
                 moves &= ~self.file_ab
             unsafe |= moves
             wK &= ~king # remove current king
-            king = (wK & ~(wK - 1)) & BIT_MASK_64
+            king = (wK & ~(wK - 1))
 
         return unsafe
 
@@ -827,11 +826,11 @@ class Moves():
     def unsafeForWhite(self, wP, wN, wB, wR, wQ, wK, bP, bN, bB, bR, bQ, bK) -> int:
         self.occupied = wP|wN|wB|wR|wQ|wK|bP|bN|bB|bR|bQ|bK
         # pawn threats
-        unsafe = ((bP >> 7) & ~self.file_h) & BIT_MASK_64 # pawn right capture
-        unsafe |= (((bP >> 9) & ~self.file_a) & BIT_MASK_64) # pawn left capture
+        unsafe = ((bP >> 7) & ~self.file_h) # pawn right capture
+        unsafe |= (((bP >> 9) & ~self.file_a)) # pawn left capture
 
         # knight threat
-        knight = (bN & ~(bN - 1)) & BIT_MASK_64
+        knight = (bN & ~(bN - 1))
         knight_span_c6_idx = 18
         while knight != 0:
             knight_idx = knight.asBinaryString().index('1')
@@ -847,30 +846,30 @@ class Moves():
                 moves &= ~self.file_ab
             unsafe |= moves
             bN &= ~knight # remove current knight
-            knight = (bN & ~(bN - 1)) & BIT_MASK_64
+            knight = (bN & ~(bN - 1))
 
         # bishop / queen threats (diagonals)
         bQB = bQ | bB
-        b_or_q = (bQB & ~(bQB - 1)) & BIT_MASK_64
+        b_or_q = (bQB & ~(bQB - 1))
         while b_or_q != 0:
             b_or_q_idx = b_or_q.asBinaryString().index('1')
             moves = self.possibleDiagAndAntiDiagMoves(b_or_q_idx)
             unsafe |= moves
             bQB &= ~b_or_q # remove current bishop or queen
-            b_or_q = (bQB & ~(bQB - 1)) & BIT_MASK_64
+            b_or_q = (bQB & ~(bQB - 1))
 
         # rook / queen threats (hor and vert)
         bQR = bQ | bR
-        r_or_q = (bQR & ~(bQR - 1)) & BIT_MASK_64
+        r_or_q = (bQR & ~(bQR - 1))
         while r_or_q != 0:
             r_or_q_idx = r_or_q.asBinaryString().index('1')
             moves = self.possibleHAndVMoves(r_or_q_idx)
             unsafe |= moves
             bQR &= ~r_or_q # remove current rook or queen
-            r_or_q = (bQR & ~(bQR - 1)) & BIT_MASK_64
+            r_or_q = (bQR & ~(bQR - 1))
 
         # king threats
-        king = (bK & ~(bK - 1)) & BIT_MASK_64
+        king = (bK & ~(bK - 1))
         king_span_c7_idx = 10
         while king != 0:
             king_idx = king.asBinaryString().index('1')
@@ -886,6 +885,6 @@ class Moves():
                 moves &= ~self.file_ab
             unsafe |= moves
             bK &= ~king # remove current king
-            king = (bK & ~(bK - 1)) & BIT_MASK_64
+            king = (bK & ~(bK - 1))
 
         return unsafe
