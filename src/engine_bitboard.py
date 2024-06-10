@@ -28,28 +28,18 @@ class GameState():
             ['wP', 'wP', 'wP', 'wP', 'wP', 'wP', 'wP', 'wP'],
             ['wR', 'wN', 'wB', 'wQ', 'wK', 'wB', 'wN', 'wR'],
         ]
-        # self.board = [
-        #     ['bR', 'bN', 'bB', 'bQ', 'bK', 'bB', 'bN', 'bR'],
-        #     ['wP', 'wP', 'bP', '--', 'bP', 'bP', '--', 'wP'],
-        #     ['wP', '--', '--', '--', 'wP', '--', '--', 'wP'],
-        #     ['--', '--', '--', '--', '--', '--', '--', '--'],
-        #     ['--', '--', '--', '--', '--', '--', '--', '--'],
-        #     ['bP', '--', '--', '--', 'bP', '--', '--', 'bP'],
-        #     ['bP', 'bP', 'wP', '--', 'wP', 'wP', '--', 'bP'],
-        #     ['wR', 'wN', 'wB', 'wQ', 'wK', 'wB', 'wN', 'wR'],
-        # ]
 
         self.initBitBoards()
-
         # castling variables
         self.cwK = self.cwQ = self.cbK = self.cbQ = True
-
         self.whites_turn = True
-
         # populate bitboards
         self.arrayToBitboard()
 
 
+    """
+    Initialize each piece bitboard and bitboard for enpassant
+    """
     def initBitBoards(self) -> None:
         for piece in PIECE_NAMES:
             setattr(self, piece, BitBoard())
@@ -184,14 +174,14 @@ class GameState():
 
         # TODO Combine
         file_masks = [
-            -9187201950435737472,
-            4629771061636907072,
-            2314885530818453536,
-            1157442765409226768,
-            578721382704613384,
-            289360691352306692,
-            144680345676153346,
-            72340172838076673,
+            BitBoard(-9187201950435737472),
+            BitBoard(4629771061636907072),
+            BitBoard(2314885530818453536),
+            BitBoard(1157442765409226768),
+            BitBoard(578721382704613384),
+            BitBoard(289360691352306692),
+            BitBoard(144680345676153346),
+            BitBoard(72340172838076673),
         ] # from file a to file h
 
         char_idx += 1
@@ -282,6 +272,7 @@ class Moves():
 
 
     """
+    Takes in a piece bitboard, move string, and piece type and returns resulting piece bitboard
     """
     def makeMove(self, bitboard, move, p_type) -> int:
         if move[3].isnumeric(): # regular move
@@ -739,9 +730,7 @@ class Moves():
         rank_mask = self.rank_masks[piece_idx // 8]
         file_mask = self.file_masks[piece_idx % 8]
 
-        # possible_h = (self.occupied - 2*binary_idx) ^ BinaryOps.reverseBits(BinaryOps.reverseBits(self.occupied) - 2*BinaryOps.reverseBits(binary_idx))
         possible_h = (self.occupied - binary_idx*2) ^ (self.occupied.reverseBits() - binary_idx.reverseBits()*2).reverseBits()
-        # possible_v = ((self.occupied & file_mask) - 2*binary_idx) ^ BinaryOps.reverseBits(BinaryOps.reverseBits(self.occupied & file_mask) - 2*BinaryOps.reverseBits(binary_idx))
         possible_v = ((self.occupied & file_mask) - binary_idx*2) ^ ((self.occupied & file_mask).reverseBits() - binary_idx.reverseBits()*2).reverseBits()
         return (possible_h & rank_mask) | (possible_v & file_mask)
 
@@ -757,18 +746,16 @@ class Moves():
         diag_mask = self.diagonal_masks[(piece_idx // 8) + (piece_idx % 8)]
         a_diag_mask = self.anti_diagonal_masks[(piece_idx // 8) - (piece_idx % 8) + 7]
 
-        # possible_d = ((self.occupied & diag_mask) - 2*binary_idx) ^ BinaryOps.reverseBits(BinaryOps.reverseBits((self.occupied & diag_mask)) - 2*BinaryOps.reverseBits(binary_idx))
         possible_d = ((self.occupied & diag_mask) - binary_idx*2) ^ ((self.occupied & diag_mask).reverseBits() - binary_idx.reverseBits()*2).reverseBits()
-        # possible_ad = ((self.occupied & a_diag_mask) - 2*binary_idx) ^ BinaryOps.reverseBits(BinaryOps.reverseBits(self.occupied & a_diag_mask) - 2*BinaryOps.reverseBits(binary_idx))
         possible_ad = ((self.occupied & a_diag_mask) - binary_idx*2) ^ ((self.occupied & a_diag_mask).reverseBits() - binary_idx.reverseBits()*2).reverseBits()
-
         return (possible_d & diag_mask) | (possible_ad & a_diag_mask)
 
 
     """
     Returns a bitboard with 1's at all squares attacked by white
     """
-    def unsafeForBlack(self, wP, wN, wB, wR, wQ, wK) -> int:
+    def unsafeForBlack(self, wP, wN, wB, wR, wQ, wK, bP, bN, bB, bR, bQ, bK) -> int:
+        self.occupied = wP|wN|wB|wR|wQ|wK|bP|bN|bB|bR|bQ|bK
         # pawn threats
         unsafe = ((wP << 7) & ~self.file_a) & BIT_MASK_64 # pawn right capture
         unsafe |= (((wP << 9) & ~self.file_h) & BIT_MASK_64) # pawn left capture
@@ -830,14 +817,15 @@ class Moves():
             unsafe |= moves
             wK &= ~king # remove current king
             king = (wK & ~(wK - 1)) & BIT_MASK_64
-        breakpoint()
+
         return unsafe
 
 
     """
     Returns a bitboard with 1's at all squares attacked by black
     """
-    def unsafeForWhite(self, bP, bN, bB, bR, bQ, bK) -> int:
+    def unsafeForWhite(self, wP, wN, wB, wR, wQ, wK, bP, bN, bB, bR, bQ, bK) -> int:
+        self.occupied = wP|wN|wB|wR|wQ|wK|bP|bN|bB|bR|bQ|bK
         # pawn threats
         unsafe = ((bP >> 7) & ~self.file_h) & BIT_MASK_64 # pawn right capture
         unsafe |= (((bP >> 9) & ~self.file_a) & BIT_MASK_64) # pawn left capture
@@ -901,69 +889,3 @@ class Moves():
             king = (bK & ~(bK - 1)) & BIT_MASK_64
 
         return unsafe
-
-
-# class BinaryOps():
-    # """
-    # Converts a binary string to a bitboard
-    # """
-    # @staticmethod
-    # def convertStringToBitboard(binary) -> int:
-    #     int_rep = int(binary, 2)
-    #     if binary[0] == '1': # negative, do 2's comp
-    #         int_rep -= (1 << len(binary))
-    #     return int_rep
-
-
-    # """
-    # Prints a bitboard in array form
-    # """
-    # @staticmethod
-    # def drawArrayFromBitboard(bitboard) -> None:
-    #     new_board = [['0']*8 for _ in range(8)]
-    #     for i in range(64):
-    #         shift = 64 - 1 - i
-    #         if (bitboard >> shift) & 1 == 1:
-    #             new_board[i // 8][i % 8] = '1'
-    #     for r in new_board:
-    #         print(*r)
-
-
-    # """
-    # Takes an int as input and returns an int representing the reverse of the inputed binary
-    # """
-    # @staticmethod
-    # def reverseBits(int64) -> int:
-    #     bin_str = BinaryOps.convertBitboardToString(int64)
-    #     return BinaryOps.convertStringToBitboard(bin_str[::-1])
-
-
-    # """
-    # Takes an int as input and returns its binary string
-
-    # Special Cases:
-    # 1. append a postfix of 1 for negative numbers
-    # 2. bin() does not keep leading zeros to use f'{int64:064b}'
-    #     - int64 -> int to convert to binary string
-    #     - : -> everything after this is the format specifier
-    #     - 0 -> pad with zeros
-    #     - 64 -> pad to a total length off 64
-    #     - b -> use binary representation for the number
-    # """
-    # @staticmethod
-    # def convertBitboardToString(int64) -> str:
-    #     consider_window = int('1'*64, 2)
-    #     return f'{int64 & consider_window :064b}'
-
-
-
-# bit = BitBoard(0)
-# x = BitBoard(bin_str='1000000000000000000000000000000000000000000000000000000000001010')
-# breakpoint()
-# x.drawArray()
-# breakpoint()
-# # b = b + (BitBoard(1) << BitBoard(3))
-# print(bit.int64)
-# g = GameState()
-# g.importFEN('rnbqkbnr/p1pppppp/1p6/8/Q7/2P5/PP1PPPPP/RNB1KBNR b KQkq - 1 2')
-# g.drawGameArray()

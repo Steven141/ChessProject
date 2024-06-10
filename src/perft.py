@@ -8,7 +8,7 @@ import time
 
 class Perft():
     # static variables
-    PERFT_MAX_DEPTH = 1
+    PERFT_MAX_DEPTH = 4
     perft_move_counter = 0
     perft_total_move_counter = 0
 
@@ -64,7 +64,7 @@ class Perft():
                     if ((BB_1 << start_shift) & bR & (BB_1 << 63)) != 0: # black queen side rook move
                         cbQt = False
 
-                if ((wKt & mm.unsafeForWhite(bPt, bNt, bBt, bRt, bQt, bKt)) == 0 and whites_turn) or ((bKt & mm.unsafeForBlack(wPt, wNt, wBt, wRt, wQt, wKt)) == 0 and not whites_turn):
+                if ((wKt & mm.unsafeForWhite(wPt, wNt, wBt, wRt, wQt, wKt, bPt, bNt, bBt, bRt, bQt, bKt)) == 0 and whites_turn) or ((bKt & mm.unsafeForBlack(wPt, wNt, wBt, wRt, wQt, wKt, bPt, bNt, bBt, bRt, bQt, bKt)) == 0 and not whites_turn):
                     if depth + 1 == cls.PERFT_MAX_DEPTH: # only count leaf nodes
                         cls.perft_move_counter += 1
                     # print(cls.perft_move_counter)
@@ -79,8 +79,6 @@ class Perft():
             moves = mm.possibleMovesW(wP, wN, wB, wR, wQ, wK, bP, bN, bB, bR, bQ, bK, EP, cwK, cwQ, cbK, cbQ)
         else:
             moves = mm.possibleMovesB(wP, wN, wB, wR, wQ, wK, bP, bN, bB, bR, bQ, bK, EP, cwK, cwQ, cbK, cbQ)
-
-        print(len(moves) / 4)
         
         for i in range(0, len(moves), 4):
             wPt, wNt = mm.makeMove(wP, moves[i:i+4], 'P'), mm.makeMove(wN, moves[i:i+4], 'N')
@@ -108,21 +106,11 @@ class Perft():
                 if ((BB_1 << start_shift) & bR & (BB_1 << 63)) != 0: # black queen side rook move
                     cbQt = False
 
-            if moves[i:i+4] == '1323':
-                print("STARTING DEBUG")
-                print(bKt)
-                print()
-                breakpoint()
-                print(mm.unsafeForBlack(wPt, wNt, wBt, wRt, wQt, wKt))
-                print()
-                return
-
-            if ((wKt & mm.unsafeForWhite(bPt, bNt, bBt, bRt, bQt, bKt)) == 0 and whites_turn) or ((bKt & mm.unsafeForBlack(wPt, wNt, wBt, wRt, wQt, wKt)) == 0 and not whites_turn):
+            if ((wKt & mm.unsafeForWhite(wPt, wNt, wBt, wRt, wQt, wKt, bPt, bNt, bBt, bRt, bQt, bKt)) == 0 and whites_turn) or ((bKt & mm.unsafeForBlack(wPt, wNt, wBt, wRt, wQt, wKt, bPt, bNt, bBt, bRt, bQt, bKt)) == 0 and not whites_turn):
                 cls.perft(mm, wPt, wNt, wBt, wRt, wQt, wKt, bPt, bNt, bBt, bRt, bQt, bKt, EPt, cwKt, cwQt, cbKt, cbQt, not whites_turn, depth + 1)
                 print(f'{cls.moveToAlgebra(moves[i:i+4])} {cls.perft_move_counter}')
                 cls.perft_total_move_counter += cls.perft_move_counter
                 cls.perft_move_counter = 0
-
 
 
 gs = GameState()
@@ -130,12 +118,12 @@ gs = GameState()
 # gs.importFEN('rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1')
 # gs.importFEN('rnbqkbnr/pppppppp/8/8/8/2P5/PP1PPPPP/RNBQKBNR b KQkq - 0 1')
 # gs.importFEN('rnbqkbnr/p1pppppp/1p6/8/8/2P5/PP1PPPPP/RNBQKBNR w KQkq - 0 2')
-gs.importFEN('rnbqkbnr/p1pppppp/1p6/8/Q7/2P5/PP1PPPPP/RNB1KBNR b KQkq - 1 2')
+# gs.importFEN('rnbqkbnr/p1pppppp/1p6/8/Q7/2P5/PP1PPPPP/RNB1KBNR b KQkq - 1 2')
 gs.drawGameArray()
+
 mm = Moves()
 start = time.time()
-# Perft.perft(mm, gs.wP, gs.wN, gs.wB, gs.wR, gs.wQ, gs.wK, gs.bP, gs.bN, gs.bB, gs.bR, gs.bQ, gs.bK, gs.EP, gs.cwK, gs.cwQ, gs.cbK, gs.cbQ, True, 0)
-Perft.perftRoot(mm, gs.wP, gs.wN, gs.wB, gs.wR, gs.wQ, gs.wK, gs.bP, gs.bN, gs.bB, gs.bR, gs.bQ, gs.bK, gs.EP, gs.cwK, gs.cwQ, gs.cbK, gs.cbQ, False, 0)
+Perft.perftRoot(mm, gs.wP, gs.wN, gs.wB, gs.wR, gs.wQ, gs.wK, gs.bP, gs.bN, gs.bB, gs.bR, gs.bQ, gs.bK, gs.EP, gs.cwK, gs.cwQ, gs.cbK, gs.cbQ, True, 0)
+# Perft.perftRoot(mm, gs.wP, gs.wN, gs.wB, gs.wR, gs.wQ, gs.wK, gs.bP, gs.bN, gs.bB, gs.bR, gs.bQ, gs.bK, gs.EP, gs.cwK, gs.cwQ, gs.cbK, gs.cbQ, False, 0)
 print(Perft.perft_total_move_counter)
 print(f'Execution Time = {time.time() - start}')
-# print(Perft.perft_move_counter)
