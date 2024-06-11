@@ -9,7 +9,7 @@ import time
 
 class Perft():
     # static variables
-    PERFT_MAX_DEPTH = 2
+    PERFT_MAX_DEPTH = 4
     perft_move_counter = 0
     perft_total_move_counter = 0
 
@@ -46,7 +46,7 @@ class Perft():
                 bPt, bNt = mm.makeMove(bP, moves[i:i+4], 'p'), mm.makeMove(bN, moves[i:i+4], 'n')
                 bBt, bRt = mm.makeMove(bB, moves[i:i+4], 'b'), mm.makeMove(bR, moves[i:i+4], 'r')
                 bQt, bKt = mm.makeMove(bQ, moves[i:i+4], 'q'), mm.makeMove(bK, moves[i:i+4], 'k')
-                wRt, bRt = mm.makeMoveCastle(wRt, wKt, moves[i:i+4], 'R'), mm.makeMoveCastle(bRt, bKt, moves[i:i+4], 'r')
+                wRt, bRt = mm.makeMoveCastle(wRt, wK, moves[i:i+4], 'R'), mm.makeMoveCastle(bRt, bK, moves[i:i+4], 'r')
                 EPt = mm.makeMoveEP(wP|bP, moves[i:i+4])
 
                 cwKt, cwQt, cbKt, cbQt = cwK, cwQ, cbK, cbQ
@@ -90,7 +90,7 @@ class Perft():
             bPt, bNt = mm.makeMove(bP, moves[i:i+4], 'p'), mm.makeMove(bN, moves[i:i+4], 'n')
             bBt, bRt = mm.makeMove(bB, moves[i:i+4], 'b'), mm.makeMove(bR, moves[i:i+4], 'r')
             bQt, bKt = mm.makeMove(bQ, moves[i:i+4], 'q'), mm.makeMove(bK, moves[i:i+4], 'k')
-            wRt, bRt = mm.makeMoveCastle(wRt, wKt, moves[i:i+4], 'R'), mm.makeMoveCastle(bRt, bKt, moves[i:i+4], 'r')
+            wRt, bRt = mm.makeMoveCastle(wRt, wK, moves[i:i+4], 'R'), mm.makeMoveCastle(bRt, bK, moves[i:i+4], 'r')
             EPt = mm.makeMoveEP(wP|bP, moves[i:i+4])
 
             cwKt, cwQt, cbKt, cbQt = cwK, cwQ, cbK, cbQ
@@ -124,5 +124,6 @@ gs.drawGameArray()
 mm = Moves()
 start = time.time()
 Perft.perftRoot(mm, gs.wP, gs.wN, gs.wB, gs.wR, gs.wQ, gs.wK, gs.bP, gs.bN, gs.bB, gs.bR, gs.bQ, gs.bK, gs.EP, gs.cwK, gs.cwQ, gs.cbK, gs.cbQ, True, 0)
+# Perft.perftRoot(mm, gs.wP, gs.wN, gs.wB, gs.wR, gs.wQ, gs.wK, gs.bP, gs.bN, gs.bB, gs.bR, gs.bQ, gs.bK, gs.EP, gs.cwK, gs.cwQ, gs.cbK, gs.cbQ, False, 1)
 print(f'Total Moves = {Perft.perft_total_move_counter}')
 print(f'Execution Time = {time.time() - start}')

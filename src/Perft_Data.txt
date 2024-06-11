@@ -76,7 +76,7 @@ Checks      3
 Checkmates  0
 
 Depth       3
-Nodes       97862: failed with 97857
+Nodes       97862: passed in 43.9s
 Captures    17102
 En Passant  45
 Castles     3162
