@@ -2,13 +2,14 @@
 Performance testing the bitboard engine.
 """
 
+
 from engine_bitboard import Moves, GameState, BB_1
 import time
 
 
 class Perft():
     # static variables
-    PERFT_MAX_DEPTH = 4
+    PERFT_MAX_DEPTH = 2
     perft_move_counter = 0
     perft_total_move_counter = 0
 
@@ -45,6 +46,7 @@ class Perft():
                 bPt, bNt = mm.makeMove(bP, moves[i:i+4], 'p'), mm.makeMove(bN, moves[i:i+4], 'n')
                 bBt, bRt = mm.makeMove(bB, moves[i:i+4], 'b'), mm.makeMove(bR, moves[i:i+4], 'r')
                 bQt, bKt = mm.makeMove(bQ, moves[i:i+4], 'q'), mm.makeMove(bK, moves[i:i+4], 'k')
+                wRt, bRt = mm.makeMoveCastle(wRt, wKt, moves[i:i+4], 'R'), mm.makeMoveCastle(bRt, bKt, moves[i:i+4], 'r')
                 EPt = mm.makeMoveEP(wP|bP, moves[i:i+4])
 
                 cwKt, cwQt, cbKt, cbQt = cwK, cwQ, cbK, cbQ
@@ -72,6 +74,7 @@ class Perft():
 
 
     """
+    Run the performace test for each root node
     """
     @classmethod
     def perftRoot(cls, mm, wP, wN, wB, wR, wQ, wK, bP, bN, bB, bR, bQ, bK, EP, cwK, cwQ, cbK, cbQ, whites_turn, depth) -> None:
@@ -79,7 +82,7 @@ class Perft():
             moves = mm.possibleMovesW(wP, wN, wB, wR, wQ, wK, bP, bN, bB, bR, bQ, bK, EP, cwK, cwQ, cbK, cbQ)
         else:
             moves = mm.possibleMovesB(wP, wN, wB, wR, wQ, wK, bP, bN, bB, bR, bQ, bK, EP, cwK, cwQ, cbK, cbQ)
-        
+
         for i in range(0, len(moves), 4):
             wPt, wNt = mm.makeMove(wP, moves[i:i+4], 'P'), mm.makeMove(wN, moves[i:i+4], 'N')
             wBt, wRt = mm.makeMove(wB, moves[i:i+4], 'B'), mm.makeMove(wR, moves[i:i+4], 'R')
@@ -87,6 +90,7 @@ class Perft():
             bPt, bNt = mm.makeMove(bP, moves[i:i+4], 'p'), mm.makeMove(bN, moves[i:i+4], 'n')
             bBt, bRt = mm.makeMove(bB, moves[i:i+4], 'b'), mm.makeMove(bR, moves[i:i+4], 'r')
             bQt, bKt = mm.makeMove(bQ, moves[i:i+4], 'q'), mm.makeMove(bK, moves[i:i+4], 'k')
+            wRt, bRt = mm.makeMoveCastle(wRt, wKt, moves[i:i+4], 'R'), mm.makeMoveCastle(bRt, bKt, moves[i:i+4], 'r')
             EPt = mm.makeMoveEP(wP|bP, moves[i:i+4])
 
             cwKt, cwQt, cbKt, cbQt = cwK, cwQ, cbK, cbQ
@@ -114,16 +118,11 @@ class Perft():
 
 
 gs = GameState()
-# gs.importFEN('r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq -')
-# gs.importFEN('rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1')
-# gs.importFEN('rnbqkbnr/pppppppp/8/8/8/2P5/PP1PPPPP/RNBQKBNR b KQkq - 0 1')
-# gs.importFEN('rnbqkbnr/p1pppppp/1p6/8/8/2P5/PP1PPPPP/RNBQKBNR w KQkq - 0 2')
-# gs.importFEN('rnbqkbnr/p1pppppp/1p6/8/Q7/2P5/PP1PPPPP/RNB1KBNR b KQkq - 1 2')
+gs.importFEN('r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq -')
 gs.drawGameArray()
 
 mm = Moves()
 start = time.time()
 Perft.perftRoot(mm, gs.wP, gs.wN, gs.wB, gs.wR, gs.wQ, gs.wK, gs.bP, gs.bN, gs.bB, gs.bR, gs.bQ, gs.bK, gs.EP, gs.cwK, gs.cwQ, gs.cbK, gs.cbQ, True, 0)
-# Perft.perftRoot(mm, gs.wP, gs.wN, gs.wB, gs.wR, gs.wQ, gs.wK, gs.bP, gs.bN, gs.bB, gs.bR, gs.bQ, gs.bK, gs.EP, gs.cwK, gs.cwQ, gs.cbK, gs.cbQ, False, 0)
-print(Perft.perft_total_move_counter)
+print(f'Total Moves = {Perft.perft_total_move_counter}')
 print(f'Execution Time = {time.time() - start}')

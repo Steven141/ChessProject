@@ -2,13 +2,16 @@
 Bitboard Engine
 """
 
+
 import pdb
 from bitboard import BitBoard
+
 
 MAX_BITBOARD = 9223372036854775807
 MIN_BITBOARD = -9223372036854775808
 PIECE_NAMES = ['wP', 'wN', 'wB', 'wR', 'wQ', 'wK', 'bP', 'bN', 'bB', 'bR', 'bQ', 'bK']
 BB_1 = BitBoard(1)
+
 
 class GameState():
     """
@@ -72,7 +75,7 @@ class GameState():
     """
     def drawGameArray(self) -> None:
         new_board = [['--']*8 for _ in range(8)]
-        for i in range(64): # i = 0 -> board[0][0] -> bitboard_as_bin[0]
+        for i in range(64): # i = 0 -> board[0][0] -> bitboard_as_bin[0] -> top left
             shift = 64 - 1 - i
             if (self.wP >> shift) & 1 == 1:
                 new_board[i // 8][i % 8] = 'wP'
@@ -295,10 +298,10 @@ class Moves():
                 end_bitboard = self.file_masks[int(move[1])] & self.rank_masks[7]
                 end_shift = 64 - 1 - end_bitboard.asBinaryString().index('1')
             if p_type == move[2]:
-                bitboard &= ~(1 << start_shift)
-                bitboard |= (1 << end_shift)
+                bitboard &= ~(BB_1 << start_shift)
+                bitboard |= (BB_1 << end_shift)
             else:
-                bitboard &= ~(1 << end_shift)
+                bitboard &= ~(BB_1 << end_shift)
 
         elif move[3] == 'E': # enpassant
             if move[2] == 'w': # white
@@ -306,20 +309,45 @@ class Moves():
                 start_shift = 64 - 1 - start_bitboard.asBinaryString().index('1')
                 end_bitboard = self.file_masks[int(move[1])] & self.rank_masks[2]
                 end_shift = 64 - 1 - end_bitboard.asBinaryString().index('1')
-                bitboard &= ~(1 << (self.file_masks[int(move[1])] & self.rank_masks[3]))
+                bitboard &= ~(BB_1 << (self.file_masks[int(move[1])] & self.rank_masks[3]))
             else: # black
                 start_bitboard = self.file_masks[int(move[0])] & self.rank_masks[4]
                 start_shift = 64 - 1 - start_bitboard.asBinaryString().index('1')
                 end_bitboard = self.file_masks[int(move[1])] & self.rank_masks[5]
                 end_shift = 64 - 1 - end_bitboard.asBinaryString().index('1')
-                bitboard &= ~(1 << (self.file_masks[int(move[1])] & self.rank_masks[4]))
+                bitboard &= ~(BB_1 << (self.file_masks[int(move[1])] & self.rank_masks[4]))
             if (bitboard >> start_shift) & 1 == 1:
-                bitboard &= ~(1 << start_shift)
-                bitboard |= (1 << end_shift)
+                bitboard &= ~(BB_1 << start_shift)
+                bitboard |= (BB_1 << end_shift)
         else:
             print('ERROR: INVALID MOVE TYPE')
 
         return bitboard
+
+
+    """
+    Takes in a rook / king bitboards, move string, and piece type and returns resulting rook bitboard
+    """
+    def makeMoveCastle(self, rook, king, move, p_type) -> int:
+        start_shift = 64 - 1 - (int(move[0]) * 8 + int(move[1]))
+        if ((king >> start_shift) & 1 == 1) and ((move == '0402') or (move == '0406') or (move == '7472') or (move == '7476')):
+            if p_type == 'R': # white
+                match move:
+                    case '7476': # king side
+                        rook &= ~(BB_1 << self.castle_rooks[3])
+                        rook |= (BB_1 << (self.castle_rooks[3] + 2))
+                    case '7472': # queen side
+                        rook &= ~(BB_1 << self.castle_rooks[2])
+                        rook |= (BB_1 << (self.castle_rooks[2] - 3))
+            else: # black
+                match move:
+                    case '0406': # king side
+                        rook &= ~(BB_1 << self.castle_rooks[1])
+                        rook |= (BB_1 << (self.castle_rooks[1] + 2))
+                    case '0402': # queen side
+                        rook &= ~(BB_1 << self.castle_rooks[0])
+                        rook |= (BB_1 << (self.castle_rooks[0] - 3))
+        return rook
 
 
     """
@@ -343,7 +371,7 @@ class Moves():
         move_list = self.possibleWP(wP, bP, EP) + \
             self.possibleB(wB) + self.possibleQ(wQ) + \
             self.possibleR(wR) + self.possibleN(wN) + \
-            self.possibleK(wK) + self.possibleCastleW(wR, cwK, cwQ)
+            self.possibleK(wK) + self.possibleCastleW(wP, wN, wB, wR, wQ, wK, bP, bN, bB, bR, bQ, bK, cwK, cwQ)
         return move_list
 
 
@@ -358,7 +386,7 @@ class Moves():
         move_list = self.possibleBP(wP, bP, EP) + \
             self.possibleB(bB) + self.possibleQ(bQ) + \
             self.possibleR(bR) + self.possibleN(bN) + \
-            self.possibleK(bK) + self.possibleCastleB(bR, cbK, cbQ)
+            self.possibleK(bK) + self.possibleCastleB(wP, wN, wB, wR, wQ, wK, bP, bN, bB, bR, bQ, bK, cbK, cbQ)
         return move_list
 
 
@@ -685,24 +713,32 @@ class Moves():
     """
     Return a move list string containing all possible castles for white
     """
-    def possibleCastleW(self, wR, cwK, cwQ) -> str:
-        move_list = '' # king move
-        if cwK and (((BB_1 << self.castle_rooks[0]) & wR) != 0):
-            move_list += '7476'
-        if cwQ and (((BB_1 << self.castle_rooks[1]) & wR) != 0):
-            move_list += '7472'
+    def possibleCastleW(self, wP, wN, wB, wR, wQ, wK, bP, bN, bB, bR, bQ, bK, cwK, cwQ) -> str:
+        unsafe = self.unsafeForWhite(wP, wN, wB, wR, wQ, wK, bP, bN, bB, bR, bQ, bK)
+        move_list = '' # king move r1c1r2c1
+        if (unsafe & wK) == 0:
+            if cwK and (((BB_1 << self.castle_rooks[3]) & wR) != 0):
+                if ((self.occupied | unsafe) & ((BB_1 << 1) | (BB_1 << 2))) == 0:
+                    move_list += '7476'
+            if cwQ and (((BB_1 << self.castle_rooks[2]) & wR) != 0):
+                if ((self.occupied | (unsafe & ~(BB_1 << 6))) & ((BB_1 << 4) | (BB_1 << 5) | (BB_1 << 6))) == 0:
+                    move_list += '7472'
         return move_list
 
 
     """
     Return a move list string containing all possible castles for black
     """
-    def possibleCastleB(self, bR, cbK, cbQ) -> str:
-        move_list = '' # king move
-        if cbK and (((BB_1 << self.castle_rooks[2]) & bR) != 0):
-            move_list += '0406'
-        if cbQ and (((BB_1 << self.castle_rooks[3]) & bR) != 0):
-            move_list += '0402'
+    def possibleCastleB(self, wP, wN, wB, wR, wQ, wK, bP, bN, bB, bR, bQ, bK, cbK, cbQ) -> str:
+        unsafe = self.unsafeForBlack(wP, wN, wB, wR, wQ, wK, bP, bN, bB, bR, bQ, bK)
+        move_list = '' # king move r1c1r2c1
+        if (unsafe & bK) == 0:
+            if cbK and (((BB_1 << self.castle_rooks[1]) & bR) != 0):
+                if ((self.occupied | unsafe) & ((BB_1 << 58) | (BB_1 << 57))) == 0:
+                    move_list += '0406'
+            if cbQ and (((BB_1 << self.castle_rooks[0]) & bR) != 0):
+                if ((self.occupied | (unsafe & ~(BB_1 << 62))) & ((BB_1 << 62) | (BB_1 << 61) | (BB_1 << 60))) == 0:
+                    move_list += '0402'
         return move_list
 
 

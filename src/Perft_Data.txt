@@ -19,7 +19,7 @@ Checks      0
 Checkmates  0
 
 Depth       3
-Nodes       8,902
+Nodes       8,902: passed in 3.75s
 Captures    34
 En Passant  0
 Castles     0
@@ -28,7 +28,7 @@ Checks      12
 Checkmates  0
 
 Depth       4
-Nodes       197,281
+Nodes       197,281: passed in 141s
 Captures    1576
 En Passant  0
 Castles     0
@@ -37,7 +37,7 @@ Checks      469
 Checkmates  8
 
 Depth       5
-Nodes       4,865,609
+Nodes       4,865,609: passed in 2240s
 Captures    82719
 En Passant  258
 Castles     0
@@ -67,7 +67,7 @@ Checks      0
 Checkmates  0
 
 Depth       2
-Nodes       2039
+Nodes       2039: passed in 1.62s
 Captures    351
 En Passant  1
 Castles     91
@@ -76,7 +76,7 @@ Checks      3
 Checkmates  0
 
 Depth       3
-Nodes       97862
+Nodes       97862: failed with 97857
 Captures    17102
 En Passant  45
 Castles     3162
