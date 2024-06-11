@@ -309,13 +309,13 @@ class Moves():
                 start_shift = 64 - 1 - start_bitboard.asBinaryString().index('1')
                 end_bitboard = self.file_masks[int(move[1])] & self.rank_masks[2]
                 end_shift = 64 - 1 - end_bitboard.asBinaryString().index('1')
-                bitboard &= ~(BB_1 << (self.file_masks[int(move[1])] & self.rank_masks[3]))
+                bitboard &= ~(self.file_masks[int(move[1])] & self.rank_masks[3])
             else: # black
                 start_bitboard = self.file_masks[int(move[0])] & self.rank_masks[4]
                 start_shift = 64 - 1 - start_bitboard.asBinaryString().index('1')
                 end_bitboard = self.file_masks[int(move[1])] & self.rank_masks[5]
                 end_shift = 64 - 1 - end_bitboard.asBinaryString().index('1')
-                bitboard &= ~(BB_1 << (self.file_masks[int(move[1])] & self.rank_masks[4]))
+                bitboard &= ~(self.file_masks[int(move[1])] & self.rank_masks[4])
             if (bitboard >> start_shift) & 1 == 1:
                 bitboard &= ~(BB_1 << start_shift)
                 bitboard |= (BB_1 << end_shift)
@@ -355,9 +355,9 @@ class Moves():
     """
     def makeMoveEP(self, bitboard, move) -> int:
         start_shift = 64 - 1 - (int(move[0]) * 8 + int(move[1]))
-        if move[3].isnumeric() and (abs(int(move[0]) - int(move[2])) == 2) and ((bitboard >> start_shift) & 1) == 1:
+        if move[3].isnumeric() and (abs(int(move[0]) - int(move[2])) == 2) and (((bitboard >> start_shift) & 1) == 1):
             return self.file_masks[int(move[1])]
-        return 0
+        return BitBoard(0)
 
 
     """

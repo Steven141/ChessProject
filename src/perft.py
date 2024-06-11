@@ -21,10 +21,16 @@ class Perft():
     def moveToAlgebra(move) -> str:
         move_str = ''
         idx_to_file_ascii_shift = 49
-        move_str += chr(ord(move[1]) + idx_to_file_ascii_shift)
-        move_str += str(ord('8') - ord(move[0]))
-        move_str += chr(ord(move[3]) + idx_to_file_ascii_shift)
-        move_str += str(ord('8') - ord(move[2]))
+        if move[3] == 'E': # enpassant
+            move_str += chr(ord(move[0]) + idx_to_file_ascii_shift)
+            move_str += '5' if move[2] == 'w' else '4'
+            move_str += chr(ord(move[1]) + idx_to_file_ascii_shift)
+            move_str += '6' if move[2] == 'w' else '3'
+        else: # regular move
+            move_str += chr(ord(move[1]) + idx_to_file_ascii_shift)
+            move_str += str(ord('8') - ord(move[0]))
+            move_str += chr(ord(move[3]) + idx_to_file_ascii_shift)
+            move_str += str(ord('8') - ord(move[2]))
         return move_str
 
 
@@ -71,6 +77,9 @@ class Perft():
                         cls.perft_move_counter += 1
                     # print(cls.perft_move_counter)
                     cls.perft(mm, wPt, wNt, wBt, wRt, wQt, wKt, bPt, bNt, bBt, bRt, bQt, bKt, EPt, cwKt, cwQt, cbKt, cbQt, not whites_turn, depth + 1)
+
+        elif cls.perft_move_counter == 0:
+            cls.perft_move_counter += 1
 
 
     """
@@ -119,11 +128,20 @@ class Perft():
 
 gs = GameState()
 gs.importFEN('r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq -')
+# gs.importFEN('r3k2r/p1ppqpb1/bn2pnp1/3PN3/1pB1P3/2N2Q1p/PPPB1PPP/R3K2R b KQkq - 1 1') # e2c4
+# gs.importFEN('r3k2r/p2pqpb1/bn2pnp1/2pPN3/1pB1P3/2N2Q1p/PPPB1PPP/R3K2R w KQkq c6 0 2') # c7c5
+# gs.importFEN('r3k2r/p2pqpb1/bnP1pnp1/4N3/1pB1P3/2N2Q1p/PPPB1PPP/R3K2R b KQkq - 0 2') # d5c6
+
+# gs.importFEN('r3k2r/p1ppqpb1/bn2pnp1/3P4/1pN1P3/2N2Q1p/PPPBBPPP/R3K2R b KQkq - 1 1') # e5c4
 gs.drawGameArray()
 
 mm = Moves()
 start = time.time()
 Perft.perftRoot(mm, gs.wP, gs.wN, gs.wB, gs.wR, gs.wQ, gs.wK, gs.bP, gs.bN, gs.bB, gs.bR, gs.bQ, gs.bK, gs.EP, gs.cwK, gs.cwQ, gs.cbK, gs.cbQ, True, 0)
+# Perft.perftRoot(mm, gs.wP, gs.wN, gs.wB, gs.wR, gs.wQ, gs.wK, gs.bP, gs.bN, gs.bB, gs.bR, gs.bQ, gs.bK, gs.EP, gs.cwK, gs.cwQ, gs.cbK, gs.cbQ, False, 1)
+# Perft.perftRoot(mm, gs.wP, gs.wN, gs.wB, gs.wR, gs.wQ, gs.wK, gs.bP, gs.bN, gs.bB, gs.bR, gs.bQ, gs.bK, gs.EP, gs.cwK, gs.cwQ, gs.cbK, gs.cbQ, True, 2)
+# Perft.perftRoot(mm, gs.wP, gs.wN, gs.wB, gs.wR, gs.wQ, gs.wK, gs.bP, gs.bN, gs.bB, gs.bR, gs.bQ, gs.bK, gs.EP, gs.cwK, gs.cwQ, gs.cbK, gs.cbQ, False, 3)
+
 # Perft.perftRoot(mm, gs.wP, gs.wN, gs.wB, gs.wR, gs.wQ, gs.wK, gs.bP, gs.bN, gs.bB, gs.bR, gs.bQ, gs.bK, gs.EP, gs.cwK, gs.cwQ, gs.cbK, gs.cbQ, False, 1)
 print(f'Total Moves = {Perft.perft_total_move_counter}')
 print(f'Execution Time = {time.time() - start}')

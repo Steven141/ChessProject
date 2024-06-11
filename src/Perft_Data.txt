@@ -85,7 +85,7 @@ Checks      993
 Checkmates  1
 
 Depth       4
-Nodes       4085603
+Nodes       4085603: passed in 3067s
 Captures    757163
 En Passant  1929
 Castles     128013
