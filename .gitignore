@@ -51,3 +51,6 @@ docs/_build/
 
 # Generated Rust Files
 /target/
+
+# Sharper Stuff:
+/Sharper/log.txt

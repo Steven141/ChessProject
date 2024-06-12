@@ -26,6 +26,12 @@ class Perft():
             move_str += '5' if move[2] == 'w' else '4'
             move_str += chr(ord(move[1]) + idx_to_file_ascii_shift)
             move_str += '6' if move[2] == 'w' else '3'
+        elif move[3] == 'P': # pawn promo
+            move_str += chr(ord(move[0]) + idx_to_file_ascii_shift)
+            move_str += '7' if move[2].isupper() else '2'
+            move_str += chr(ord(move[1]) + idx_to_file_ascii_shift)
+            move_str += '8' if move[2].isupper() else '1'
+            move_str += move[2]
         else: # regular move
             move_str += chr(ord(move[1]) + idx_to_file_ascii_shift)
             move_str += str(ord('8') - ord(move[0]))
@@ -59,6 +65,7 @@ class Perft():
 
                 if moves[i + 3].isnumeric(): # regular move
                     start_shift = 64 - 1 - (int(moves[i]) * 8 + int(moves[i + 1]))
+                    end_shift = 64 - 1 - (int(moves[i + 2]) * 8 + int(moves[i + 3]))
                     if ((BB_1 << start_shift) & wK) != 0: # white king move
                         cwKt = cwQt = False
                     if ((BB_1 << start_shift) & bK) != 0: # black king move
@@ -70,6 +77,14 @@ class Perft():
                     if ((BB_1 << start_shift) & bR & (BB_1 << 56)) != 0: # black king side rook move
                         cbKt = False
                     if ((BB_1 << start_shift) & bR & (BB_1 << 63)) != 0: # black queen side rook move
+                        cbQt = False
+                    if ((BB_1 << end_shift) & 1) != 0: # white king side rook taken
+                        cwKt = False
+                    if ((BB_1 << end_shift) & (BB_1 << 7)) != 0: # white queen side rook taken
+                        cwQt = False
+                    if ((BB_1 << end_shift) & (BB_1 << 56)) != 0: # black king side rook taken
+                        cbKt = False
+                    if ((BB_1 << end_shift) & (BB_1 << 63)) != 0: # black queen side rook taken
                         cbQt = False
 
                 if ((wKt & mm.unsafeForWhite(wPt, wNt, wBt, wRt, wQt, wKt, bPt, bNt, bBt, bRt, bQt, bKt)) == 0 and whites_turn) or ((bKt & mm.unsafeForBlack(wPt, wNt, wBt, wRt, wQt, wKt, bPt, bNt, bBt, bRt, bQt, bKt)) == 0 and not whites_turn):
@@ -106,6 +121,7 @@ class Perft():
 
             if moves[i + 3].isnumeric(): # regular move
                 start_shift = 64 - 1 - (int(moves[i]) * 8 + int(moves[i + 1]))
+                end_shift = 64 - 1 - (int(moves[i + 2]) * 8 + int(moves[i + 3]))
                 if ((BB_1 << start_shift) & wK) != 0: # white king move
                     cwKt = cwQt = False
                 if ((BB_1 << start_shift) & bK) != 0: # black king move
@@ -118,6 +134,14 @@ class Perft():
                     cbKt = False
                 if ((BB_1 << start_shift) & bR & (BB_1 << 63)) != 0: # black queen side rook move
                     cbQt = False
+                if ((BB_1 << end_shift) & 1) != 0: # white king side rook taken
+                    cwKt = False
+                if ((BB_1 << end_shift) & (BB_1 << 7)) != 0: # white queen side rook taken
+                    cwQt = False
+                if ((BB_1 << end_shift) & (BB_1 << 56)) != 0: # black king side rook taken
+                    cbKt = False
+                if ((BB_1 << end_shift) & (BB_1 << 63)) != 0: # black queen side rook taken
+                    cbQt = False
 
             if ((wKt & mm.unsafeForWhite(wPt, wNt, wBt, wRt, wQt, wKt, bPt, bNt, bBt, bRt, bQt, bKt)) == 0 and whites_turn) or ((bKt & mm.unsafeForBlack(wPt, wNt, wBt, wRt, wQt, wKt, bPt, bNt, bBt, bRt, bQt, bKt)) == 0 and not whites_turn):
                 cls.perft(mm, wPt, wNt, wBt, wRt, wQt, wKt, bPt, bNt, bBt, bRt, bQt, bKt, EPt, cwKt, cwQt, cbKt, cbQt, not whites_turn, depth + 1)
@@ -127,21 +151,13 @@ class Perft():
 
 
 gs = GameState()
-gs.importFEN('r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq -')
-# gs.importFEN('r3k2r/p1ppqpb1/bn2pnp1/3PN3/1pB1P3/2N2Q1p/PPPB1PPP/R3K2R b KQkq - 1 1') # e2c4
-# gs.importFEN('r3k2r/p2pqpb1/bn2pnp1/2pPN3/1pB1P3/2N2Q1p/PPPB1PPP/R3K2R w KQkq c6 0 2') # c7c5
-# gs.importFEN('r3k2r/p2pqpb1/bnP1pnp1/4N3/1pB1P3/2N2Q1p/PPPB1PPP/R3K2R b KQkq - 0 2') # d5c6
+gs.importFEN('8/8/2k5/5q2/5n2/8/5K2/8 b - - 0 1')
 
-# gs.importFEN('r3k2r/p1ppqpb1/bn2pnp1/3P4/1pN1P3/2N2Q1p/PPPBBPPP/R3K2R b KQkq - 1 1') # e5c4
 gs.drawGameArray()
 
 mm = Moves()
 start = time.time()
-Perft.perftRoot(mm, gs.wP, gs.wN, gs.wB, gs.wR, gs.wQ, gs.wK, gs.bP, gs.bN, gs.bB, gs.bR, gs.bQ, gs.bK, gs.EP, gs.cwK, gs.cwQ, gs.cbK, gs.cbQ, True, 0)
-# Perft.perftRoot(mm, gs.wP, gs.wN, gs.wB, gs.wR, gs.wQ, gs.wK, gs.bP, gs.bN, gs.bB, gs.bR, gs.bQ, gs.bK, gs.EP, gs.cwK, gs.cwQ, gs.cbK, gs.cbQ, False, 1)
-# Perft.perftRoot(mm, gs.wP, gs.wN, gs.wB, gs.wR, gs.wQ, gs.wK, gs.bP, gs.bN, gs.bB, gs.bR, gs.bQ, gs.bK, gs.EP, gs.cwK, gs.cwQ, gs.cbK, gs.cbQ, True, 2)
-# Perft.perftRoot(mm, gs.wP, gs.wN, gs.wB, gs.wR, gs.wQ, gs.wK, gs.bP, gs.bN, gs.bB, gs.bR, gs.bQ, gs.bK, gs.EP, gs.cwK, gs.cwQ, gs.cbK, gs.cbQ, False, 3)
+Perft.perftRoot(mm, gs.wP, gs.wN, gs.wB, gs.wR, gs.wQ, gs.wK, gs.bP, gs.bN, gs.bB, gs.bR, gs.bQ, gs.bK, gs.EP, gs.cwK, gs.cwQ, gs.cbK, gs.cbQ, False, 0)
 
-# Perft.perftRoot(mm, gs.wP, gs.wN, gs.wB, gs.wR, gs.wQ, gs.wK, gs.bP, gs.bN, gs.bB, gs.bR, gs.bQ, gs.bK, gs.EP, gs.cwK, gs.cwQ, gs.cbK, gs.cbQ, False, 1)
 print(f'Total Moves = {Perft.perft_total_move_counter}')
 print(f'Execution Time = {time.time() - start}')

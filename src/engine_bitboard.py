@@ -298,9 +298,9 @@ class Moves():
                 end_bitboard = self.file_masks[int(move[1])] & self.rank_masks[7]
                 end_shift = 64 - 1 - end_bitboard.asBinaryString().index('1')
             if p_type == move[2]:
-                bitboard &= ~(BB_1 << start_shift)
                 bitboard |= (BB_1 << end_shift)
             else:
+                bitboard &= ~(BB_1 << start_shift)
                 bitboard &= ~(BB_1 << end_shift)
 
         elif move[3] == 'E': # enpassant
