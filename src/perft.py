@@ -9,7 +9,7 @@ import time
 
 class Perft():
     # static variables
-    PERFT_MAX_DEPTH = 4
+    PERFT_MAX_DEPTH = 6
     perft_move_counter = 0
     perft_total_move_counter = 0
 
@@ -151,13 +151,13 @@ class Perft():
 
 
 gs = GameState()
-gs.importFEN('8/8/2k5/5q2/5n2/8/5K2/8 b - - 0 1')
+gs.importFEN('3k4/8/8/8/8/8/8/R3K3 w Q - 0 1')
 
 gs.drawGameArray()
 
 mm = Moves()
 start = time.time()
-Perft.perftRoot(mm, gs.wP, gs.wN, gs.wB, gs.wR, gs.wQ, gs.wK, gs.bP, gs.bN, gs.bB, gs.bR, gs.bQ, gs.bK, gs.EP, gs.cwK, gs.cwQ, gs.cbK, gs.cbQ, False, 0)
+Perft.perftRoot(mm, gs.wP, gs.wN, gs.wB, gs.wR, gs.wQ, gs.wK, gs.bP, gs.bN, gs.bB, gs.bR, gs.bQ, gs.bK, gs.EP, gs.cwK, gs.cwQ, gs.cbK, gs.cbQ, True, 0)
 
 print(f'Total Moves = {Perft.perft_total_move_counter}')
 print(f'Execution Time = {time.time() - start}')
