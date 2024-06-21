@@ -1,3 +1,5 @@
+//! Chess Engine Library
+
 use pyo3::prelude::*;
 
 

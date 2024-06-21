@@ -243,7 +243,7 @@ class BitBoardMasks():
         BitBoard(128),
     ] # from top right to bottom left
 
-    # property getters / setters to keep syncing of the attributes between multiple instances
+    # property getters / setters to keep synchronization of the attributes between multiple instances
     # only create setter for mutable data
 
     @property
