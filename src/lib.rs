@@ -2,6 +2,8 @@
 
 
 #![allow(non_snake_case)]
+#![allow(unused_parens)]
+#![allow(unused_assignments)]
 
 
 use pyo3::prelude::*;
@@ -138,6 +140,7 @@ pub struct GameState {
     bR: i64,
     bQ: i64,
     bK: i64,
+    EP: i64,
     masks: SpecialBitBoards,
 }
 
@@ -174,6 +177,7 @@ impl GameState {
             bR: 0,
             bQ: 0,
             bK: 0,
+            EP: 0,
             masks: SpecialBitBoards::new(),
         };
         gs.arrayToI64();
@@ -260,34 +264,124 @@ impl GameState {
             }
             println!();
         }
+        println!();
+    }
+
+
+    fn importFEN(&mut self, fen_str: String) {
+        self.wP = 0; self.wN = 0; self.wB = 0;
+        self.wR = 0; self.wQ = 0; self.wK = 0;
+        self.bP = 0; self.bN = 0; self.bB = 0;
+        self.bR = 0; self.bQ = 0; self.bK = 0;
+        self.cwK = false; self.cwQ = false;
+        self.cbK = false; self.cbQ = false;
+        let mut char_idx: usize = 0;
+        let mut board_idx: i64 = 0;
+        while fen_str.chars().nth(char_idx).unwrap() != ' ' {
+            let board_idx_shift: i64 = 64 - 1 - board_idx;
+            match fen_str.chars().nth(char_idx).unwrap() {
+                'P' => {
+                    self.wP |= (1 << board_idx_shift);
+                    board_idx += 1;
+                },
+                'N' => {
+                    self.wN |= (1 << board_idx_shift);
+                    board_idx += 1;
+                },
+                'B' => {
+                    self.wB |= (1 << board_idx_shift);
+                    board_idx += 1;
+                },
+                'R' => {
+                    self.wR |= (1 << board_idx_shift);
+                    board_idx += 1;
+                },
+                'Q' => {
+                    self.wQ |= (1 << board_idx_shift);
+                    board_idx += 1;
+                },
+                'K' => {
+                    self.wK |= (1 << board_idx_shift);
+                    board_idx += 1;
+                },
+                'p' => {
+                    self.bP |= (1 << board_idx_shift);
+                    board_idx += 1;
+                },
+                'n' => {
+                    self.bN |= (1 << board_idx_shift);
+                    board_idx += 1;
+                },
+                'b' => {
+                    self.bB |= (1 << board_idx_shift);
+                    board_idx += 1;
+                },
+                'r' => {
+                    self.bR |= (1 << board_idx_shift);
+                    board_idx += 1;
+                },
+                'q' => {
+                    self.bQ |= (1 << board_idx_shift);
+                    board_idx += 1;
+                },
+                'k' => {
+                    self.bK |= (1 << board_idx_shift);
+                    board_idx += 1;
+                },
+                '1' => board_idx += 1,
+                '2' => board_idx += 2,
+                '3' => board_idx += 3,
+                '4' => board_idx += 4,
+                '5' => board_idx += 5,
+                '6' => board_idx += 6,
+                '7' => board_idx += 7,
+                '8' => board_idx += 8,
+                _ => (),
+            }
+            char_idx += 1;
+        }
+
+        char_idx += 1;
+        self.whites_turn = fen_str.chars().nth(char_idx).unwrap() == 'w';
+        char_idx += 2;
+
+        while fen_str.chars().nth(char_idx).unwrap() != ' ' {
+            match fen_str.chars().nth(char_idx).unwrap() {
+                'K' => self.cwK = true,
+                'Q' => self.cwQ = true,
+                'k' => self.cbK = true,
+                'q' => self.cbQ = true,
+                _ => (),
+            }
+            char_idx += 1;
+        }
+
+        char_idx += 1;
+        if fen_str.chars().nth(char_idx).unwrap() != '-' {
+            self.EP = self.masks.file_masks[fen_str.chars().nth(char_idx).unwrap() as usize - 'a' as usize];
+            char_idx += 1;
+        }
+        // Rest of FEN not used
     }
 }
 
 
-/// Holds information about a specific move
+/// Holds information about all the moves
 #[pyclass(module = "ChessProject", get_all, set_all)]
-struct Move {
-    start_sq: (i32, i32),
-    end_sq: (i32, i32),
-    is_enpassant_move: bool,
-    is_castle_move: bool,
+struct Moves {
+    castle_rooks: [usize; 4],
+    masks: SpecialBitBoards,
 }
 
 
 #[pymethods]
-impl Move {
+impl Moves {
     #[new]
-    fn new(start_sq: (i32, i32), end_sq: (i32, i32), is_enpassant_move: Option<bool>, is_castle_move: Option<bool>) -> Self {
-        Move {
-            start_sq,
-            end_sq,
-            is_enpassant_move: is_enpassant_move.unwrap_or(false),
-            is_castle_move: is_castle_move.unwrap_or(false),
+    fn new(masks: &SpecialBitBoards) -> Self {
+        Moves {
+            castle_rooks: [63, 56, 7, 0],
+            masks: masks.clone(),
         }
-    }
-
-    fn __str__(&self) -> PyResult<String> {
-        Ok(format!("Start={:?} End={:?} Enpassant={} Castle={}", self.start_sq, self.end_sq, self.is_enpassant_move, self.is_castle_move))
     }
 }
 
@@ -316,7 +410,7 @@ macro_rules! add_functions {
 #[pymodule]
 fn ChessProject(_py: Python, m: &PyModule) -> PyResult<()> {
     add_functions!(m, sum_as_string);
-    add_classes!(m, GameState, Move, SpecialBitBoards);
+    add_classes!(m, SpecialBitBoards, GameState, Moves);
     Ok(())
 }
 
@@ -331,8 +425,16 @@ mod tests {
     #[test]
     fn basic_test() {
         println!("Basic Test!");
-        let gs = GameState::new();
+        let mut gs = GameState::new();
         gs.drawGameArray();
+        gs.importFEN(String::from("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq -"));
+        gs.drawGameArray();
+
+        let mut m: Moves = Moves::new(&gs.masks);
+        m.masks.empty = 5;
+        gs.masks.empty = 3;
+        println!("{:?}", gs.masks.empty);
+        println!("{:?}", m.masks.empty);
         println!("DONE!");
         panic!();
     }
