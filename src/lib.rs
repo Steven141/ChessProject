@@ -388,10 +388,10 @@ impl Moves {
 
 
     fn possibleMovesW(&mut self, wP: i64, wN: i64, wB: i64, wR: i64, wQ: i64, wK: i64, bP: i64, bN: i64, bB: i64, bR: i64, bQ: i64, bK: i64, EP: i64, cwK: bool, cwQ: bool, cbK: bool, cbQ: bool) -> String {
-        self.masks.not_allied_pieces = wrap_op!((wP|wN|wB|wR|wQ|wK|bK), '!'); // avoid illegal bK capture
+        self.masks.not_allied_pieces = !(wP|wN|wB|wR|wQ|wK|bK); // avoid illegal bK capture
         self.masks.enemy_pieces = bP|bN|bB|bR|bQ; // avoid illegal bK capture
-        self.masks.empty = wrap_op!((wP|wN|wB|wR|wQ|wK|bP|bN|bB|bR|bQ|bK), '!');
-        self.masks.occupied = wrap_op!(self.masks.empty, '!');
+        self.masks.empty = !(wP|wN|wB|wR|wQ|wK|bP|bN|bB|bR|bQ|bK);
+        self.masks.occupied = !self.masks.empty;
         self.possibleWP(wP, bP, EP)
             + &self.possibleB(wB)
             + &self.possibleQ(wQ)
@@ -399,6 +399,21 @@ impl Moves {
             + &self.possibleN(wN)
             + &self.possibleK(wK)
             + &self.possibleCastleW(wP, wN, wB, wR, wQ, wK, bP, bN, bB, bR, bQ, bK, cwK, cwQ)
+    }
+
+
+    fn possibleMovesB(&mut self, wP: i64, wN: i64, wB: i64, wR: i64, wQ: i64, wK: i64, bP: i64, bN: i64, bB: i64, bR: i64, bQ: i64, bK: i64, EP: i64, cwK: bool, cwQ: bool, cbK: bool, cbQ: bool) -> String {
+        self.masks.not_allied_pieces = !(bP|bN|bB|bR|bQ|bK|wK); // avoid illegal wK capture
+        self.masks.enemy_pieces = wP|wN|wB|wR|wQ; // avoid illegal wK capture
+        self.masks.empty = !(wP|wN|wB|wR|wQ|wK|bP|bN|bB|bR|bQ|bK);
+        self.masks.occupied = !self.masks.empty;
+        self.possibleBP(wP, bP, EP)
+            + &self.possibleB(bB)
+            + &self.possibleQ(bQ)
+            + &self.possibleR(bR)
+            + &self.possibleN(bN)
+            + &self.possibleK(bK)
+            + &self.possibleCastleB(wP, wN, wB, wR, wQ, wK, bP, bN, bB, bR, bQ, bK, cbK, cbQ)
     }
 
 
@@ -489,6 +504,100 @@ impl Moves {
             let idx: u32 = possible_move.leading_zeros();
             let c1 = (idx % 8) + 1; let c2 = idx % 8;
             move_list += &format!("{}{}wE", c1, c2);
+            moves &= !possible_move;
+            possible_move = moves & !wrap_op!(moves, 1, '-');
+        }
+        move_list
+    }
+
+
+    fn possibleBP(&self, wP: i64, bP: i64, EP: i64) -> String {
+        // standard moves and captures
+        let mut move_list: String = String::new(); // r1,c1,r2,c2
+        let mut moves: i64 = usgn_r_shift!(bP, 7) & self.masks.enemy_pieces & !self.masks.rank_masks[7] & !self.masks.file_masks[7]; // right capture
+        let mut possible_move: i64 = moves & !wrap_op!(moves, 1, '-'); // selects single possible move
+        while possible_move != 0 {
+            let idx: u32 = possible_move.leading_zeros();
+            move_list += &format!("{}{}{}{}", (idx / 8) - 1, (idx % 8) + 1, idx / 8, idx % 8);
+            moves &= !possible_move; // remove current move from moves
+            possible_move = moves & !wrap_op!(moves, 1, '-'); // get next possible move
+        }
+
+        moves = usgn_r_shift!(bP, 9) & self.masks.enemy_pieces & !self.masks.rank_masks[7] & !self.masks.file_masks[0]; // left capture
+        possible_move = moves & !wrap_op!(moves, 1, '-');
+        while possible_move != 0 {
+            let idx: u32 = possible_move.leading_zeros();
+            move_list += &format!("{}{}{}{}", (idx / 8) - 1, (idx % 8) - 1, idx / 8, idx % 8);
+            moves &= !possible_move;
+            possible_move = moves & !wrap_op!(moves, 1, '-');
+        }
+
+        moves = usgn_r_shift!(bP, 8) & self.masks.empty & !self.masks.rank_masks[7]; // move forward 1
+        possible_move = moves & !wrap_op!(moves, 1, '-');
+        while possible_move != 0 {
+            let idx: u32 = possible_move.leading_zeros();
+            move_list += &format!("{}{}{}{}", (idx / 8) - 1, idx % 8, idx / 8, idx % 8);
+            moves &= !possible_move;
+            possible_move = moves & !wrap_op!(moves, 1, '-');
+        }
+
+        moves = usgn_r_shift!(bP, 16) & self.masks.empty & usgn_r_shift!(self.masks.empty, 8) & self.masks.rank_masks[3]; // move forward 2
+        possible_move = moves & !wrap_op!(moves, 1, '-');
+        while possible_move != 0 {
+            let idx: u32 = possible_move.leading_zeros();
+            move_list += &format!("{}{}{}{}", (idx / 8) - 2, idx % 8, idx / 8, idx % 8);
+            moves &= !possible_move;
+            possible_move = moves & !wrap_op!(moves, 1, '-');
+        }
+
+        // pawn promotion, move_list -> c1,c2,promo type,'P'
+        moves = usgn_r_shift!(bP, 7) & self.masks.enemy_pieces & self.masks.rank_masks[7] & !self.masks.file_masks[7]; // promo by right capture
+        possible_move = moves & !wrap_op!(moves, 1, '-');
+        while possible_move != 0 {
+            let idx: u32 = possible_move.leading_zeros();
+            let c1 = (idx % 8) + 1; let c2 = idx % 8;
+            move_list += &format!("{}{}qP{}{}rP{}{}bP{}{}nP", c1, c2, c1, c2, c1, c2, c1, c2);
+            moves &= !possible_move;
+            possible_move = moves & !wrap_op!(moves, 1, '-');
+        }
+
+        moves = usgn_r_shift!(bP, 9) & self.masks.enemy_pieces & self.masks.rank_masks[7] & !self.masks.file_masks[0]; // promo by left capture
+        possible_move = moves & !wrap_op!(moves, 1, '-');
+        while possible_move != 0 {
+            let idx: u32 = possible_move.leading_zeros();
+            let c1 = (idx % 8) - 1; let c2 = idx % 8;
+            move_list += &format!("{}{}qP{}{}rP{}{}bP{}{}nP", c1, c2, c1, c2, c1, c2, c1, c2);
+            moves &= !possible_move;
+            possible_move = moves & !wrap_op!(moves, 1, '-');
+        }
+
+        moves = usgn_r_shift!(bP, 8) & self.masks.empty & self.masks.rank_masks[7]; // promo by move forward 1
+        possible_move = moves & !wrap_op!(moves, 1, '-');
+        while possible_move != 0 {
+            let idx: u32 = possible_move.leading_zeros();
+            let c1 = idx % 8; let c2 = idx % 8;
+            move_list += &format!("{}{}qP{}{}rP{}{}bP{}{}nP", c1, c2, c1, c2, c1, c2, c1, c2);
+            moves &= !possible_move;
+            possible_move = moves & !wrap_op!(moves, 1, '-');
+        }
+
+        // enpassant, move_list -> c1,c2,'wE'
+        moves = (bP << 1) & wP & self.masks.rank_masks[4] & !self.masks.file_masks[7] & EP; // enpassant right
+        possible_move = moves & !wrap_op!(moves, 1, '-');
+        while possible_move != 0 {
+            let idx: u32 = possible_move.leading_zeros();
+            let c1 = (idx % 8) + 1; let c2 = idx % 8;
+            move_list += &format!("{}{}bE", c1, c2);
+            moves &= !possible_move;
+            possible_move = moves & !wrap_op!(moves, 1, '-');
+        }
+
+        moves = usgn_r_shift!(bP, 1) & wP & self.masks.rank_masks[4] & !self.masks.file_masks[0] & EP; // enpassant left
+        possible_move = moves & !wrap_op!(moves, 1, '-');
+        while possible_move != 0 {
+            let idx: u32 = possible_move.leading_zeros();
+            let c1 = (idx % 8) - 1; let c2 = idx % 8;
+            move_list += &format!("{}{}bE", c1, c2);
             moves &= !possible_move;
             possible_move = moves & !wrap_op!(moves, 1, '-');
         }
@@ -955,7 +1064,9 @@ mod tests {
 
         let mut m: Moves = Moves::new();
         let s: String = m.possibleMovesW(gs.wP, gs.wN, gs.wB, gs.wR, gs.wQ, gs.wK, gs.bP, gs.bN, gs.bB, gs.bR, gs.bQ, gs.bK, gs.EP, gs.cwK, gs.cwQ, gs.cbK, gs.cbQ);
+        let t: String = m.possibleMovesB(gs.wP, gs.wN, gs.wB, gs.wR, gs.wQ, gs.wK, gs.bP, gs.bN, gs.bB, gs.bR, gs.bQ, gs.bK, gs.EP, gs.cwK, gs.cwQ, gs.cbK, gs.cbQ);
         println!("{:?}", s);
+        println!("{:?}", t);
         gs.drawGameArray();
         println!("DONE!");
         panic!();
