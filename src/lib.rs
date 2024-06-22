@@ -383,6 +383,28 @@ impl Moves {
             masks: SpecialBitBoards::new(),
         }
     }
+
+
+    fn possibleHAndVMoves(&self, piece_idx: usize) -> i64 {
+        // piece_idx = 0 -> top left of board -> 1000...000
+        let binary_idx: i64 = 1 << (64 - 1 - piece_idx);
+        let rank_mask = self.masks.rank_masks[piece_idx / 8];
+        let file_mask = self.masks.file_masks[piece_idx % 8];
+        let possible_h = (wrap_op!(self.masks.occupied, wrap_op!(binary_idx, 2, '*'), '-')) ^ (wrap_op!(self.masks.occupied.reverse_bits(), wrap_op!(binary_idx.reverse_bits(), 2, '*'), '-')).reverse_bits();
+        let possible_v = (wrap_op!((self.masks.occupied & file_mask), wrap_op!(binary_idx, 2, '*'), '-')) ^ (wrap_op!((self.masks.occupied & file_mask).reverse_bits(), wrap_op!(binary_idx.reverse_bits(), 2, '*'), '-')).reverse_bits();
+        (possible_h & rank_mask) | (possible_v & file_mask)
+    }
+
+
+    fn possibleDiagAndAntiDiagMoves(&self, piece_idx: usize) -> i64 {
+        // piece_idx = 0 -> top left of board -> 1000...000
+        let binary_idx: i64 = 1 << (64 - 1 - piece_idx);
+        let diag_mask = self.masks.diagonal_masks[(piece_idx / 8) + (piece_idx % 8)];
+        let a_diag_mask = self.masks.anti_diagonal_masks[7 + (piece_idx / 8) - (piece_idx % 8)];
+        let possible_d = (wrap_op!((self.masks.occupied & diag_mask), wrap_op!(binary_idx, 2, '*'), '-')) ^ (wrap_op!((self.masks.occupied & diag_mask).reverse_bits(), wrap_op!(binary_idx.reverse_bits(), 2, '*'), '-')).reverse_bits();
+        let possible_ad = (wrap_op!((self.masks.occupied & a_diag_mask), wrap_op!(binary_idx, 2, '*'), '-')) ^ (wrap_op!((self.masks.occupied & a_diag_mask).reverse_bits(), wrap_op!(binary_idx.reverse_bits(), 2, '*'), '-')).reverse_bits();
+        (possible_d & diag_mask) | (possible_ad & a_diag_mask)
+    }
 }
 
 
@@ -422,6 +444,21 @@ macro_rules! usgn_r_shift {
 macro_rules! as_bin_str {
     ($int64:expr) => {
         format!("{:064b}", $int64)
+    };
+}
+
+
+/// Macro to perform wrapping operations
+#[macro_export]
+macro_rules! wrap_op {
+    ($lv:expr, $rv:expr, $op:expr) => {
+        match $op {
+            '+' => $lv.wrapping_add($rv),
+            '-' => $lv.wrapping_sub($rv),
+            '*' => $lv.wrapping_mul($rv),
+            '!' => $lv.wrapping_neg(),
+            _ => panic!("Wrapping operation not possible"),
+        }
     };
 }
 
@@ -472,9 +509,11 @@ mod tests {
 
         // gs.bR = usgn_r_shift!(gs.bR, 24);
         // gs.drawGameArray();
-        draw_array!(gs.bR);
+        // draw_array!(gs.bR);
 
         let mut m: Moves = Moves::new();
+        let q: i64 = m.possibleHAndVMoves(0);
+        draw_array!(q);
         println!("DONE!");
         panic!();
     }
