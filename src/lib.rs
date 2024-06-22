@@ -387,6 +387,118 @@ impl Moves {
     }
 
 
+    fn makeMove(&self, mut bitboard: i64, move_str: String, p_type: char) -> i64 {
+        let m1: u32 = move_str.chars().nth(0).unwrap().to_digit(10).unwrap();
+        let m2: u32 = move_str.chars().nth(1).unwrap().to_digit(10).unwrap();
+        let m3: u32 = move_str.chars().nth(2).unwrap().to_digit(10).unwrap();
+        let m4: u32 = move_str.chars().nth(3).unwrap().to_digit(10).unwrap();
+        let mut start_shift: u32 = 0;
+        let mut end_shift: u32 = 0;
+        let mut start_bitboard: i64 = 0;
+        let mut end_bitboard: i64 = 0;
+        if move_str.chars().nth(3).unwrap().is_numeric() { // regular move
+            start_shift = 64 - 1 - (m1 * 8 + m2);
+            end_shift = 64 - 1 - (m3 * 8 + m4);
+            if usgn_r_shift!(bitboard, start_shift) & 1 == 1 {
+                bitboard &= !(1 << start_shift); // remove moving piece from board
+                bitboard |= (1 << end_shift); // add at new position
+            } else {
+                bitboard &= !(1 << end_shift); // remove piece at end
+            }
+        } else if move_str.chars().nth(3).unwrap() == 'P' { // pawn promo
+            if move_str.chars().nth(2).unwrap().is_uppercase() { // white promo
+                start_bitboard = self.masks.file_masks[m1 as usize] & self.masks.rank_masks[1];
+                start_shift = 64 - 1 - start_bitboard.leading_zeros();
+                end_bitboard = self.masks.file_masks[m2 as usize] & self.masks.rank_masks[0];
+                end_shift = 64 - 1 - end_bitboard.leading_zeros();
+            } else { // black promo
+                start_bitboard = self.masks.file_masks[m1 as usize] & self.masks.rank_masks[6];
+                start_shift = 64 - 1 - start_bitboard.leading_zeros();
+                end_bitboard = self.masks.file_masks[m2 as usize] & self.masks.rank_masks[7];
+                end_shift = 64 - 1 - end_bitboard.leading_zeros();
+            }
+            if p_type == move_str.chars().nth(2).unwrap() {
+                bitboard |= (1 << end_shift);
+            } else {
+                bitboard &= !(1 << start_shift);
+                bitboard &= !(1 << end_shift);
+            }
+        } else if move_str.chars().nth(3).unwrap() == 'E' { // enpassant
+            if move_str.chars().nth(2).unwrap() == 'w' { // white
+                start_bitboard = self.masks.file_masks[m1 as usize] & self.masks.rank_masks[3];
+                start_shift = 64 - 1 - start_bitboard.leading_zeros();
+                end_bitboard = self.masks.file_masks[m2 as usize] & self.masks.rank_masks[2];
+                end_shift = 64 - 1 - end_bitboard.leading_zeros();
+                bitboard &= !(self.masks.file_masks[m2 as usize] & self.masks.rank_masks[3]);
+            } else { // black
+                start_bitboard = self.masks.file_masks[m1 as usize] & self.masks.rank_masks[4];
+                start_shift = 64 - 1 - start_bitboard.leading_zeros();
+                end_bitboard = self.masks.file_masks[m2 as usize] & self.masks.rank_masks[5];
+                end_shift = 64 - 1 - end_bitboard.leading_zeros();
+                bitboard &= !(self.masks.file_masks[m2 as usize] & self.masks.rank_masks[4]);
+            }
+            if (bitboard >> start_shift) & 1 == 1 {
+                bitboard &= !(1 << start_shift);
+                bitboard |= (1 << end_shift);
+            }
+        } else {
+            panic!("INVALID MOVE TYPE");
+        }
+        bitboard
+    }
+
+
+    fn makeMoveCastle(&self, mut rook: i64, king: i64, move_str: String, p_type: char) -> i64 {
+        let r1: usize = move_str.chars().nth(0).unwrap().to_digit(10).unwrap() as usize;
+        let c1: usize = move_str.chars().nth(1).unwrap().to_digit(10).unwrap() as usize;
+        let r2: usize = move_str.chars().nth(2).unwrap().to_digit(10).unwrap() as usize;
+        let c2: usize = move_str.chars().nth(3).unwrap().to_digit(10).unwrap() as usize;
+        let start_shift: usize = 64 - 1 - (r1 * 8 + c1);
+        if (usgn_r_shift!(king, start_shift) & 1 == 1) && ((move_str == "0402") || (move_str == "0406") || (move_str == "7472") || (move_str == "7476")) {
+            if p_type == 'R' { // white
+                match move_str.as_str() {
+                    "7476" => { // king side
+                        rook &= !(1 << self.castle_rooks[3]);
+                        rook |= (1 << (self.castle_rooks[3] + 2));
+                    },
+                    "7472" => { // queen side
+                        rook &= !(1 << self.castle_rooks[2]);
+                        rook |= (1 << (self.castle_rooks[2] - 3));
+                    },
+                    _ => (),
+                }
+            } else { // black
+                match move_str.as_str() {
+                    "0406" => { // king side
+                        rook &= !(1 << self.castle_rooks[1]);
+                        rook |= (1 << (self.castle_rooks[1] + 2));
+                    },
+                    "0402" => { // queen side
+                        rook &= !(1 << self.castle_rooks[0]);
+                        rook |= (1 << (self.castle_rooks[0] - 3));
+                    },
+                    _ => (),
+                }
+            }
+        }
+        rook
+    }
+
+
+    fn makeMoveEP(&self, bitboard: i64, move_str: String) -> i64 {
+        let r1: usize = move_str.chars().nth(0).unwrap().to_digit(10).unwrap() as usize;
+        let c1: usize = move_str.chars().nth(1).unwrap().to_digit(10).unwrap() as usize;
+        let r2: usize = move_str.chars().nth(2).unwrap().to_digit(10).unwrap() as usize;
+        let c2: usize = move_str.chars().nth(3).unwrap().to_digit(10).unwrap() as usize;
+        let start_shift: usize = 64 - 1 - (r1 * 8 + c1);
+        if move_str.chars().nth(3).unwrap().is_numeric() && (((r1 - r2) as i32).abs() == 2) && ((usgn_r_shift!(bitboard, start_shift) & 1) == 1) {
+            self.masks.file_masks[c1]
+        } else {
+            0
+        }
+    }
+
+
     fn possibleMovesW(&mut self, wP: i64, wN: i64, wB: i64, wR: i64, wQ: i64, wK: i64, bP: i64, bN: i64, bB: i64, bR: i64, bQ: i64, bK: i64, EP: i64, cwK: bool, cwQ: bool, cbK: bool, cbQ: bool) -> String {
         self.masks.not_allied_pieces = !(wP|wN|wB|wR|wQ|wK|bK); // avoid illegal bK capture
         self.masks.enemy_pieces = bP|bN|bB|bR|bQ; // avoid illegal bK capture
@@ -488,7 +600,7 @@ impl Moves {
         }
 
         // enpassant, move_list -> c1,c2,'wE'
-        moves = (wP >> 1) & bP & self.masks.rank_masks[3] & !self.masks.file_masks[0] & EP; // enpassant right
+        moves = usgn_r_shift!(wP, 1) & bP & self.masks.rank_masks[3] & !self.masks.file_masks[0] & EP; // enpassant right
         possible_move = moves & !wrap_op!(moves, 1, '-');
         while possible_move != 0 {
             let idx: u32 = possible_move.leading_zeros();
@@ -885,8 +997,8 @@ impl Moves {
     fn unsafeForWhite(&mut self, mut wP: i64, mut wN: i64, mut wB: i64, mut wR: i64, mut wQ: i64, mut wK: i64, mut bP: i64, mut bN: i64, mut bB: i64, mut bR: i64, mut bQ: i64, mut bK: i64) -> i64 {
         self.masks.occupied = wP|wN|wB|wR|wQ|wK|bP|bN|bB|bR|bQ|bK;
         // pawn threats
-        let mut unsafe_w: i64 = (bP >> 7) & !self.masks.file_masks[7]; // pawn right capture
-        unsafe_w |= ((bP >> 9) & !self.masks.file_masks[0]); // pawn left capture
+        let mut unsafe_w: i64 = usgn_r_shift!(bP, 7) & !self.masks.file_masks[7]; // pawn right capture
+        unsafe_w |= (usgn_r_shift!(bP, 9) & !self.masks.file_masks[0]); // pawn left capture
 
         // knight threat
         let mut knight: i64 = bN & !wrap_op!(bN, 1, '-');
