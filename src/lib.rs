@@ -385,6 +385,113 @@ impl Moves {
     }
 
 
+    fn possibleMovesW(&mut self, wP: i64, wN: i64, wB: i64, wR: i64, wQ: i64, wK: i64, bP: i64, bN: i64, bB: i64, bR: i64, bQ: i64, bK: i64, EP: i64, cwK: bool, cwQ: bool, cbK: bool, cbQ: bool) -> String {
+        self.masks.not_allied_pieces = wrap_op!((wP|wN|wB|wR|wQ|wK|bK), '!'); // avoid illegal bK capture
+        self.masks.enemy_pieces = bP|bN|bB|bR|bQ; // avoid illegal bK capture
+        self.masks.empty = wrap_op!((wP|wN|wB|wR|wQ|wK|bP|bN|bB|bR|bQ|bK), '!');
+        self.masks.occupied = wrap_op!(self.masks.empty, '!');
+        self.possibleWP(wP, bP, EP)// + \
+        //     self.possibleB(wB) + self.possibleQ(wQ) + \
+        //     self.possibleR(wR) + self.possibleN(wN) + \
+        //     self.possibleK(wK) + self.possibleCastleW(wP, wN, wB, wR, wQ, wK, bP, bN, bB, bR, bQ, bK, cwK, cwQ)
+    }
+
+
+    fn possibleWP(&self, wP: i64, bP: i64, EP: i64) -> String {
+        // standard moves and captures
+        let mut move_list: String = String::new(); // r1,c1,r2,c2
+        let mut moves: i64 = (wP << 7) & self.masks.enemy_pieces & !self.masks.rank_masks[0] & !self.masks.file_masks[0]; // right capture
+        let mut possible_move: i64 = moves & !wrap_op!(moves, 1, '-'); // selects single possible move
+        while possible_move != 0 {
+            let idx: u32 = possible_move.leading_zeros();
+            move_list += &format!("{}{}{}{}", (idx / 8) + 1, (idx % 8) - 1, idx / 8, idx % 8);
+            moves &= !possible_move; // remove current move from moves
+            possible_move = moves & !wrap_op!(moves, 1, '-'); // get next possible move
+        }
+
+        moves = (wP << 9) & self.masks.enemy_pieces & !self.masks.rank_masks[0] & !self.masks.file_masks[7]; // left capture
+        possible_move = moves & !wrap_op!(moves, 1, '-');
+        while possible_move != 0 {
+            let idx: u32 = possible_move.leading_zeros();
+            move_list += &format!("{}{}{}{}", (idx / 8) + 1, (idx % 8) + 1, idx / 8, idx % 8);
+            moves &= !possible_move;
+            possible_move = moves & !wrap_op!(moves, 1, '-');
+        }
+
+        moves = (wP << 8) & self.masks.empty & !self.masks.rank_masks[0]; // move forward 1
+        possible_move = moves & !wrap_op!(moves, 1, '-');
+        while possible_move != 0 {
+            let idx: u32 = possible_move.leading_zeros();
+            move_list += &format!("{}{}{}{}", (idx / 8) + 1, idx % 8, idx / 8, idx % 8);
+            moves &= !possible_move;
+            possible_move = moves & !wrap_op!(moves, 1, '-');
+        }
+
+        moves = (wP << 16) & self.masks.empty & (self.masks.empty << 8) & self.masks.rank_masks[4]; // move forward 2
+        possible_move = moves & !wrap_op!(moves, 1, '-');
+        while possible_move != 0 {
+            let idx: u32 = possible_move.leading_zeros();
+            move_list += &format!("{}{}{}{}", (idx / 8) + 2, idx % 8, idx / 8, idx % 8);
+            moves &= !possible_move;
+            possible_move = moves & !wrap_op!(moves, 1, '-');
+        }
+
+        // pawn promotion, move_list -> c1,c2,promo type,'P'
+        moves = (wP << 7) & self.masks.enemy_pieces & self.masks.rank_masks[0] & !self.masks.file_masks[0]; // promo by right capture
+        possible_move = moves & !wrap_op!(moves, 1, '-');
+        while possible_move != 0 {
+            let idx: u32 = possible_move.leading_zeros();
+            let c1 = (idx % 8) - 1; let c2 = idx % 8;
+            move_list += &format!("{}{}QP{}{}RP{}{}BP{}{}NP", c1, c2, c1, c2, c1, c2, c1, c2);
+            moves &= !possible_move;
+            possible_move = moves & !wrap_op!(moves, 1, '-');
+        }
+
+        moves = (wP << 9) & self.masks.enemy_pieces & self.masks.rank_masks[0] & !self.masks.file_masks[7]; // promo by left capture
+        possible_move = moves & !wrap_op!(moves, 1, '-');
+        while possible_move != 0 {
+            let idx: u32 = possible_move.leading_zeros();
+            let c1 = (idx % 8) + 1; let c2 = idx % 8;
+            move_list += &format!("{}{}QP{}{}RP{}{}BP{}{}NP", c1, c2, c1, c2, c1, c2, c1, c2);
+            moves &= !possible_move;
+            possible_move = moves & !wrap_op!(moves, 1, '-');
+        }
+
+        moves = (wP << 8) & self.masks.empty & self.masks.rank_masks[0]; // promo by move forward 1
+        possible_move = moves & !wrap_op!(moves, 1, '-');
+        while possible_move != 0 {
+            let idx: u32 = possible_move.leading_zeros();
+            let c1 = idx % 8; let c2 = idx % 8;
+            move_list += &format!("{}{}QP{}{}RP{}{}BP{}{}NP", c1, c2, c1, c2, c1, c2, c1, c2);
+            moves &= !possible_move;
+            possible_move = moves & !wrap_op!(moves, 1, '-');
+        }
+
+        // enpassant, move_list -> c1,c2,'wE'
+        moves = (wP >> 1) & bP & self.masks.rank_masks[3] & !self.masks.file_masks[0] & EP; // enpassant right
+        possible_move = moves & !wrap_op!(moves, 1, '-');
+        while possible_move != 0 {
+            let idx: u32 = possible_move.leading_zeros();
+            let c1 = (idx % 8) - 1; let c2 = idx % 8;
+            move_list += &format!("{}{}wE", c1, c2);
+            moves &= !possible_move;
+            possible_move = moves & !wrap_op!(moves, 1, '-');
+        }
+
+        moves = (wP << 1) & bP & self.masks.rank_masks[3] & !self.masks.file_masks[7] & EP; // enpassant left
+        possible_move = moves & !wrap_op!(moves, 1, '-');
+        while possible_move != 0 {
+            let idx: u32 = possible_move.leading_zeros();
+            let c1 = (idx % 8) + 1; let c2 = idx % 8;
+            move_list += &format!("{}{}wE", c1, c2);
+            moves &= !possible_move;
+            possible_move = moves & !wrap_op!(moves, 1, '-');
+        }
+
+        move_list
+    }
+
+
     fn possibleHAndVMoves(&self, piece_idx: usize) -> i64 {
         // piece_idx = 0 -> top left of board -> 1000...000
         let binary_idx: i64 = 1 << (64 - 1 - piece_idx);
@@ -451,12 +558,15 @@ macro_rules! as_bin_str {
 /// Macro to perform wrapping operations
 #[macro_export]
 macro_rules! wrap_op {
+    ($lv:expr, '!') => {
+        $lv.wrapping_neg()
+    };
+
     ($lv:expr, $rv:expr, $op:expr) => {
         match $op {
             '+' => $lv.wrapping_add($rv),
             '-' => $lv.wrapping_sub($rv),
             '*' => $lv.wrapping_mul($rv),
-            '!' => $lv.wrapping_neg(),
             _ => panic!("Wrapping operation not possible"),
         }
     };
@@ -512,8 +622,8 @@ mod tests {
         // draw_array!(gs.bR);
 
         let mut m: Moves = Moves::new();
-        let q: i64 = m.possibleHAndVMoves(0);
-        draw_array!(q);
+        let s: String = m.possibleMovesW(gs.wP, gs.wN, gs.wB, gs.wR, gs.wQ, gs.wK, gs.bP, gs.bN, gs.bB, gs.bR, gs.bQ, gs.bK, gs.EP, gs.cwK, gs.cwQ, gs.cbK, gs.cbQ);
+        println!("{:?}", s);
         println!("DONE!");
         panic!();
     }
