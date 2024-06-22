@@ -4,6 +4,8 @@
 #![allow(non_snake_case)]
 #![allow(unused_parens)]
 #![allow(unused_assignments)]
+#![allow(unused_mut)]
+#![allow(unused_variables)]
 
 
 use pyo3::prelude::*;
@@ -221,40 +223,40 @@ impl GameState {
         let mut new_board: [[char; 8]; 8] = [[' '; 8]; 8];
         for i in 0..64 {
             let shift = 64 - 1 - i;
-            if (self.wP >> shift) & 1 == 1 {
+            if usgn_r_shift!(self.wP, shift) & 1 == 1 {
                 new_board[i / 8][i % 8] = 'P';
             }
-            if (self.wN >> shift) & 1 == 1 {
+            if usgn_r_shift!(self.wN, shift) & 1 == 1 {
                 new_board[i / 8][i % 8] = 'N';
             }
-            if (self.wB >> shift) & 1 == 1 {
+            if usgn_r_shift!(self.wB, shift) & 1 == 1 {
                 new_board[i / 8][i % 8] = 'B';
             }
-            if (self.wR >> shift) & 1 == 1 {
+            if usgn_r_shift!(self.wR, shift) & 1 == 1 {
                 new_board[i / 8][i % 8] = 'R';
             }
-            if (self.wQ >> shift) & 1 == 1 {
+            if usgn_r_shift!(self.wQ, shift) & 1 == 1 {
                 new_board[i / 8][i % 8] = 'Q';
             }
-            if (self.wK >> shift) & 1 == 1 {
+            if usgn_r_shift!(self.wK, shift) & 1 == 1 {
                 new_board[i / 8][i % 8] = 'K';
             }
-            if (self.bP >> shift) & 1 == 1 {
+            if usgn_r_shift!(self.bP, shift) & 1 == 1 {
                 new_board[i / 8][i % 8] = 'p';
             }
-            if (self.bN >> shift) & 1 == 1 {
+            if usgn_r_shift!(self.bN, shift) & 1 == 1 {
                 new_board[i / 8][i % 8] = 'n';
             }
-            if (self.bB >> shift) & 1 == 1 {
+            if usgn_r_shift!(self.bB, shift) & 1 == 1 {
                 new_board[i / 8][i % 8] = 'b';
             }
-            if (self.bR >> shift) & 1 == 1 {
+            if usgn_r_shift!(self.bR, shift) & 1 == 1 {
                 new_board[i / 8][i % 8] = 'r';
             }
-            if (self.bQ >> shift) & 1 == 1 {
+            if usgn_r_shift!(self.bQ, shift) & 1 == 1 {
                 new_board[i / 8][i % 8] = 'q';
             }
-            if (self.bK >> shift) & 1 == 1 {
+            if usgn_r_shift!(self.bK, shift) & 1 == 1 {
                 new_board[i / 8][i % 8] = 'k';
             }
         }
@@ -390,10 +392,13 @@ impl Moves {
         self.masks.enemy_pieces = bP|bN|bB|bR|bQ; // avoid illegal bK capture
         self.masks.empty = wrap_op!((wP|wN|wB|wR|wQ|wK|bP|bN|bB|bR|bQ|bK), '!');
         self.masks.occupied = wrap_op!(self.masks.empty, '!');
-        self.possibleWP(wP, bP, EP)// + \
-        //     self.possibleB(wB) + self.possibleQ(wQ) + \
-        //     self.possibleR(wR) + self.possibleN(wN) + \
-        //     self.possibleK(wK) + self.possibleCastleW(wP, wN, wB, wR, wQ, wK, bP, bN, bB, bR, bQ, bK, cwK, cwQ)
+        self.possibleWP(wP, bP, EP)
+            + &self.possibleB(wB)
+            + &self.possibleQ(wQ)
+            + &self.possibleR(wR)
+            + &self.possibleN(wN)
+            + &self.possibleK(wK)
+            + &self.possibleCastleW(wP, wN, wB, wR, wQ, wK, bP, bN, bB, bR, bQ, bK, cwK, cwQ)
     }
 
 
@@ -487,7 +492,184 @@ impl Moves {
             moves &= !possible_move;
             possible_move = moves & !wrap_op!(moves, 1, '-');
         }
+        move_list
+    }
 
+
+    fn possibleB(&self, mut B: i64) -> String {
+        let mut move_list: String = String::new();
+        let mut bishop: i64 = B & !wrap_op!(B, 1, '-');
+        while bishop != 0 {
+            let bishop_idx: usize = bishop.leading_zeros() as usize;
+            let mut moves: i64 = self.possibleDiagAndAntiDiagMoves(bishop_idx) & self.masks.not_allied_pieces;
+            let mut possible_move: i64 = moves & !wrap_op!(moves, 1, '-'); // selects single possible move
+
+            while possible_move != 0 {
+                let move_idx: usize = possible_move.leading_zeros() as usize;
+                move_list += &format!("{}{}{}{}", bishop_idx / 8, bishop_idx % 8, move_idx / 8, move_idx % 8);
+                moves &= !possible_move; // remove current possible move
+                possible_move = moves & !wrap_op!(moves, 1, '-');
+            }
+
+            B &= !bishop; // remove current bishop
+            bishop = B & !wrap_op!(B, 1, '-');
+        }
+        move_list
+    }
+
+
+    fn possibleQ(&self, mut Q: i64) -> String {
+        let mut move_list: String = String::new();
+        let mut queen: i64 = Q & !wrap_op!(Q, 1, '-');
+        while queen != 0 {
+            let queen_idx: usize = queen.leading_zeros() as usize;
+            let mut moves: i64 = (self.possibleDiagAndAntiDiagMoves(queen_idx) | self.possibleHAndVMoves(queen_idx)) & self.masks.not_allied_pieces;
+            let mut possible_move: i64 = moves & !wrap_op!(moves, 1, '-'); // selects single possible move
+
+            while possible_move != 0 {
+                let move_idx: usize = possible_move.leading_zeros() as usize;
+                move_list += &format!("{}{}{}{}", queen_idx / 8, queen_idx % 8, move_idx / 8, move_idx % 8);
+                moves &= !possible_move; // remove current possible move
+                possible_move = moves & !wrap_op!(moves, 1, '-');
+            }
+
+            Q &= !queen; // remove current queen
+            queen = Q & !wrap_op!(Q, 1, '-');
+        }
+        move_list
+    }
+
+
+    fn possibleR(&self, mut R: i64) -> String {
+        let mut move_list: String = String::new();
+        let mut rook: i64 = R & !wrap_op!(R, 1, '-');
+        while rook != 0 {
+            let rook_idx: usize = rook.leading_zeros() as usize;
+            let mut moves: i64 = self.possibleHAndVMoves(rook_idx) & self.masks.not_allied_pieces;
+            let mut possible_move: i64 = moves & !wrap_op!(moves, 1, '-'); // selects single possible move
+
+            while possible_move != 0 {
+                let move_idx: usize = possible_move.leading_zeros() as usize;
+                move_list += &format!("{}{}{}{}", rook_idx / 8, rook_idx % 8, move_idx / 8, move_idx % 8);
+                moves &= !possible_move; // remove current possible move
+                possible_move = moves & !wrap_op!(moves, 1, '-');
+            }
+
+            R &= !rook; // remove current rook
+            rook = R & !wrap_op!(R, 1, '-');
+        }
+        move_list
+    }
+
+
+    fn possibleN(&self, mut N: i64) -> String {
+        let mut move_list: String = String::new();
+        let mut knight: i64 = N & !wrap_op!(N, 1, '-');
+        let knight_span_c6_idx: usize = 18;
+        while knight != 0 {
+            let knight_idx: usize = knight.leading_zeros() as usize;
+
+            // allign the knight_span_c6 mask
+            let mut moves: i64 = 0;
+            if knight_idx <= knight_span_c6_idx {
+                moves = self.masks.knight_span_c6 << (knight_span_c6_idx - knight_idx);
+            } else {
+                moves = usgn_r_shift!(self.masks.knight_span_c6, knight_idx - knight_span_c6_idx);
+            }
+
+            // remove moves sliding off board or allied pieces
+            if knight_idx % 8 < 4 {
+                moves &= !self.masks.file_gh & self.masks.not_allied_pieces;
+            } else {
+                moves &= !self.masks.file_ab & self.masks.not_allied_pieces;
+            }
+            let mut possible_move: i64 = moves & !wrap_op!(moves, 1, '-'); // selects single possible move
+
+            while possible_move != 0 {
+                let move_idx: usize = possible_move.leading_zeros() as usize;
+                move_list += &format!("{}{}{}{}", knight_idx / 8, knight_idx % 8, move_idx / 8, move_idx % 8);
+                moves &= !possible_move; // remove current possible move
+                possible_move = moves & !wrap_op!(moves, 1, '-');
+            }
+
+            N &= !knight; // remove current knight
+            knight = N & !wrap_op!(N, 1, '-');
+        }
+        move_list
+    }
+
+
+    fn possibleK(&self, mut K: i64) -> String {
+        let mut move_list: String = String::new();
+        let mut king: i64 = K & !wrap_op!(K, 1, '-');
+        let king_span_c7_idx: usize = 10;
+        while king != 0 {
+            let king_idx: usize = king.leading_zeros() as usize;
+
+            // allign the king_span_c7 mask
+            let mut moves: i64 = 0;
+            if king_idx <= king_span_c7_idx {
+                moves = self.masks.king_span_c7 << (king_span_c7_idx - king_idx);
+            } else {
+                moves = usgn_r_shift!(self.masks.king_span_c7, king_idx - king_span_c7_idx);
+            }
+
+            // remove moves sliding off board or allied pieces
+            if king_idx % 8 < 4 {
+                moves &= !self.masks.file_gh & self.masks.not_allied_pieces;
+            } else {
+                moves &= !self.masks.file_ab & self.masks.not_allied_pieces;
+            }
+            let mut possible_move: i64 = moves & !wrap_op!(moves, 1, '-'); // selects single possible move
+
+            while possible_move != 0 {
+                let move_idx: usize = possible_move.leading_zeros() as usize;
+                move_list += &format!("{}{}{}{}", king_idx / 8, king_idx % 8, move_idx / 8, move_idx % 8);
+                moves &= !possible_move; // remove current possible move
+                possible_move = moves & !wrap_op!(moves, 1, '-');
+            }
+
+            K &= !king; // remove current king
+            king = K & !wrap_op!(K, 1, '-');
+        }
+        move_list
+    }
+
+
+    fn possibleCastleW(&mut self, wP: i64, wN: i64, wB: i64, wR: i64, wQ: i64, wK: i64, bP: i64, bN: i64, bB: i64, bR: i64, bQ: i64, bK: i64, cwK: bool, cwQ: bool) -> String {
+        let unsafe_w: i64 = self.unsafeForWhite(wP, wN, wB, wR, wQ, wK, bP, bN, bB, bR, bQ, bK);
+        let mut move_list: String = String::new(); // king move r1c1r2c1
+        if unsafe_w & wK == 0 {
+            if cwK && (((1 << self.castle_rooks[3]) & wR) != 0) {
+                if ((self.masks.occupied | unsafe_w) & ((1 << 1) | (1 << 2))) == 0 {
+                    move_list += "7476";
+                }
+            }
+            if cwQ && (((1 << self.castle_rooks[2]) & wR) != 0) {
+                if ((self.masks.occupied | (unsafe_w & !(1 << 6))) & ((1 << 4) | (1 << 5) | (1 << 6))) == 0 {
+                    move_list += "7472";
+                }
+            }
+        }
+        move_list
+    }
+
+
+    fn possibleCastleB(&mut self, wP: i64, wN: i64, wB: i64, wR: i64, wQ: i64, wK: i64, bP: i64, bN: i64, bB: i64, bR: i64, bQ: i64, bK: i64, cbK: bool, cbQ: bool) -> String {
+        let unsafe_b = self.unsafeForBlack(wP, wN, wB, wR, wQ, wK, bP, bN, bB, bR, bQ, bK);
+        let mut move_list: String = String::new(); // king move r1c1r2c1
+        if unsafe_b & bK == 0 {
+            if cbK && (((1 << self.castle_rooks[1]) & bR) != 0) {
+                if ((self.masks.occupied | unsafe_b) & ((1 << 58) | (1 << 57))) == 0 {
+                    move_list += "0406";
+                }
+            }
+            if cbQ && (((1 << self.castle_rooks[0]) & bR) != 0) {
+                if ((self.masks.occupied | (unsafe_b & !(1 << 62))) & ((1 << 62) | (1 << 61) | (1 << 60))) == 0 {
+                    move_list += "0402";
+                }
+            }
+        }
         move_list
     }
 
@@ -511,6 +693,160 @@ impl Moves {
         let possible_d = (wrap_op!((self.masks.occupied & diag_mask), wrap_op!(binary_idx, 2, '*'), '-')) ^ (wrap_op!((self.masks.occupied & diag_mask).reverse_bits(), wrap_op!(binary_idx.reverse_bits(), 2, '*'), '-')).reverse_bits();
         let possible_ad = (wrap_op!((self.masks.occupied & a_diag_mask), wrap_op!(binary_idx, 2, '*'), '-')) ^ (wrap_op!((self.masks.occupied & a_diag_mask).reverse_bits(), wrap_op!(binary_idx.reverse_bits(), 2, '*'), '-')).reverse_bits();
         (possible_d & diag_mask) | (possible_ad & a_diag_mask)
+    }
+
+
+    fn unsafeForBlack(&mut self, mut wP: i64, mut wN: i64, mut wB: i64, mut wR: i64, mut wQ: i64, mut wK: i64, mut bP: i64, mut bN: i64, mut bB: i64, mut bR: i64, mut bQ: i64, mut bK: i64) -> i64 {
+        self.masks.occupied = wP|wN|wB|wR|wQ|wK|bP|bN|bB|bR|bQ|bK;
+        // pawn threats
+        let mut unsafe_b: i64 = (wP << 7) & !self.masks.file_masks[0]; // pawn right capture
+        unsafe_b |= ((wP << 9) & !self.masks.file_masks[7]); // pawn left capture
+
+        // knight threat
+        let mut knight: i64 = wN & !wrap_op!(wN, 1, '-');
+        let knight_span_c6_idx: usize = 18;
+        while knight != 0 {
+            let knight_idx: usize = knight.leading_zeros() as usize;
+            // allign the knight_span_c6 mask
+            let mut moves: i64 = 0;
+            if knight_idx <= knight_span_c6_idx {
+                moves = self.masks.knight_span_c6 << (knight_span_c6_idx - knight_idx);
+            } else {
+                moves = usgn_r_shift!(self.masks.knight_span_c6, knight_idx - knight_span_c6_idx);
+            }
+            // remove moves sliding off board or allied pieces
+            if knight_idx % 8 < 4 {
+                moves &= !self.masks.file_gh;
+            } else {
+                moves &= !self.masks.file_ab;
+            }
+            unsafe_b |= moves;
+            wN &= !knight; // remove current knight
+            knight = wN & !wrap_op!(wN, 1, '-');
+        }
+
+        // bishop / queen threats (diagonals)
+        let mut wQB: i64 = wQ | wB;
+        let mut b_or_q: i64 = wQB & !wrap_op!(wQB, 1, '-');
+        while b_or_q != 0 {
+            let b_or_q_idx: usize = b_or_q.leading_zeros() as usize;
+            let moves: i64 = self.possibleDiagAndAntiDiagMoves(b_or_q_idx);
+            unsafe_b |= moves;
+            wQB &= !b_or_q; // remove current bishop or queen
+            b_or_q = wQB & !wrap_op!(wQB, 1, '-');
+        }
+
+        // rook / queen threats (hor and vert)
+        let mut wQR: i64 = wQ | wR;
+        let mut r_or_q: i64 = wQR & !wrap_op!(wQR, 1, '-');
+        while r_or_q != 0 {
+            let r_or_q_idx: usize = r_or_q.leading_zeros() as usize;
+            let moves: i64 = self.possibleHAndVMoves(r_or_q_idx);
+            unsafe_b |= moves;
+            wQR &= !r_or_q; // remove current rook or queen
+            r_or_q = wQR & !wrap_op!(wQR, 1, '-');
+        }
+
+        // king threats
+        let mut king: i64 = wK & !wrap_op!(wK, 1, '-');
+        let king_span_c7_idx: usize = 10;
+        while king != 0 {
+            let king_idx: usize = king.leading_zeros() as usize;
+            // allign the king_span_c7 mask
+            let mut moves: i64 = 0;
+            if king_idx <= king_span_c7_idx {
+                moves = self.masks.king_span_c7 << (king_span_c7_idx - king_idx);
+            } else {
+                moves = usgn_r_shift!(self.masks.king_span_c7, king_idx - king_span_c7_idx);
+            }
+            // remove moves sliding off board or allied pieces
+            if king_idx % 8 < 4 {
+                moves &= !self.masks.file_gh;
+            } else {
+                moves &= !self.masks.file_ab;
+            }
+            unsafe_b |= moves;
+            wK &= !king; // remove current king
+            king = wK & !wrap_op!(wK, 1, '-');
+        }
+        unsafe_b
+    }
+
+
+    fn unsafeForWhite(&mut self, mut wP: i64, mut wN: i64, mut wB: i64, mut wR: i64, mut wQ: i64, mut wK: i64, mut bP: i64, mut bN: i64, mut bB: i64, mut bR: i64, mut bQ: i64, mut bK: i64) -> i64 {
+        self.masks.occupied = wP|wN|wB|wR|wQ|wK|bP|bN|bB|bR|bQ|bK;
+        // pawn threats
+        let mut unsafe_w: i64 = (bP >> 7) & !self.masks.file_masks[7]; // pawn right capture
+        unsafe_w |= ((bP >> 9) & !self.masks.file_masks[0]); // pawn left capture
+
+        // knight threat
+        let mut knight: i64 = bN & !wrap_op!(bN, 1, '-');
+        let knight_span_c6_idx: usize = 18;
+        while knight != 0 {
+            let knight_idx: usize = knight.leading_zeros() as usize;
+            // allign the knight_span_c6 mask
+            let mut moves: i64 = 0;
+            if knight_idx <= knight_span_c6_idx {
+                moves = self.masks.knight_span_c6 << (knight_span_c6_idx - knight_idx);
+            } else {
+                moves = usgn_r_shift!(self.masks.knight_span_c6, knight_idx - knight_span_c6_idx);
+            }
+            // remove moves sliding off board or allied pieces
+            if knight_idx % 8 < 4 {
+                moves &= !self.masks.file_gh;
+            } else {
+                moves &= !self.masks.file_ab;
+            }
+            unsafe_w |= moves;
+            bN &= !knight; // remove current knight
+            knight = bN & !wrap_op!(bN, 1, '-');
+        }
+
+        // bishop / queen threats (diagonals)
+        let mut bQB: i64 = bQ | bB;
+        let mut b_or_q: i64 = bQB & !wrap_op!(bQB, 1, '-');
+        while b_or_q != 0 {
+            let b_or_q_idx: usize = b_or_q.leading_zeros() as usize;
+            let moves: i64 = self.possibleDiagAndAntiDiagMoves(b_or_q_idx);
+            unsafe_w |= moves;
+            bQB &= !b_or_q; // remove current bishop or queen
+            b_or_q = bQB & !wrap_op!(bQB, 1, '-');
+        }
+
+        // rook / queen threats (hor and vert)
+        let mut bQR: i64 = bQ | bR;
+        let mut r_or_q: i64 = bQR & !wrap_op!(bQR, 1, '-');
+        while r_or_q != 0 {
+            let r_or_q_idx: usize = r_or_q.leading_zeros() as usize;
+            let moves: i64 = self.possibleHAndVMoves(r_or_q_idx);
+            unsafe_w |= moves;
+            bQR &= !r_or_q; // remove current rook or queen
+            r_or_q = bQR & !wrap_op!(bQR, 1, '-');
+        }
+
+        // king threats
+        let mut king = bK & !wrap_op!(bK, 1, '-');
+        let king_span_c7_idx: usize = 10;
+        while king != 0 {
+            let king_idx: usize = king.leading_zeros() as usize;
+            // allign the king_span_c7 mask
+            let mut moves: i64 = 0;
+            if king_idx <= king_span_c7_idx {
+                moves = self.masks.king_span_c7 << (king_span_c7_idx - king_idx);
+            } else {
+                moves = usgn_r_shift!(self.masks.king_span_c7, king_idx - king_span_c7_idx);
+            }
+            // remove moves sliding off board or allied pieces
+            if king_idx % 8 < 4 {
+                moves &= !self.masks.file_gh;
+            } else {
+                moves &= !self.masks.file_ab;
+            }
+            unsafe_w |= moves;
+            bK &= !king; // remove current king
+            king = bK & !wrap_op!(bK, 1, '-');
+        }
+        unsafe_w
     }
 }
 
@@ -617,13 +953,10 @@ mod tests {
         // gs.importFEN(String::from("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq -"));
         // gs.drawGameArray();
 
-        // gs.bR = usgn_r_shift!(gs.bR, 24);
-        // gs.drawGameArray();
-        // draw_array!(gs.bR);
-
         let mut m: Moves = Moves::new();
         let s: String = m.possibleMovesW(gs.wP, gs.wN, gs.wB, gs.wR, gs.wQ, gs.wK, gs.bP, gs.bN, gs.bB, gs.bR, gs.bQ, gs.bK, gs.EP, gs.cwK, gs.cwQ, gs.cbK, gs.cbQ);
         println!("{:?}", s);
+        gs.drawGameArray();
         println!("DONE!");
         panic!();
     }
