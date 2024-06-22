@@ -377,12 +377,52 @@ struct Moves {
 #[pymethods]
 impl Moves {
     #[new]
-    fn new(masks: &SpecialBitBoards) -> Self {
+    fn new() -> Self {
         Moves {
             castle_rooks: [63, 56, 7, 0],
-            masks: masks.clone(),
+            masks: SpecialBitBoards::new(),
         }
     }
+}
+
+
+/// Macro to draw a bitboard
+#[macro_export]
+macro_rules! draw_array {
+    ($bitboard:expr) => {
+        let mut new_board: [[char; 8]; 8] = [['0'; 8]; 8];
+        for i in 0..64 {
+            let shift = 64 - 1 - i;
+            if usgn_r_shift!($bitboard, shift) & 1 == 1 {
+                new_board[i / 8][i % 8] = '1';
+            }
+        }
+        for row in 0..8 {
+            for col in 0..8 {
+                print!("{}", new_board[row][col]);
+            }
+            println!();
+        }
+        println!();
+    };
+}
+
+
+/// Macro to perform 64 bit unsigned right shift
+#[macro_export]
+macro_rules! usgn_r_shift {
+    ($lv:expr, $rv:expr) => {
+        (($lv as u64) >> $rv) as i64
+    };
+}
+
+
+/// Macro to convert i64 to binary string with 0 padding
+#[macro_export]
+macro_rules! as_bin_str {
+    ($int64:expr) => {
+        format!("{:064b}", $int64)
+    };
 }
 
 
@@ -426,15 +466,15 @@ mod tests {
     fn basic_test() {
         println!("Basic Test!");
         let mut gs = GameState::new();
-        gs.drawGameArray();
-        gs.importFEN(String::from("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq -"));
-        gs.drawGameArray();
+        // gs.drawGameArray();
+        // gs.importFEN(String::from("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq -"));
+        // gs.drawGameArray();
 
-        let mut m: Moves = Moves::new(&gs.masks);
-        m.masks.empty = 5;
-        gs.masks.empty = 3;
-        println!("{:?}", gs.masks.empty);
-        println!("{:?}", m.masks.empty);
+        // gs.bR = usgn_r_shift!(gs.bR, 24);
+        // gs.drawGameArray();
+        draw_array!(gs.bR);
+
+        let mut m: Moves = Moves::new();
         println!("DONE!");
         panic!();
     }
