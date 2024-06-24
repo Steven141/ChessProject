@@ -6,16 +6,12 @@
 #![allow(unused_assignments)]
 #![allow(unused_mut)]
 #![allow(unused_variables)]
+#![allow(unused_imports)]
+#![allow(unused_macros)]
 
 
 use pyo3::prelude::*;
-
-
-/// EXAMPLE: Formats the sum of two numbers as string.
-#[pyfunction]
-fn sum_as_string(a: usize, b: usize) -> PyResult<String> {
-    Ok((a + b).to_string())
-}
+use std::time::Instant;
 
 
 /// Holds specific bitboards
@@ -370,7 +366,7 @@ impl GameState {
 
 /// Holds information about all the moves
 #[pyclass(module = "ChessProject", get_all, set_all)]
-struct Moves {
+pub struct Moves {
     castle_rooks: [usize; 4],
     masks: SpecialBitBoards,
 }
@@ -388,10 +384,10 @@ impl Moves {
 
 
     fn makeMove(&self, mut bitboard: i64, move_str: String, p_type: char) -> i64 {
-        let m1: u32 = move_str.chars().nth(0).unwrap().to_digit(10).unwrap();
-        let m2: u32 = move_str.chars().nth(1).unwrap().to_digit(10).unwrap();
-        let m3: u32 = move_str.chars().nth(2).unwrap().to_digit(10).unwrap();
-        let m4: u32 = move_str.chars().nth(3).unwrap().to_digit(10).unwrap();
+        let m1: u32 = move_str.chars().nth(0).unwrap().to_digit(10).unwrap_or(0);
+        let m2: u32 = move_str.chars().nth(1).unwrap().to_digit(10).unwrap_or(0);
+        let m3: u32 = move_str.chars().nth(2).unwrap().to_digit(10).unwrap_or(0);
+        let m4: u32 = move_str.chars().nth(3).unwrap().to_digit(10).unwrap_or(0);
         let mut start_shift: u32 = 0;
         let mut end_shift: u32 = 0;
         let mut start_bitboard: i64 = 0;
@@ -449,10 +445,10 @@ impl Moves {
 
 
     fn makeMoveCastle(&self, mut rook: i64, king: i64, move_str: String, p_type: char) -> i64 {
-        let r1: usize = move_str.chars().nth(0).unwrap().to_digit(10).unwrap() as usize;
-        let c1: usize = move_str.chars().nth(1).unwrap().to_digit(10).unwrap() as usize;
-        let r2: usize = move_str.chars().nth(2).unwrap().to_digit(10).unwrap() as usize;
-        let c2: usize = move_str.chars().nth(3).unwrap().to_digit(10).unwrap() as usize;
+        let r1: usize = move_str.chars().nth(0).unwrap().to_digit(10).unwrap_or(0) as usize;
+        let c1: usize = move_str.chars().nth(1).unwrap().to_digit(10).unwrap_or(0) as usize;
+        let r2: usize = move_str.chars().nth(2).unwrap().to_digit(10).unwrap_or(0) as usize;
+        let c2: usize = move_str.chars().nth(3).unwrap().to_digit(10).unwrap_or(0) as usize;
         let start_shift: usize = 64 - 1 - (r1 * 8 + c1);
         if (usgn_r_shift!(king, start_shift) & 1 == 1) && ((move_str == "0402") || (move_str == "0406") || (move_str == "7472") || (move_str == "7476")) {
             if p_type == 'R' { // white
@@ -486,12 +482,12 @@ impl Moves {
 
 
     fn makeMoveEP(&self, bitboard: i64, move_str: String) -> i64 {
-        let r1: usize = move_str.chars().nth(0).unwrap().to_digit(10).unwrap() as usize;
-        let c1: usize = move_str.chars().nth(1).unwrap().to_digit(10).unwrap() as usize;
-        let r2: usize = move_str.chars().nth(2).unwrap().to_digit(10).unwrap() as usize;
-        let c2: usize = move_str.chars().nth(3).unwrap().to_digit(10).unwrap() as usize;
+        let r1: usize = move_str.chars().nth(0).unwrap().to_digit(10).unwrap_or(0) as usize;
+        let c1: usize = move_str.chars().nth(1).unwrap().to_digit(10).unwrap_or(0) as usize;
+        let r2: usize = move_str.chars().nth(2).unwrap().to_digit(10).unwrap_or(0) as usize;
+        let c2: usize = move_str.chars().nth(3).unwrap().to_digit(10).unwrap_or(0) as usize;
         let start_shift: usize = 64 - 1 - (r1 * 8 + c1);
-        if move_str.chars().nth(3).unwrap().is_numeric() && (((r1 - r2) as i32).abs() == 2) && ((usgn_r_shift!(bitboard, start_shift) & 1) == 1) {
+        if move_str.chars().nth(3).unwrap().is_numeric() && ((r1 as i64 - r2 as i64).abs() == 2) && ((usgn_r_shift!(bitboard, start_shift) & 1) == 1) {
             self.masks.file_masks[c1]
         } else {
             0
@@ -1072,6 +1068,169 @@ impl Moves {
 }
 
 
+/// Holds information about all the moves
+#[pyclass(module = "ChessProject", get_all, set_all)]
+struct Perft {
+    max_depth: u32,
+    move_counter: u32,
+    total_move_counter: u32,
+}
+
+
+#[pymethods]
+impl Perft {
+    #[new]
+    fn new(max_depth: u32) -> Self {
+        Perft {
+            max_depth: max_depth,
+            move_counter: 0,
+            total_move_counter: 0,
+        }
+    }
+
+
+    fn perft(&mut self, mm: &mut Moves, wP: i64, wN: i64, wB: i64, wR: i64, wQ: i64, wK: i64, bP: i64, bN: i64, bB: i64, bR: i64, bQ: i64, bK: i64, EP: i64, cwK: bool, cwQ: bool, cbK: bool, cbQ: bool, whites_turn: bool, depth: u32) {
+        if depth < self.max_depth {
+            let mut moves: String = String::new();
+            if whites_turn {
+                moves = mm.possibleMovesW(wP, wN, wB, wR, wQ, wK, bP, bN, bB, bR, bQ, bK, EP, cwK, cwQ, cbK, cbQ);
+            } else {
+                moves = mm.possibleMovesB(wP, wN, wB, wR, wQ, wK, bP, bN, bB, bR, bQ, bK, EP, cwK, cwQ, cbK, cbQ);
+            }
+            for i in (0..moves.len()).step_by(4) {
+                let wPt: i64 = mm.makeMove(wP, moves[i..i+4].to_string(), 'P'); let wNt: i64 = mm.makeMove(wN, moves[i..i+4].to_string(), 'N');
+                let wBt: i64 = mm.makeMove(wB, moves[i..i+4].to_string(), 'B'); let wRt: i64 = mm.makeMove(wR, moves[i..i+4].to_string(), 'R');
+                let wQt: i64 = mm.makeMove(wQ, moves[i..i+4].to_string(), 'Q'); let wKt: i64 = mm.makeMove(wK, moves[i..i+4].to_string(), 'K');
+                let bPt: i64 = mm.makeMove(bP, moves[i..i+4].to_string(), 'p'); let bNt: i64 = mm.makeMove(bN, moves[i..i+4].to_string(), 'n');
+                let bBt: i64 = mm.makeMove(bB, moves[i..i+4].to_string(), 'b'); let bRt: i64 = mm.makeMove(bR, moves[i..i+4].to_string(), 'r');
+                let bQt: i64 = mm.makeMove(bQ, moves[i..i+4].to_string(), 'q'); let bKt: i64 = mm.makeMove(bK, moves[i..i+4].to_string(), 'k');
+                let wRt: i64 = mm.makeMoveCastle(wRt, wK, moves[i..i+4].to_string(), 'R'); let bRt: i64 = mm.makeMoveCastle(bRt, bK, moves[i..i+4].to_string(), 'r');
+                let EPt: i64 = mm.makeMoveEP(wP|bP, moves[i..i+4].to_string());
+
+                let mut cwKt: bool = cwK; let mut cwQt: bool = cwQ; let mut cbKt: bool = cbK; let mut cbQt: bool = cbQ;
+
+                if moves.chars().nth(i + 3).unwrap().is_numeric() {
+                    let m1: u32 = moves.chars().nth(i).unwrap().to_digit(10).unwrap();
+                    let m2: u32 = moves.chars().nth(i + 1).unwrap().to_digit(10).unwrap();
+                    let m3: u32 = moves.chars().nth(i + 2).unwrap().to_digit(10).unwrap();
+                    let m4: u32 = moves.chars().nth(i + 3).unwrap().to_digit(10).unwrap();
+                    let start_shift: u32 = 64 - 1 - (m1 * 8 + m2);
+                    let end_shift: u32 = 64 - 1 - (m3 * 8 + m4);
+                    if ((1 << start_shift) & wK) != 0 { // white king move
+                        (cwKt, cwQt) = (false, false);
+                    }
+                    if ((1 << start_shift) & bK) != 0 { // black king move
+                        (cbKt, cbQt) = (false, false);
+                    }
+                    if ((1 << start_shift) & wR & 1) != 0 { // white king side rook move
+                        cwKt = false;
+                    }
+                    if ((1 << start_shift) & wR & (1 << 7)) != 0 { // white queen side rook move
+                        cwQt = false;
+                    }
+                    if ((1 << start_shift) & bR & (1 << 56)) != 0 { // black king side rook move
+                        cbKt = false;
+                    }
+                    if ((1 << start_shift) & bR & (1 << 63)) != 0 { // black queen side rook move
+                        cbQt = false;
+                    }
+                    if (((1 as i64) << end_shift) & 1) != 0 { // white king side rook taken
+                        cwKt = false;
+                    }
+                    if (((1 as i64) << end_shift) & (1 << 7)) != 0 { // white queen side rook taken
+                        cwQt = false;
+                    }
+                    if ((1 << end_shift) & ((1 as i64) << 56)) != 0 { // black king side rook taken
+                        cbKt = false;
+                    }
+                    if ((1 << end_shift) & ((1 as i64) << 63)) != 0 { // black queen side rook taken
+                        cbQt = false;
+                    }
+                }
+
+                if ((wKt & mm.unsafeForWhite(wPt, wNt, wBt, wRt, wQt, wKt, bPt, bNt, bBt, bRt, bQt, bKt)) == 0 && whites_turn) || ((bKt & mm.unsafeForBlack(wPt, wNt, wBt, wRt, wQt, wKt, bPt, bNt, bBt, bRt, bQt, bKt)) == 0 && !whites_turn) {
+                    if depth + 1 == self.max_depth { // only count leaf nodes
+                        self.move_counter += 1
+                    }
+                    // println!("{:?}", self.move_counter);
+                    self.perft(mm, wPt, wNt, wBt, wRt, wQt, wKt, bPt, bNt, bBt, bRt, bQt, bKt, EPt, cwKt, cwQt, cbKt, cbQt, !whites_turn, depth + 1)
+                }
+            }
+        } else if self.move_counter == 0 {
+            self.move_counter += 1;
+        }
+    }
+
+
+    fn perftRoot(&mut self, mm: &mut Moves, wP: i64, wN: i64, wB: i64, wR: i64, wQ: i64, wK: i64, bP: i64, bN: i64, bB: i64, bR: i64, bQ: i64, bK: i64, EP: i64, cwK: bool, cwQ: bool, cbK: bool, cbQ: bool, whites_turn: bool, depth: u32) {
+        let mut moves: String = String::new();
+        if whites_turn {
+            moves = mm.possibleMovesW(wP, wN, wB, wR, wQ, wK, bP, bN, bB, bR, bQ, bK, EP, cwK, cwQ, cbK, cbQ);
+        } else {
+            moves = mm.possibleMovesB(wP, wN, wB, wR, wQ, wK, bP, bN, bB, bR, bQ, bK, EP, cwK, cwQ, cbK, cbQ);
+        }
+        for i in (0..moves.len()).step_by(4) {
+            let wPt: i64 = mm.makeMove(wP, moves[i..i+4].to_string(), 'P'); let wNt: i64 = mm.makeMove(wN, moves[i..i+4].to_string(), 'N');
+            let wBt: i64 = mm.makeMove(wB, moves[i..i+4].to_string(), 'B'); let wRt: i64 = mm.makeMove(wR, moves[i..i+4].to_string(), 'R');
+            let wQt: i64 = mm.makeMove(wQ, moves[i..i+4].to_string(), 'Q'); let wKt: i64 = mm.makeMove(wK, moves[i..i+4].to_string(), 'K');
+            let bPt: i64 = mm.makeMove(bP, moves[i..i+4].to_string(), 'p'); let bNt: i64 = mm.makeMove(bN, moves[i..i+4].to_string(), 'n');
+            let bBt: i64 = mm.makeMove(bB, moves[i..i+4].to_string(), 'b'); let bRt: i64 = mm.makeMove(bR, moves[i..i+4].to_string(), 'r');
+            let bQt: i64 = mm.makeMove(bQ, moves[i..i+4].to_string(), 'q'); let bKt: i64 = mm.makeMove(bK, moves[i..i+4].to_string(), 'k');
+            let wRt: i64 = mm.makeMoveCastle(wRt, wK, moves[i..i+4].to_string(), 'R'); let bRt: i64 = mm.makeMoveCastle(bRt, bK, moves[i..i+4].to_string(), 'r');
+            let EPt: i64 = mm.makeMoveEP(wP|bP, moves[i..i+4].to_string());
+
+            let mut cwKt: bool = cwK; let mut cwQt: bool = cwQ; let mut cbKt: bool = cbK; let mut cbQt: bool = cbQ;
+
+            if moves.chars().nth(i + 3).unwrap().is_numeric() {
+                let m1: u32 = moves.chars().nth(i).unwrap().to_digit(10).unwrap();
+                let m2: u32 = moves.chars().nth(i + 1).unwrap().to_digit(10).unwrap();
+                let m3: u32 = moves.chars().nth(i + 2).unwrap().to_digit(10).unwrap();
+                let m4: u32 = moves.chars().nth(i + 3).unwrap().to_digit(10).unwrap();
+                let start_shift: u32 = 64 - 1 - (m1 * 8 + m2);
+                let end_shift: u32 = 64 - 1 - (m3 * 8 + m4);
+                if ((1 << start_shift) & wK) != 0 { // white king move
+                    (cwKt, cwQt) = (false, false);
+                }
+                if ((1 << start_shift) & bK) != 0 { // black king move
+                    (cbKt, cbQt) = (false, false);
+                }
+                if ((1 << start_shift) & wR & 1) != 0 { // white king side rook move
+                    cwKt = false;
+                }
+                if ((1 << start_shift) & wR & (1 << 7)) != 0 { // white queen side rook move
+                    cwQt = false;
+                }
+                if ((1 << start_shift) & bR & (1 << 56)) != 0 { // black king side rook move
+                    cbKt = false;
+                }
+                if ((1 << start_shift) & bR & (1 << 63)) != 0 { // black queen side rook move
+                    cbQt = false;
+                }
+                if (((1 as i64) << end_shift) & 1) != 0 { // white king side rook taken
+                    cwKt = false;
+                }
+                if (((1 as i64) << end_shift) & (1 << 7)) != 0 { // white queen side rook taken
+                    cwQt = false;
+                }
+                if ((1 << end_shift) & ((1 as i64) << 56)) != 0 { // black king side rook taken
+                    cbKt = false;
+                }
+                if ((1 << end_shift) & ((1 as i64) << 63)) != 0 { // black queen side rook taken
+                    cbQt = false;
+                }
+            }
+
+            if ((wKt & mm.unsafeForWhite(wPt, wNt, wBt, wRt, wQt, wKt, bPt, bNt, bBt, bRt, bQt, bKt)) == 0 && whites_turn) || ((bKt & mm.unsafeForBlack(wPt, wNt, wBt, wRt, wQt, wKt, bPt, bNt, bBt, bRt, bQt, bKt)) == 0 && !whites_turn) {
+                self.perft(mm, wPt, wNt, wBt, wRt, wQt, wKt, bPt, bNt, bBt, bRt, bQt, bKt, EPt, cwKt, cwQt, cbKt, cbQt, !whites_turn, depth + 1);
+                println!("{} {}", move_to_algebra!(moves[i..i+4]), self.move_counter);
+                self.total_move_counter += self.move_counter;
+                self.move_counter = 0;
+            }
+        }
+    }
+}
+
+
 /// Macro to draw a bitboard
 #[macro_export]
 macro_rules! draw_array {
@@ -1130,6 +1289,35 @@ macro_rules! wrap_op {
 }
 
 
+/// Macro to convert move string to algebra notation
+#[macro_export]
+macro_rules! move_to_algebra {
+    ($move:expr) => {{
+        let mut move_str: String = String::new();
+        let idx_to_file_ascii_shift: u8 = 49;
+        let move_chars: Vec<char> = $move.chars().collect();
+        if move_chars[3] == 'E' {
+            move_str.push((move_chars[0] as u8 + idx_to_file_ascii_shift) as char);
+            move_str.push(if move_chars[2] == 'w' {'5'} else {'4'});
+            move_str.push((move_chars[1] as u8 + idx_to_file_ascii_shift) as char);
+            move_str.push(if move_chars[2] == 'w' {'6'} else {'3'});
+        } else if move_chars[3] == 'P' {
+            move_str.push((move_chars[0] as u8 + idx_to_file_ascii_shift) as char);
+            move_str.push(if move_chars[2].is_uppercase() {'7'} else {'2'});
+            move_str.push((move_chars[1] as u8 + idx_to_file_ascii_shift) as char);
+            move_str.push(if move_chars[2].is_uppercase() {'8'} else {'1'});
+            move_str.push(move_chars[2]);
+        } else {
+            move_str.push((move_chars[1] as u8 + idx_to_file_ascii_shift) as char);
+            move_str.push((('8' as u8 - move_chars[0] as u8) + '0' as u8) as char);
+            move_str.push((move_chars[3] as u8 + idx_to_file_ascii_shift) as char);
+            move_str.push((('8' as u8 - move_chars[2] as u8) + '0' as u8) as char);
+        }
+        move_str
+    }};
+}
+
+
 /// Macro to add classes to PyModule
 macro_rules! add_classes {
     ($module:ident, $($class:ty),+) => {
@@ -1153,8 +1341,7 @@ macro_rules! add_functions {
 /// A Python module implemented in Rust.
 #[pymodule]
 fn ChessProject(_py: Python, m: &PyModule) -> PyResult<()> {
-    add_functions!(m, sum_as_string);
-    add_classes!(m, SpecialBitBoards, GameState, Moves);
+    add_classes!(m, SpecialBitBoards, GameState, Moves, Perft);
     Ok(())
 }
 
@@ -1170,16 +1357,14 @@ mod tests {
     fn basic_test() {
         println!("Basic Test!");
         let mut gs = GameState::new();
-        // gs.drawGameArray();
-        // gs.importFEN(String::from("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq -"));
-        // gs.drawGameArray();
+        gs.importFEN(String::from("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq -"));
 
         let mut m: Moves = Moves::new();
-        let s: String = m.possibleMovesW(gs.wP, gs.wN, gs.wB, gs.wR, gs.wQ, gs.wK, gs.bP, gs.bN, gs.bB, gs.bR, gs.bQ, gs.bK, gs.EP, gs.cwK, gs.cwQ, gs.cbK, gs.cbQ);
-        let t: String = m.possibleMovesB(gs.wP, gs.wN, gs.wB, gs.wR, gs.wQ, gs.wK, gs.bP, gs.bN, gs.bB, gs.bR, gs.bQ, gs.bK, gs.EP, gs.cwK, gs.cwQ, gs.cbK, gs.cbQ);
-        println!("{:?}", s);
-        println!("{:?}", t);
-        gs.drawGameArray();
+        let mut p: Perft = Perft::new(3);
+        let before = Instant::now();
+        p.perftRoot(&mut m, gs.wP, gs.wN, gs.wB, gs.wR, gs.wQ, gs.wK, gs.bP, gs.bN, gs.bB, gs.bR, gs.bQ, gs.bK, gs.EP, gs.cwK, gs.cwQ, gs.cbK, gs.cbQ, true, 0);
+        println!("Elapsed time: {:.2?}", before.elapsed());
+        println!("Total Moves: {:?}", p.total_move_counter);
         println!("DONE!");
         panic!();
     }

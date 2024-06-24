@@ -9,7 +9,7 @@ import time
 
 class Perft():
     # static variables
-    PERFT_MAX_DEPTH = 6
+    PERFT_MAX_DEPTH = 4
     perft_move_counter = 0
     perft_total_move_counter = 0
 
@@ -151,7 +151,7 @@ class Perft():
 
 
 gs = GameState()
-gs.importFEN('3k4/8/8/8/8/8/8/R3K3 w Q - 0 1')
+# gs.importFEN('3k4/8/8/8/8/8/8/R3K3 w Q - 0 1')
 
 gs.drawGameArray()
 

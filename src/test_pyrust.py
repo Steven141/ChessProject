@@ -1,13 +1,11 @@
 import ChessProject # rust library
+import time
 
-result = ChessProject.sum_as_string(1, 2)
-print(result)
-
-a = ChessProject.GameState(8)
-print(a)
-
-c = ChessProject.CastleRights(True, True, True, False)
-print(c)
-
-m = ChessProject.Move((0,1), (2,3), is_castle_move=True)
-print(m)
+gs = ChessProject.GameState()
+gs.importFEN("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq -")
+m = ChessProject.Moves()
+p = ChessProject.Perft(3)
+start = time.time()
+p.perftRoot(m, gs.wP, gs.wN, gs.wB, gs.wR, gs.wQ, gs.wK, gs.bP, gs.bN, gs.bB, gs.bR, gs.bQ, gs.bK, gs.EP, gs.cwK, gs.cwQ, gs.cbK, gs.cbQ, True, 0)
+print(f'Total Moves = {p.total_move_counter}')
+print(f'Execution Time = {time.time() - start}')
