@@ -7,7 +7,7 @@ echo ############## Building Rust Library ##############
 echo:
 
 :: Run maturin build and capture the output line by line to get wheel path
-for /f "delims=" %%i in ('maturin build 2^>^&1') do (
+for /f "delims=" %%i in ('maturin build --release 2^>^&1') do (
     echo %%i
     set output=%%i
 )
