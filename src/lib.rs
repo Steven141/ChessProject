@@ -12,6 +12,7 @@
 
 use pyo3::prelude::*;
 use std::time::Instant;
+use std::collections::HashMap;
 
 
 /// Holds specific bitboards
@@ -140,6 +141,9 @@ pub struct GameState {
     bK: i64,
     EP: i64,
     masks: SpecialBitBoards,
+    move_log: String,
+    recent_piece_moved: char,
+    recent_piece_captured: char,
 }
 
 
@@ -177,6 +181,9 @@ impl GameState {
             bK: 0,
             EP: 0,
             masks: SpecialBitBoards::new(),
+            move_log: String::new(),
+            recent_piece_moved: ' ',
+            recent_piece_captured: ' ',
         };
         gs.arrayToI64();
         return gs;
@@ -263,6 +270,50 @@ impl GameState {
             println!();
         }
         println!();
+    }
+
+
+    fn updateBoardArray(&mut self) {
+        self.board = [[' '; 8]; 8];
+        for i in 0..64 {
+            let shift = 64 - 1 - i;
+            if usgn_r_shift!(self.wP, shift) & 1 == 1 {
+                self.board[i / 8][i % 8] = 'P';
+            }
+            if usgn_r_shift!(self.wN, shift) & 1 == 1 {
+                self.board[i / 8][i % 8] = 'N';
+            }
+            if usgn_r_shift!(self.wB, shift) & 1 == 1 {
+                self.board[i / 8][i % 8] = 'B';
+            }
+            if usgn_r_shift!(self.wR, shift) & 1 == 1 {
+                self.board[i / 8][i % 8] = 'R';
+            }
+            if usgn_r_shift!(self.wQ, shift) & 1 == 1 {
+                self.board[i / 8][i % 8] = 'Q';
+            }
+            if usgn_r_shift!(self.wK, shift) & 1 == 1 {
+                self.board[i / 8][i % 8] = 'K';
+            }
+            if usgn_r_shift!(self.bP, shift) & 1 == 1 {
+                self.board[i / 8][i % 8] = 'p';
+            }
+            if usgn_r_shift!(self.bN, shift) & 1 == 1 {
+                self.board[i / 8][i % 8] = 'n';
+            }
+            if usgn_r_shift!(self.bB, shift) & 1 == 1 {
+                self.board[i / 8][i % 8] = 'b';
+            }
+            if usgn_r_shift!(self.bR, shift) & 1 == 1 {
+                self.board[i / 8][i % 8] = 'r';
+            }
+            if usgn_r_shift!(self.bQ, shift) & 1 == 1 {
+                self.board[i / 8][i % 8] = 'q';
+            }
+            if usgn_r_shift!(self.bK, shift) & 1 == 1 {
+                self.board[i / 8][i % 8] = 'k';
+            }
+        }
     }
 
 
@@ -359,7 +410,80 @@ impl GameState {
             self.EP = self.masks.file_masks[fen_str.chars().nth(char_idx).unwrap() as usize - 'a' as usize];
             char_idx += 1;
         }
+        self.updateBoardArray()
         // Rest of FEN not used
+    }
+
+
+    fn makeMove(&mut self, mm: &mut Moves, move_str: String) {
+        if move_str.chars().nth(3).unwrap() == 'E' {
+            self.recent_piece_captured = if self.whites_turn {'p'} else {'P'};
+            self.recent_piece_moved = if self.whites_turn {'P'} else {'p'};
+        } else if move_str.chars().nth(3).unwrap() == 'P' {
+            self.recent_piece_captured = self.board[if self.whites_turn {0} else {7}][move_str.chars().nth(1).unwrap().to_digit(10).unwrap() as usize];
+            self.recent_piece_moved = if self.whites_turn {'P'} else {'p'};
+        } else {
+            self.recent_piece_captured = self.board[move_str.chars().nth(2).unwrap().to_digit(10).unwrap() as usize][move_str.chars().nth(3).unwrap().to_digit(10).unwrap() as usize];
+            self.recent_piece_moved = self.board[move_str.chars().nth(0).unwrap().to_digit(10).unwrap() as usize][move_str.chars().nth(1).unwrap().to_digit(10).unwrap() as usize];
+        }
+        self.move_log.push_str(&move_str);
+        let wK_cached: i64 = self.wK;
+        let bK_cached: i64 = self.bK;
+        let wR_cached: i64 = self.wR;
+        let bR_cached: i64 = self.bR;
+        let wP_cached: i64 = self.wP;
+        let bP_cached: i64 = self.bP;
+
+        self.wP = mm.makeMove(self.wP, move_str.clone(), 'P'); self.wN = mm.makeMove(self.wN, move_str.clone(), 'N');
+        self.wB = mm.makeMove(self.wB, move_str.clone(), 'B'); self.wR = mm.makeMove(self.wR, move_str.clone(), 'R');
+        self.wQ = mm.makeMove(self.wQ, move_str.clone(), 'Q'); self.wK = mm.makeMove(self.wK, move_str.clone(), 'K');
+        self.bP = mm.makeMove(self.bP, move_str.clone(), 'p'); self.bN = mm.makeMove(self.bN, move_str.clone(), 'n');
+        self.bB = mm.makeMove(self.bB, move_str.clone(), 'b'); self.bR = mm.makeMove(self.bR, move_str.clone(), 'r');
+        self.bQ = mm.makeMove(self.bQ, move_str.clone(), 'q'); self.bK = mm.makeMove(self.bK, move_str.clone(), 'k');
+        self.wR = mm.makeMoveCastle(self.wR, wK_cached, move_str.clone(), 'R'); self.bR = mm.makeMoveCastle(self.bR, bK_cached, move_str.clone(), 'r');
+        self.EP = mm.makeMoveEP(wP_cached|bP_cached, move_str.clone());
+
+        if move_str.chars().nth(3).unwrap().is_numeric() {
+            let m1: u32 = move_str.chars().nth(0).unwrap().to_digit(10).unwrap();
+            let m2: u32 = move_str.chars().nth(1).unwrap().to_digit(10).unwrap();
+            let m3: u32 = move_str.chars().nth(2).unwrap().to_digit(10).unwrap();
+            let m4: u32 = move_str.chars().nth(3).unwrap().to_digit(10).unwrap();
+            let start_shift: u32 = 64 - 1 - (m1 * 8 + m2);
+            let end_shift: u32 = 64 - 1 - (m3 * 8 + m4);
+            if ((1 << start_shift) & wK_cached) != 0 { // white king move
+                (self.cwK, self.cwQ) = (false, false);
+            }
+            if ((1 << start_shift) & bK_cached) != 0 { // black king move
+                (self.cbK, self.cbQ) = (false, false);
+            }
+            if ((1 << start_shift) & wR_cached & 1) != 0 { // white king side rook move
+                self.cwK = false;
+            }
+            if ((1 << start_shift) & wR_cached & (1 << 7)) != 0 { // white queen side rook move
+                self.cwQ = false;
+            }
+            if ((1 << start_shift) & bR_cached & (1 << 56)) != 0 { // black king side rook move
+                self.cbK = false;
+            }
+            if ((1 << start_shift) & bR_cached & (1 << 63)) != 0 { // black queen side rook move
+                self.cbQ = false;
+            }
+            if (((1 as i64) << end_shift) & 1) != 0 { // white king side rook taken
+                self.cwK = false;
+            }
+            if (((1 as i64) << end_shift) & (1 << 7)) != 0 { // white queen side rook taken
+                self.cwQ = false;
+            }
+            if ((1 << end_shift) & ((1 as i64) << 56)) != 0 { // black king side rook taken
+                self.cbK = false;
+            }
+            if ((1 << end_shift) & ((1 as i64) << 63)) != 0 { // black queen side rook taken
+                self.cbQ = false;
+            }
+        }
+
+        self.whites_turn = !self.whites_turn;
+        self.updateBoardArray();
     }
 }
 
@@ -380,6 +504,32 @@ impl Moves {
             castle_rooks: [63, 56, 7, 0],
             masks: SpecialBitBoards::new(),
         }
+    }
+
+
+    fn getValidMoves(&mut self, wP: i64, wN: i64, wB: i64, wR: i64, wQ: i64, wK: i64, bP: i64, bN: i64, bB: i64, bR: i64, bQ: i64, bK: i64, EP: i64, cwK: bool, cwQ: bool, cbK: bool, cbQ: bool, whites_turn: bool) -> String {
+        let mut moves: String = String::new();
+        if whites_turn {
+            moves = self.possibleMovesW(wP, wN, wB, wR, wQ, wK, bP, bN, bB, bR, bQ, bK, EP, cwK, cwQ, cbK, cbQ);
+        } else {
+            moves = self.possibleMovesB(wP, wN, wB, wR, wQ, wK, bP, bN, bB, bR, bQ, bK, EP, cwK, cwQ, cbK, cbQ);
+        }
+        let mut valid_moves: String = String::new();
+        for i in (0..moves.len()).step_by(4) {
+            let wPt: i64 = self.makeMove(wP, moves[i..i+4].to_string(), 'P'); let wNt: i64 = self.makeMove(wN, moves[i..i+4].to_string(), 'N');
+            let wBt: i64 = self.makeMove(wB, moves[i..i+4].to_string(), 'B'); let wRt: i64 = self.makeMove(wR, moves[i..i+4].to_string(), 'R');
+            let wQt: i64 = self.makeMove(wQ, moves[i..i+4].to_string(), 'Q'); let wKt: i64 = self.makeMove(wK, moves[i..i+4].to_string(), 'K');
+            let bPt: i64 = self.makeMove(bP, moves[i..i+4].to_string(), 'p'); let bNt: i64 = self.makeMove(bN, moves[i..i+4].to_string(), 'n');
+            let bBt: i64 = self.makeMove(bB, moves[i..i+4].to_string(), 'b'); let bRt: i64 = self.makeMove(bR, moves[i..i+4].to_string(), 'r');
+            let bQt: i64 = self.makeMove(bQ, moves[i..i+4].to_string(), 'q'); let bKt: i64 = self.makeMove(bK, moves[i..i+4].to_string(), 'k');
+            let wRt: i64 = self.makeMoveCastle(wRt, wK, moves[i..i+4].to_string(), 'R'); let bRt: i64 = self.makeMoveCastle(bRt, bK, moves[i..i+4].to_string(), 'r');
+
+            let is_valid_move: bool = ((wKt & self.unsafeForWhite(wPt, wNt, wBt, wRt, wQt, wKt, bPt, bNt, bBt, bRt, bQt, bKt)) == 0 && whites_turn) || ((bKt & self.unsafeForBlack(wPt, wNt, wBt, wRt, wQt, wKt, bPt, bNt, bBt, bRt, bQt, bKt)) == 0 && !whites_turn);
+            if is_valid_move {
+                valid_moves += &moves[i..i+4];
+            }
+        }
+        valid_moves
     }
 
 
@@ -1231,6 +1381,408 @@ impl Perft {
 }
 
 
+/// Performs a principal variation search
+#[pyclass(module = "ChessProject", get_all, set_all)]
+struct BestMoveFinder {
+    search_depth: u32,
+    mate_score: i64,
+    move_counter: u32,
+    best_move_idx: i64,
+    considered_moves: String,
+    next_move: String,
+    piece_scores: HashMap<char, u32>,
+}
+
+
+/// Look into transpositions tables and iterative deepening
+#[pymethods]
+impl BestMoveFinder {
+    #[new]
+    fn new(search_depth: u32) -> Self {
+        BestMoveFinder {
+            search_depth: search_depth,
+            mate_score: 5000,
+            move_counter: 0,
+            best_move_idx: -1,
+            considered_moves: String::new(),
+            next_move: String::new(),
+            piece_scores: HashMap::from([
+                ('K', 0),
+                ('Q', 9),
+                ('R', 5),
+                ('B', 3),
+                ('N', 3),
+                ('P', 1),
+            ]),
+        }
+    }
+
+
+    fn negaMaxAlphaBeta(&mut self, mut alpha: i64, beta: i64, mm: &mut Moves, wP: i64, wN: i64, wB: i64, wR: i64, wQ: i64, wK: i64, bP: i64, bN: i64, bB: i64, bR: i64, bQ: i64, bK: i64, EP: i64, cwK: bool, cwQ: bool, cbK: bool, cbQ: bool, whites_turn: bool, depth: u32) -> i64 {
+        // Positive = better for current recursive player perspective
+        self.move_counter += 1;
+        if depth == self.search_depth {
+            return (if whites_turn {1} else {-1}) * self.evaluate(wP, wN, wB, wR, wQ, wK, bP, bN, bB, bR, bQ, bK);
+        }
+        let mut best_score: i64 = -self.mate_score;
+
+        let mut moves: String = String::new();
+        if whites_turn {
+            moves = mm.possibleMovesW(wP, wN, wB, wR, wQ, wK, bP, bN, bB, bR, bQ, bK, EP, cwK, cwQ, cbK, cbQ);
+        } else {
+            moves = mm.possibleMovesB(wP, wN, wB, wR, wQ, wK, bP, bN, bB, bR, bQ, bK, EP, cwK, cwQ, cbK, cbQ);
+        }
+        if depth == 0 {
+            self.considered_moves = moves.clone();
+        }
+        let mut legal_move_idx: i64 = self.getNextLegalMoveIdx(&moves, mm, wP, wN, wB, wR, wQ, wK, bP, bN, bB, bR, bQ, bK, EP, cwK, cwQ, cbK, cbQ, whites_turn, 0);
+        while legal_move_idx != -1 {
+            let mut wPt: i64 = mm.makeMove(wP, moves[(legal_move_idx as usize)..(legal_move_idx as usize)+4].to_string(), 'P'); let mut wNt: i64 = mm.makeMove(wN, moves[(legal_move_idx as usize)..(legal_move_idx as usize)+4].to_string(), 'N');
+            let mut wBt: i64 = mm.makeMove(wB, moves[(legal_move_idx as usize)..(legal_move_idx as usize)+4].to_string(), 'B'); let mut wRt: i64 = mm.makeMove(wR, moves[(legal_move_idx as usize)..(legal_move_idx as usize)+4].to_string(), 'R');
+            let mut wQt: i64 = mm.makeMove(wQ, moves[(legal_move_idx as usize)..(legal_move_idx as usize)+4].to_string(), 'Q'); let mut wKt: i64 = mm.makeMove(wK, moves[(legal_move_idx as usize)..(legal_move_idx as usize)+4].to_string(), 'K');
+            let mut bPt: i64 = mm.makeMove(bP, moves[(legal_move_idx as usize)..(legal_move_idx as usize)+4].to_string(), 'p'); let mut bNt: i64 = mm.makeMove(bN, moves[(legal_move_idx as usize)..(legal_move_idx as usize)+4].to_string(), 'n');
+            let mut bBt: i64 = mm.makeMove(bB, moves[(legal_move_idx as usize)..(legal_move_idx as usize)+4].to_string(), 'b'); let mut bRt: i64 = mm.makeMove(bR, moves[(legal_move_idx as usize)..(legal_move_idx as usize)+4].to_string(), 'r');
+            let mut bQt: i64 = mm.makeMove(bQ, moves[(legal_move_idx as usize)..(legal_move_idx as usize)+4].to_string(), 'q'); let mut bKt: i64 = mm.makeMove(bK, moves[(legal_move_idx as usize)..(legal_move_idx as usize)+4].to_string(), 'k');
+            let mut wRt: i64 = mm.makeMoveCastle(wRt, wK, moves[(legal_move_idx as usize)..(legal_move_idx as usize)+4].to_string(), 'R'); let mut bRt: i64 = mm.makeMoveCastle(bRt, bK, moves[(legal_move_idx as usize)..(legal_move_idx as usize)+4].to_string(), 'r');
+            let mut EPt: i64 = mm.makeMoveEP(wP|bP, moves[(legal_move_idx as usize)..(legal_move_idx as usize)+4].to_string());
+
+            let mut cwKt: bool = cwK; let mut cwQt: bool = cwQ; let mut cbKt: bool = cbK; let mut cbQt: bool = cbQ;
+
+            if moves.chars().nth((legal_move_idx as usize) + 3).unwrap().is_numeric() {
+                let m1: u32 = moves.chars().nth(legal_move_idx as usize).unwrap().to_digit(10).unwrap();
+                let m2: u32 = moves.chars().nth((legal_move_idx as usize) + 1).unwrap().to_digit(10).unwrap();
+                let m3: u32 = moves.chars().nth((legal_move_idx as usize) + 2).unwrap().to_digit(10).unwrap();
+                let m4: u32 = moves.chars().nth((legal_move_idx as usize) + 3).unwrap().to_digit(10).unwrap();
+                let start_shift: u32 = 64 - 1 - (m1 * 8 + m2);
+                let end_shift: u32 = 64 - 1 - (m3 * 8 + m4);
+                if ((1 << start_shift) & wK) != 0 { // white king move
+                    (cwKt, cwQt) = (false, false);
+                }
+                if ((1 << start_shift) & bK) != 0 { // black king move
+                    (cbKt, cbQt) = (false, false);
+                }
+                if ((1 << start_shift) & wR & 1) != 0 { // white king side rook move
+                    cwKt = false;
+                }
+                if ((1 << start_shift) & wR & (1 << 7)) != 0 { // white queen side rook move
+                    cwQt = false;
+                }
+                if ((1 << start_shift) & bR & (1 << 56)) != 0 { // black king side rook move
+                    cbKt = false;
+                }
+                if ((1 << start_shift) & bR & (1 << 63)) != 0 { // black queen side rook move
+                    cbQt = false;
+                }
+                if (((1 as i64) << end_shift) & 1) != 0 { // white king side rook taken
+                    cwKt = false;
+                }
+                if (((1 as i64) << end_shift) & (1 << 7)) != 0 { // white queen side rook taken
+                    cwQt = false;
+                }
+                if ((1 << end_shift) & ((1 as i64) << 56)) != 0 { // black king side rook taken
+                    cbKt = false;
+                }
+                if ((1 << end_shift) & ((1 as i64) << 63)) != 0 { // black queen side rook taken
+                    cbQt = false;
+                }
+            }
+
+            let score: i64 = -self.negaMaxAlphaBeta(-beta, -alpha, mm, wPt, wNt, wBt, wRt, wQt, wKt, bPt, bNt, bBt, bRt, bQt, bKt, EPt, cwKt, cwQt, cbKt, cbQt, !whites_turn, depth+1);
+            if score >= best_score {
+                best_score = score;
+                if depth == 0 {
+                    self.best_move_idx = legal_move_idx;
+                    println!("Considering {:?} with score: {:?}", moves[(legal_move_idx as usize)..(legal_move_idx as usize)+4].to_string(), score);
+                }
+            }
+
+            if best_score > alpha {
+                alpha = best_score;
+            }
+            if alpha >= beta {
+                break;
+            }
+            legal_move_idx = self.getNextLegalMoveIdx(&moves, mm, wP, wN, wB, wR, wQ, wK, bP, bN, bB, bR, bQ, bK, EP, cwK, cwQ, cbK, cbQ, whites_turn, (legal_move_idx+4) as usize);
+        }
+        best_score
+    }
+
+
+    fn pvSearch(&mut self, mut alpha: i64, beta: i64, mm: &mut Moves, wP: i64, wN: i64, wB: i64, wR: i64, wQ: i64, wK: i64, bP: i64, bN: i64, bB: i64, bR: i64, bQ: i64, bK: i64, EP: i64, cwK: bool, cwQ: bool, cbK: bool, cbQ: bool, whites_turn: bool, depth: u32) -> i64 {
+        let mut best_score: i64;
+        if depth == self.search_depth {
+            best_score = self.evaluate(wP, wN, wB, wR, wQ, wK, bP, bN, bB, bR, bQ, bK);
+            return best_score;
+        }
+        let mut moves: String = String::new();
+        if whites_turn {
+            moves = mm.possibleMovesW(wP, wN, wB, wR, wQ, wK, bP, bN, bB, bR, bQ, bK, EP, cwK, cwQ, cbK, cbQ);
+        } else {
+            moves = mm.possibleMovesB(wP, wN, wB, wR, wQ, wK, bP, bN, bB, bR, bQ, bK, EP, cwK, cwQ, cbK, cbQ);
+        }
+        if depth == 0 {
+            self.considered_moves = moves.clone();
+        }
+        // get first move
+        let mut first_legal_move: i64 = self.getNextLegalMoveIdx(&moves, mm, wP, wN, wB, wR, wQ, wK, bP, bN, bB, bR, bQ, bK, EP, cwK, cwQ, cbK, cbQ, whites_turn, 0); // diff
+        if first_legal_move == -1 {
+            return if whites_turn {self.mate_score} else {-self.mate_score};
+        }
+        // make first move
+        let mut wPt: i64 = mm.makeMove(wP, moves[(first_legal_move as usize)..(first_legal_move as usize)+4].to_string(), 'P'); let mut wNt: i64 = mm.makeMove(wN, moves[(first_legal_move as usize)..(first_legal_move as usize)+4].to_string(), 'N');
+        let mut wBt: i64 = mm.makeMove(wB, moves[(first_legal_move as usize)..(first_legal_move as usize)+4].to_string(), 'B'); let mut wRt: i64 = mm.makeMove(wR, moves[(first_legal_move as usize)..(first_legal_move as usize)+4].to_string(), 'R');
+        let mut wQt: i64 = mm.makeMove(wQ, moves[(first_legal_move as usize)..(first_legal_move as usize)+4].to_string(), 'Q'); let mut wKt: i64 = mm.makeMove(wK, moves[(first_legal_move as usize)..(first_legal_move as usize)+4].to_string(), 'K');
+        let mut bPt: i64 = mm.makeMove(bP, moves[(first_legal_move as usize)..(first_legal_move as usize)+4].to_string(), 'p'); let mut bNt: i64 = mm.makeMove(bN, moves[(first_legal_move as usize)..(first_legal_move as usize)+4].to_string(), 'n');
+        let mut bBt: i64 = mm.makeMove(bB, moves[(first_legal_move as usize)..(first_legal_move as usize)+4].to_string(), 'b'); let mut bRt: i64 = mm.makeMove(bR, moves[(first_legal_move as usize)..(first_legal_move as usize)+4].to_string(), 'r');
+        let mut bQt: i64 = mm.makeMove(bQ, moves[(first_legal_move as usize)..(first_legal_move as usize)+4].to_string(), 'q'); let mut bKt: i64 = mm.makeMove(bK, moves[(first_legal_move as usize)..(first_legal_move as usize)+4].to_string(), 'k');
+        let mut wRt: i64 = mm.makeMoveCastle(wRt, wK, moves[(first_legal_move as usize)..(first_legal_move as usize)+4].to_string(), 'R'); let mut bRt: i64 = mm.makeMoveCastle(bRt, bK, moves[(first_legal_move as usize)..(first_legal_move as usize)+4].to_string(), 'r');
+        let mut EPt: i64 = mm.makeMoveEP(wP|bP, moves[(first_legal_move as usize)..(first_legal_move as usize)+4].to_string());
+
+        let mut cwKt: bool = cwK; let mut cwQt: bool = cwQ; let mut cbKt: bool = cbK; let mut cbQt: bool = cbQ;
+
+        if moves.chars().nth((first_legal_move as usize) + 3).unwrap().is_numeric() {
+            let m1: u32 = moves.chars().nth(first_legal_move as usize).unwrap().to_digit(10).unwrap();
+            let m2: u32 = moves.chars().nth((first_legal_move as usize) + 1).unwrap().to_digit(10).unwrap();
+            let m3: u32 = moves.chars().nth((first_legal_move as usize) + 2).unwrap().to_digit(10).unwrap();
+            let m4: u32 = moves.chars().nth((first_legal_move as usize) + 3).unwrap().to_digit(10).unwrap();
+            let start_shift: u32 = 64 - 1 - (m1 * 8 + m2);
+            let end_shift: u32 = 64 - 1 - (m3 * 8 + m4);
+            if ((1 << start_shift) & wK) != 0 { // white king move
+                (cwKt, cwQt) = (false, false);
+            }
+            if ((1 << start_shift) & bK) != 0 { // black king move
+                (cbKt, cbQt) = (false, false);
+            }
+            if ((1 << start_shift) & wR & 1) != 0 { // white king side rook move
+                cwKt = false;
+            }
+            if ((1 << start_shift) & wR & (1 << 7)) != 0 { // white queen side rook move
+                cwQt = false;
+            }
+            if ((1 << start_shift) & bR & (1 << 56)) != 0 { // black king side rook move
+                cbKt = false;
+            }
+            if ((1 << start_shift) & bR & (1 << 63)) != 0 { // black queen side rook move
+                cbQt = false;
+            }
+            if (((1 as i64) << end_shift) & 1) != 0 { // white king side rook taken
+                cwKt = false;
+            }
+            if (((1 as i64) << end_shift) & (1 << 7)) != 0 { // white queen side rook taken
+                cwQt = false;
+            }
+            if ((1 << end_shift) & ((1 as i64) << 56)) != 0 { // black king side rook taken
+                cbKt = false;
+            }
+            if ((1 << end_shift) & ((1 as i64) << 63)) != 0 { // black queen side rook taken
+                cbQt = false;
+            }
+        }
+        // evaluate new position
+        best_score = -self.pvSearch(-beta, -alpha, mm, wPt, wNt, wBt, wRt, wQt, wKt, bPt, bNt, bBt, bRt, bQt, bKt, EPt, cwKt, cwQt, cbKt, cbQt, !whites_turn, depth+1);
+        self.move_counter += 1;
+        if best_score.abs() == self.mate_score {
+            // self.next_move = moves[(first_legal_move as usize)..(first_legal_move as usize)+4].to_string();
+            return best_score;
+        }
+        if best_score > alpha {
+            if best_score >= beta {
+                // self.next_move = moves[(first_legal_move as usize)..(first_legal_move as usize)+4].to_string();
+                return best_score;
+            }
+            alpha = best_score;
+        }
+        // set best score so far
+        self.best_move_idx = first_legal_move;
+        // search subsequent moves using zero window search
+        for i in (((first_legal_move + 4) as usize)..moves.len()).step_by(4) {
+            let mut score: i64;
+            self.move_counter += 1;
+            // legal non-castle moves
+            wPt = mm.makeMove(wP, moves[i..i+4].to_string(), 'P'); wNt = mm.makeMove(wN, moves[i..i+4].to_string(), 'N');
+            wBt = mm.makeMove(wB, moves[i..i+4].to_string(), 'B'); wRt = mm.makeMove(wR, moves[i..i+4].to_string(), 'R');
+            wQt = mm.makeMove(wQ, moves[i..i+4].to_string(), 'Q'); wKt = mm.makeMove(wK, moves[i..i+4].to_string(), 'K');
+            bPt = mm.makeMove(bP, moves[i..i+4].to_string(), 'p'); bNt = mm.makeMove(bN, moves[i..i+4].to_string(), 'n');
+            bBt = mm.makeMove(bB, moves[i..i+4].to_string(), 'b'); bRt = mm.makeMove(bR, moves[i..i+4].to_string(), 'r');
+            bQt = mm.makeMove(bQ, moves[i..i+4].to_string(), 'q'); bKt = mm.makeMove(bK, moves[i..i+4].to_string(), 'k');
+            wRt = mm.makeMoveCastle(wRt, wK, moves[i..i+4].to_string(), 'R'); bRt = mm.makeMoveCastle(bRt, bK, moves[i..i+4].to_string(), 'r');
+            EPt = mm.makeMoveEP(wP|bP, moves[i..i+4].to_string());
+
+            cwKt = cwK; cwQt = cwQ; cbKt = cbK; cbQt = cbQ;
+
+            if moves.chars().nth(i + 3).unwrap().is_numeric() {
+                let m1: u32 = moves.chars().nth(first_legal_move as usize).unwrap().to_digit(10).unwrap();
+                let m2: u32 = moves.chars().nth((first_legal_move as usize) + 1).unwrap().to_digit(10).unwrap();
+                let m3: u32 = moves.chars().nth((first_legal_move as usize) + 2).unwrap().to_digit(10).unwrap();
+                let m4: u32 = moves.chars().nth((first_legal_move as usize) + 3).unwrap().to_digit(10).unwrap();
+                let start_shift: u32 = 64 - 1 - (m1 * 8 + m2);
+                let end_shift: u32 = 64 - 1 - (m3 * 8 + m4);
+                if ((1 << start_shift) & wK) != 0 { // white king move
+                    (cwKt, cwQt) = (false, false);
+                }
+                if ((1 << start_shift) & bK) != 0 { // black king move
+                    (cbKt, cbQt) = (false, false);
+                }
+                if ((1 << start_shift) & wR & 1) != 0 { // white king side rook move
+                    cwKt = false;
+                }
+                if ((1 << start_shift) & wR & (1 << 7)) != 0 { // white queen side rook move
+                    cwQt = false;
+                }
+                if ((1 << start_shift) & bR & (1 << 56)) != 0 { // black king side rook move
+                    cbKt = false;
+                }
+                if ((1 << start_shift) & bR & (1 << 63)) != 0 { // black queen side rook move
+                    cbQt = false;
+                }
+                if (((1 as i64) << end_shift) & 1) != 0 { // white king side rook taken
+                    cwKt = false;
+                }
+                if (((1 as i64) << end_shift) & (1 << 7)) != 0 { // white queen side rook taken
+                    cwQt = false;
+                }
+                if ((1 << end_shift) & ((1 as i64) << 56)) != 0 { // black king side rook taken
+                    cbKt = false;
+                }
+                if ((1 << end_shift) & ((1 as i64) << 63)) != 0 { // black queen side rook taken
+                    cbQt = false;
+                }
+            }
+            // quick search to check if move could be best
+            score = -self.zWSearch(-alpha, mm, wPt, wNt, wBt, wRt, wQt, wKt, bPt, bNt, bBt, bRt, bQt, bKt, EPt, cwKt, cwQt, cbKt, cbQt, !whites_turn, depth+1);
+            if (score > alpha) && (score < beta) {
+                // re-search with window [alpha: beta] because move could be best move
+                best_score = -self.pvSearch(-beta, -alpha, mm, wPt, wNt, wBt, wRt, wQt, wKt, bPt, bNt, bBt, bRt, bQt, bKt, EPt, cwKt, cwQt, cbKt, cbQt, !whites_turn, depth+1);
+                if score > alpha {
+                    self.best_move_idx = i as i64;
+                    // self.next_move = moves[i..i+4].to_string();
+                    alpha = score;
+                }
+            }
+            if (score != i64::MIN) && (score > best_score) {
+                if score >= beta {
+                    // self.next_move = moves[i..i+4].to_string();
+                    return score;
+                }
+                best_score = score;
+                if best_score.abs() == self.mate_score {
+                    // self.next_move = moves[i..i+4].to_string();
+                    return best_score;
+                }
+            }
+        }
+        best_score
+    }
+
+
+    fn evaluate(&self, wP: i64, wN: i64, wB: i64, wR: i64, wQ: i64, wK: i64, bP: i64, bN: i64, bB: i64, bR: i64, bQ: i64, bK: i64) -> i64 {
+        let mut score: i64 = 0;
+        score += (wP.count_ones() as i64) * 1;
+        score += (wN.count_ones() as i64) * 3;
+        score += (wB.count_ones() as i64) * 3;
+        score += (wR.count_ones() as i64) * 5;
+        score += (wQ.count_ones() as i64) * 9;
+        score -= (bP.count_ones() as i64) * 1;
+        score -= (bN.count_ones() as i64) * 3;
+        score -= (bB.count_ones() as i64) * 3;
+        score -= (bR.count_ones() as i64) * 5;
+        score -= (bQ.count_ones() as i64) * 9;
+        score
+    }
+
+
+    fn getNextLegalMoveIdx(&self, moves: &str, mm: &mut Moves, wP: i64, wN: i64, wB: i64, wR: i64, wQ: i64, wK: i64, bP: i64, bN: i64, bB: i64, bR: i64, bQ: i64, bK: i64, EP: i64, cwK: bool, cwQ: bool, cbK: bool, cbQ: bool, whites_turn: bool, start_idx: usize) -> i64 {
+        for i in (start_idx..moves.len()).step_by(4) {
+            let wPt: i64 = mm.makeMove(wP, moves[i..i+4].to_string(), 'P'); let wNt: i64 = mm.makeMove(wN, moves[i..i+4].to_string(), 'N');
+            let wBt: i64 = mm.makeMove(wB, moves[i..i+4].to_string(), 'B'); let wRt: i64 = mm.makeMove(wR, moves[i..i+4].to_string(), 'R');
+            let wQt: i64 = mm.makeMove(wQ, moves[i..i+4].to_string(), 'Q'); let wKt: i64 = mm.makeMove(wK, moves[i..i+4].to_string(), 'K');
+            let bPt: i64 = mm.makeMove(bP, moves[i..i+4].to_string(), 'p'); let bNt: i64 = mm.makeMove(bN, moves[i..i+4].to_string(), 'n');
+            let bBt: i64 = mm.makeMove(bB, moves[i..i+4].to_string(), 'b'); let bRt: i64 = mm.makeMove(bR, moves[i..i+4].to_string(), 'r');
+            let bQt: i64 = mm.makeMove(bQ, moves[i..i+4].to_string(), 'q'); let bKt: i64 = mm.makeMove(bK, moves[i..i+4].to_string(), 'k');
+            let wRt: i64 = mm.makeMoveCastle(wRt, wK, moves[i..i+4].to_string(), 'R'); let bRt: i64 = mm.makeMoveCastle(bRt, bK, moves[i..i+4].to_string(), 'r');
+            if ((wKt & mm.unsafeForWhite(wPt, wNt, wBt, wRt, wQt, wKt, bPt, bNt, bBt, bRt, bQt, bKt)) == 0 && whites_turn) || ((bKt & mm.unsafeForBlack(wPt, wNt, wBt, wRt, wQt, wKt, bPt, bNt, bBt, bRt, bQt, bKt)) == 0 && !whites_turn) {
+                return i as i64;
+            }
+        }
+        -1
+    }
+
+
+    fn zWSearch(&self, beta: i64, mm: &mut Moves, wP: i64, wN: i64, wB: i64, wR: i64, wQ: i64, wK: i64, bP: i64, bN: i64, bB: i64, bR: i64, bQ: i64, bK: i64, EP: i64, cwK: bool, cwQ: bool, cbK: bool, cbQ: bool, whites_turn: bool, depth: u32) -> i64 {
+        let mut score: i64 = i64::MIN;
+        // alpha == beta - 1
+        if depth == self.search_depth {
+            score = self.evaluate(wP, wN, wB, wR, wQ, wK, bP, bN, bB, bR, bQ, bK);
+            return score;
+        }
+        let mut moves: String = String::new();
+        if whites_turn {
+            moves = mm.possibleMovesW(wP, wN, wB, wR, wQ, wK, bP, bN, bB, bR, bQ, bK, EP, cwK, cwQ, cbK, cbQ);
+        } else {
+            moves = mm.possibleMovesB(wP, wN, wB, wR, wQ, wK, bP, bN, bB, bR, bQ, bK, EP, cwK, cwQ, cbK, cbQ);
+        }
+        for i in (0..moves.len()).step_by(4) {
+            let wPt: i64 = mm.makeMove(wP, moves[i..i+4].to_string(), 'P'); let wNt: i64 = mm.makeMove(wN, moves[i..i+4].to_string(), 'N');
+            let wBt: i64 = mm.makeMove(wB, moves[i..i+4].to_string(), 'B'); let wRt: i64 = mm.makeMove(wR, moves[i..i+4].to_string(), 'R');
+            let wQt: i64 = mm.makeMove(wQ, moves[i..i+4].to_string(), 'Q'); let wKt: i64 = mm.makeMove(wK, moves[i..i+4].to_string(), 'K');
+            let bPt: i64 = mm.makeMove(bP, moves[i..i+4].to_string(), 'p'); let bNt: i64 = mm.makeMove(bN, moves[i..i+4].to_string(), 'n');
+            let bBt: i64 = mm.makeMove(bB, moves[i..i+4].to_string(), 'b'); let bRt: i64 = mm.makeMove(bR, moves[i..i+4].to_string(), 'r');
+            let bQt: i64 = mm.makeMove(bQ, moves[i..i+4].to_string(), 'q'); let bKt: i64 = mm.makeMove(bK, moves[i..i+4].to_string(), 'k');
+            let wRt: i64 = mm.makeMoveCastle(wRt, wK, moves[i..i+4].to_string(), 'R'); let bRt: i64 = mm.makeMoveCastle(bRt, bK, moves[i..i+4].to_string(), 'r');
+            let EPt: i64 = mm.makeMoveEP(wP|bP, moves[i..i+4].to_string());
+
+            let mut cwKt: bool = cwK; let mut cwQt: bool = cwQ; let mut cbKt: bool = cbK; let mut cbQt: bool = cbQ;
+
+            if moves.chars().nth(i + 3).unwrap().is_numeric() {
+                let m1: u32 = moves.chars().nth(i).unwrap().to_digit(10).unwrap();
+                let m2: u32 = moves.chars().nth(i + 1).unwrap().to_digit(10).unwrap();
+                let m3: u32 = moves.chars().nth(i + 2).unwrap().to_digit(10).unwrap();
+                let m4: u32 = moves.chars().nth(i + 3).unwrap().to_digit(10).unwrap();
+                let start_shift: u32 = 64 - 1 - (m1 * 8 + m2);
+                let end_shift: u32 = 64 - 1 - (m3 * 8 + m4);
+                if ((1 << start_shift) & wK) != 0 { // white king move
+                    (cwKt, cwQt) = (false, false);
+                }
+                if ((1 << start_shift) & bK) != 0 { // black king move
+                    (cbKt, cbQt) = (false, false);
+                }
+                if ((1 << start_shift) & wR & 1) != 0 { // white king side rook move
+                    cwKt = false;
+                }
+                if ((1 << start_shift) & wR & (1 << 7)) != 0 { // white queen side rook move
+                    cwQt = false;
+                }
+                if ((1 << start_shift) & bR & (1 << 56)) != 0 { // black king side rook move
+                    cbKt = false;
+                }
+                if ((1 << start_shift) & bR & (1 << 63)) != 0 { // black queen side rook move
+                    cbQt = false;
+                }
+                if (((1 as i64) << end_shift) & 1) != 0 { // white king side rook taken
+                    cwKt = false;
+                }
+                if (((1 as i64) << end_shift) & (1 << 7)) != 0 { // white queen side rook taken
+                    cwQt = false;
+                }
+                if ((1 << end_shift) & ((1 as i64) << 56)) != 0 { // black king side rook taken
+                    cbKt = false;
+                }
+                if ((1 << end_shift) & ((1 as i64) << 63)) != 0 { // black queen side rook taken
+                    cbQt = false;
+                }
+            }
+            if ((wKt & mm.unsafeForWhite(wPt, wNt, wBt, wRt, wQt, wKt, bPt, bNt, bBt, bRt, bQt, bKt)) == 0 && whites_turn) || ((bKt & mm.unsafeForBlack(wPt, wNt, wBt, wRt, wQt, wKt, bPt, bNt, bBt, bRt, bQt, bKt)) == 0 && !whites_turn) {
+                score = -self.zWSearch(1-beta, mm, wPt, wNt, wBt, wRt, wQt, wKt, bPt, bNt, bBt, bRt, bQt, bKt, EPt, cwKt, cwQt, cbKt, cbQt, !whites_turn, depth+1);
+            }
+            if score >= beta {
+                return score; // fail hard beta cutoff
+            }
+        }
+        return beta - 1; // fail hard, return alpha
+    }
+}
+
+
 /// Macro to draw a bitboard
 #[macro_export]
 macro_rules! draw_array {
@@ -1341,7 +1893,7 @@ macro_rules! add_functions {
 /// A Python module implemented in Rust.
 #[pymodule]
 fn ChessProject(_py: Python, m: &PyModule) -> PyResult<()> {
-    add_classes!(m, SpecialBitBoards, GameState, Moves, Perft);
+    add_classes!(m, SpecialBitBoards, GameState, Moves, Perft, BestMoveFinder);
     Ok(())
 }
 
@@ -1357,16 +1909,28 @@ mod tests {
     fn basic_test() {
         println!("Basic Test!");
         let mut gs = GameState::new();
-        gs.importFEN(String::from("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq -"));
+        // gs.importFEN(String::from("rnbqkbnr/pppp1ppp/8/4p3/5PP1/8/PPPPP2P/RNBQKBNR b KQkq g3 0 2"));
+        gs.importFEN(String::from("1R6/PK4r1/8/8/1p6/1P4k1/1P6/8 w - - 0 1"));
 
         let mut m: Moves = Moves::new();
         let mut p: Perft = Perft::new(3);
-        let before = Instant::now();
-        p.perftRoot(&mut m, gs.wP, gs.wN, gs.wB, gs.wR, gs.wQ, gs.wK, gs.bP, gs.bN, gs.bB, gs.bR, gs.bQ, gs.bK, gs.EP, gs.cwK, gs.cwQ, gs.cbK, gs.cbQ, true, 0);
-        println!("Elapsed time: {:.2?}", before.elapsed());
-        println!("Total Moves: {:?}", p.total_move_counter);
+        let mut bmf: BestMoveFinder = BestMoveFinder::new(3);
+        let moves: String = m.getValidMoves(gs.wP, gs.wN, gs.wB, gs.wR, gs.wQ, gs.wK, gs.bP, gs.bN, gs.bB, gs.bR, gs.bQ, gs.bK, gs.EP, gs.cwK, gs.cwQ, gs.cbK, gs.cbQ, gs.whites_turn);
+        // let x: i64 = bmf.negaMaxAlphaBeta(-5000, 5000, &mut m, gs.wP, gs.wN, gs.wB, gs.wR, gs.wQ, gs.wK, gs.bP, gs.bN, gs.bB, gs.bR, gs.bQ, gs.bK, gs.EP, gs.cwK, gs.cwQ, gs.cbK, gs.cbQ, true, 0);
+        // println!("{:?}", x);
+        // println!("{:?}", bmf.considered_moves);
+        // for i in 0..4 {
+        //     print!("{:?}", bmf.considered_moves.chars().nth(bmf.best_move_idx as usize + i).unwrap());
+        // }
+        // println!("");
+        // println!("{:?}", bmf.move_counter);
+        // println!("{:?}", bmf.best_move_idx);
+        // let before = Instant::now();
+        // p.perftRoot(&mut m, gs.wP, gs.wN, gs.wB, gs.wR, gs.wQ, gs.wK, gs.bP, gs.bN, gs.bB, gs.bR, gs.bQ, gs.bK, gs.EP, gs.cwK, gs.cwQ, gs.cbK, gs.cbQ, true, 0);
+        // println!("Elapsed time: {:.2?}", before.elapsed());
+        // println!("Total Moves: {:?}", p.total_move_counter);
         println!("DONE!");
-        // panic!();
+        panic!();
     }
 
     #[test]
