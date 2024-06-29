@@ -44,7 +44,7 @@ def main() -> None:
     sq_selected: tuple[str] = () # last click of user (row, col)
     player_clicks: list[tuple[str]] = [] # keep track of selected squares
     game_over = False
-    player_one = True # True if human is playing white. False if AI is playing
+    player_one = False # True if human is playing white. False if AI is playing
     player_two = True # True if human is playing black. False if AI is playing
 
     ai_thinking = False

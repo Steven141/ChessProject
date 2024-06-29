@@ -12,3 +12,4 @@ crate-type = ["cdylib"]
 # pyo3 gives rust bindings for python
 [dependencies]
 pyo3 = "0.20.0"
+rand = "0.8"

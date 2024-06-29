@@ -13,6 +13,9 @@
 use pyo3::prelude::*;
 use std::time::Instant;
 use std::collections::HashMap;
+use std::str::from_utf8;
+use rand::thread_rng;
+use rand::seq::SliceRandom;
 
 
 /// Holds specific bitboards
@@ -493,6 +496,8 @@ impl GameState {
 pub struct Moves {
     castle_rooks: [usize; 4],
     masks: SpecialBitBoards,
+    checkmate: bool,
+    stalemate: bool,
 }
 
 
@@ -503,16 +508,23 @@ impl Moves {
         Moves {
             castle_rooks: [63, 56, 7, 0],
             masks: SpecialBitBoards::new(),
+            checkmate: false,
+            stalemate: false,
         }
     }
 
 
-    fn getValidMoves(&mut self, wP: i64, wN: i64, wB: i64, wR: i64, wQ: i64, wK: i64, bP: i64, bN: i64, bB: i64, bR: i64, bQ: i64, bK: i64, EP: i64, cwK: bool, cwQ: bool, cbK: bool, cbQ: bool, whites_turn: bool) -> String {
+    fn getValidMoves(&mut self, wP: i64, wN: i64, wB: i64, wR: i64, wQ: i64, wK: i64, bP: i64, bN: i64, bB: i64, bR: i64, bQ: i64, bK: i64, EP: i64, cwK: bool, cwQ: bool, cbK: bool, cbQ: bool, whites_turn: bool, depth: u32) -> String {
         let mut moves: String = String::new();
         if whites_turn {
             moves = self.possibleMovesW(wP, wN, wB, wR, wQ, wK, bP, bN, bB, bR, bQ, bK, EP, cwK, cwQ, cbK, cbQ);
         } else {
             moves = self.possibleMovesB(wP, wN, wB, wR, wQ, wK, bP, bN, bB, bR, bQ, bK, EP, cwK, cwQ, cbK, cbQ);
+        }
+        if depth == 0 {
+            let mut move_groups: Vec<&str> = moves.as_bytes().chunks(4).map(|chunk| from_utf8(chunk).unwrap()).collect();
+            move_groups.shuffle(&mut thread_rng());
+            moves = move_groups.join("");
         }
         let mut valid_moves: String = String::new();
         for i in (0..moves.len()).step_by(4) {
@@ -528,6 +540,16 @@ impl Moves {
             if is_valid_move {
                 valid_moves += &moves[i..i+4];
             }
+        }
+        if valid_moves.len() == 0 {
+            if ((wK & self.unsafeForWhite(wP, wN, wB, wR, wQ, wK, bP, bN, bB, bR, bQ, bK)) != 0 && whites_turn) || ((bK & self.unsafeForBlack(wP, wN, wB, wR, wQ, wK, bP, bN, bB, bR, bQ, bK)) != 0 && !whites_turn) {
+                self.checkmate = true;
+            } else {
+                self.stalemate = true;
+            }
+        } else {
+            self.checkmate = false;
+            self.stalemate = false;
         }
         valid_moves
     }
@@ -1386,11 +1408,14 @@ impl Perft {
 struct BestMoveFinder {
     search_depth: u32,
     mate_score: i64,
+    stale_score: i64,
     move_counter: u32,
     best_move_idx: i64,
     considered_moves: String,
     next_move: String,
-    piece_scores: HashMap<char, u32>,
+    piece_scores: HashMap<char, i64>,
+    piece_position_scores: HashMap<char, [[i64; 8]; 8]>,
+    piece_position_scale: f64,
 }
 
 
@@ -1401,58 +1426,140 @@ impl BestMoveFinder {
     fn new(search_depth: u32) -> Self {
         BestMoveFinder {
             search_depth: search_depth,
-            mate_score: 5000,
+            mate_score: 1000,
+            stale_score: 0,
             move_counter: 0,
             best_move_idx: -1,
             considered_moves: String::new(),
             next_move: String::new(),
             piece_scores: HashMap::from([
-                ('K', 0),
                 ('Q', 9),
                 ('R', 5),
                 ('B', 3),
                 ('N', 3),
                 ('P', 1),
             ]),
+            piece_position_scores: HashMap::from([
+                ('Q', [
+                    [1, 1, 1, 3, 1, 1, 1, 1],
+                    [1, 2, 3, 3, 3, 1, 1, 1],
+                    [1, 4, 3, 3, 3, 4, 2, 1],
+                    [1, 2, 3, 3, 3, 2, 2, 1],
+                    [1, 2, 3, 3, 3, 2, 2, 1],
+                    [1, 4, 3, 3, 3, 4, 2, 1],
+                    [1, 2, 3, 3, 3, 1, 1, 1],
+                    [1, 1, 1, 3, 1, 1, 1, 1],
+                ]),
+                ('R', [
+                    [4, 3, 4, 4, 4, 4, 3, 4],
+                    [4, 4, 4, 4, 4, 4, 4, 4],
+                    [1, 1, 2, 3, 3, 2, 1, 1],
+                    [1, 2, 3, 4, 4, 3, 2, 1],
+                    [1, 2, 3, 4, 4, 3, 2, 1],
+                    [1, 1, 2, 3, 3, 2, 1, 1],
+                    [4, 4, 4, 4, 4, 4, 4, 4],
+                    [4, 3, 4, 4, 4, 4, 3, 4],
+                ]),
+                ('B', [
+                    [4, 3, 2, 1, 1, 2, 3, 4],
+                    [3, 4, 3, 2, 2, 3, 4, 3],
+                    [2, 3, 4, 3, 3, 4, 3, 2],
+                    [1, 2, 3, 4, 4, 3, 2, 1],
+                    [1, 2, 3, 4, 4, 3, 2, 1],
+                    [2, 3, 4, 3, 3, 4, 3, 2],
+                    [3, 4, 3, 2, 2, 3, 4, 3],
+                    [4, 3, 2, 1, 1, 2, 3, 4],
+                ]),
+                ('N', [
+                    [1, 1, 1, 1, 1, 1, 1, 1],
+                    [1, 2, 2, 2, 2, 2, 2, 1],
+                    [1, 2, 3, 3, 3, 3, 2, 1],
+                    [1, 2, 3, 4, 4, 3, 2, 1],
+                    [1, 2, 3, 4, 4, 3, 2, 1],
+                    [1, 2, 3, 3, 3, 3, 2, 1],
+                    [1, 2, 2, 2, 2, 2, 2, 1],
+                    [1, 1, 1, 1, 1, 1, 1, 1],
+                ]),
+                ('P', [
+                    [8, 8, 8, 8, 8, 8, 8, 8],
+                    [8, 8, 8, 8, 8, 8, 8, 8],
+                    [5, 6, 6, 7, 7, 6, 6, 5],
+                    [2, 3, 3, 5, 5, 3, 3, 2],
+                    [1, 2, 3, 4, 4, 3, 2, 1],
+                    [1, 1, 2, 3, 3, 2, 1, 1],
+                    [1, 1, 1, 0, 0, 1, 1, 1],
+                    [0, 0, 0, 0, 0, 0, 0, 0],
+                ]),
+                ('p', [
+                    [0, 0, 0, 0, 0, 0, 0, 0],
+                    [1, 1, 1, 0, 0, 1, 1, 1],
+                    [1, 1, 2, 3, 3, 2, 1, 1],
+                    [1, 2, 3, 4, 4, 3, 2, 1],
+                    [2, 3, 3, 5, 5, 3, 3, 2],
+                    [5, 6, 6, 7, 7, 6, 6, 5],
+                    [8, 8, 8, 8, 8, 8, 8, 8],
+                    [8, 8, 8, 8, 8, 8, 8, 8],
+                ]),
+            ]),
+            piece_position_scale: 0.1,
         }
     }
 
 
-    fn negaMaxAlphaBeta(&mut self, mut alpha: i64, beta: i64, mm: &mut Moves, wP: i64, wN: i64, wB: i64, wR: i64, wQ: i64, wK: i64, bP: i64, bN: i64, bB: i64, bR: i64, bQ: i64, bK: i64, EP: i64, cwK: bool, cwQ: bool, cbK: bool, cbQ: bool, whites_turn: bool, depth: u32) -> i64 {
+    fn negaMaxAlphaBeta(&mut self, mut alpha: f64, beta: f64, mm: &mut Moves, wP: i64, wN: i64, wB: i64, wR: i64, wQ: i64, wK: i64, bP: i64, bN: i64, bB: i64, bR: i64, bQ: i64, bK: i64, EP: i64, cwK: bool, cwQ: bool, cbK: bool, cbQ: bool, whites_turn: bool, depth: u32) -> f64 {
         // Positive = better for current recursive player perspective
         self.move_counter += 1;
         if depth == self.search_depth {
-            return (if whites_turn {1} else {-1}) * self.evaluate(wP, wN, wB, wR, wQ, wK, bP, bN, bB, bR, bQ, bK);
+            return (if whites_turn {1.0} else {-1.0}) * self.evaluate(mm, wP, wN, wB, wR, wQ, wK, bP, bN, bB, bR, bQ, bK, whites_turn);
         }
-        let mut best_score: i64 = -self.mate_score;
+        // if mm.stalemate {
+        //     return self.stale_score as f64;
+        // }
+        // if mm.checkmate {
+        //     return if !whites_turn {(-self.mate_score + depth as i64) as f64} else {(self.mate_score - depth as i64) as f64};
+        // }
+        let mut best_score: f64 = -self.mate_score as f64;
+        // TODO look at pawn promo score calc is good, seems to not add 9 to score
 
-        let mut moves: String = String::new();
-        if whites_turn {
-            moves = mm.possibleMovesW(wP, wN, wB, wR, wQ, wK, bP, bN, bB, bR, bQ, bK, EP, cwK, cwQ, cbK, cbQ);
-        } else {
-            moves = mm.possibleMovesB(wP, wN, wB, wR, wQ, wK, bP, bN, bB, bR, bQ, bK, EP, cwK, cwQ, cbK, cbQ);
+        // let mut moves: String = String::new();
+        // if whites_turn {
+        //     moves = mm.possibleMovesW(wP, wN, wB, wR, wQ, wK, bP, bN, bB, bR, bQ, bK, EP, cwK, cwQ, cbK, cbQ);
+        // } else {
+        //     moves = mm.possibleMovesB(wP, wN, wB, wR, wQ, wK, bP, bN, bB, bR, bQ, bK, EP, cwK, cwQ, cbK, cbQ);
+        // }
+        // if depth == 0 {
+        //     self.considered_moves = moves.clone();
+        //     let mut move_groups: Vec<&str> = moves.as_bytes().chunks(4).map(|chunk| from_utf8(chunk).unwrap()).collect();
+        //     move_groups.shuffle(&mut thread_rng());
+        //     moves = move_groups.join("");
+
+        // }
+        // TODO: change to getValidMoves
+        // then add stalemant and checkmate if statements
+        // reward earlier checkmates
+        // let mut legal_move_idx: i64 = self.getNextLegalMoveIdx(&moves, mm, wP, wN, wB, wR, wQ, wK, bP, bN, bB, bR, bQ, bK, EP, cwK, cwQ, cbK, cbQ, whites_turn, 0);
+        // while legal_move_idx != -1 {
+        let valid_moves: String = mm.getValidMoves(wP, wN, wB, wR, wQ, wK, bP, bN, bB, bR, bQ, bK, EP, cwK, cwQ, cbK, cbQ, whites_turn, depth);
+        if mm.stalemate {
+            return self.stale_score as f64;
         }
-        if depth == 0 {
-            self.considered_moves = moves.clone();
-        }
-        let mut legal_move_idx: i64 = self.getNextLegalMoveIdx(&moves, mm, wP, wN, wB, wR, wQ, wK, bP, bN, bB, bR, bQ, bK, EP, cwK, cwQ, cbK, cbQ, whites_turn, 0);
-        while legal_move_idx != -1 {
-            let mut wPt: i64 = mm.makeMove(wP, moves[(legal_move_idx as usize)..(legal_move_idx as usize)+4].to_string(), 'P'); let mut wNt: i64 = mm.makeMove(wN, moves[(legal_move_idx as usize)..(legal_move_idx as usize)+4].to_string(), 'N');
-            let mut wBt: i64 = mm.makeMove(wB, moves[(legal_move_idx as usize)..(legal_move_idx as usize)+4].to_string(), 'B'); let mut wRt: i64 = mm.makeMove(wR, moves[(legal_move_idx as usize)..(legal_move_idx as usize)+4].to_string(), 'R');
-            let mut wQt: i64 = mm.makeMove(wQ, moves[(legal_move_idx as usize)..(legal_move_idx as usize)+4].to_string(), 'Q'); let mut wKt: i64 = mm.makeMove(wK, moves[(legal_move_idx as usize)..(legal_move_idx as usize)+4].to_string(), 'K');
-            let mut bPt: i64 = mm.makeMove(bP, moves[(legal_move_idx as usize)..(legal_move_idx as usize)+4].to_string(), 'p'); let mut bNt: i64 = mm.makeMove(bN, moves[(legal_move_idx as usize)..(legal_move_idx as usize)+4].to_string(), 'n');
-            let mut bBt: i64 = mm.makeMove(bB, moves[(legal_move_idx as usize)..(legal_move_idx as usize)+4].to_string(), 'b'); let mut bRt: i64 = mm.makeMove(bR, moves[(legal_move_idx as usize)..(legal_move_idx as usize)+4].to_string(), 'r');
-            let mut bQt: i64 = mm.makeMove(bQ, moves[(legal_move_idx as usize)..(legal_move_idx as usize)+4].to_string(), 'q'); let mut bKt: i64 = mm.makeMove(bK, moves[(legal_move_idx as usize)..(legal_move_idx as usize)+4].to_string(), 'k');
-            let mut wRt: i64 = mm.makeMoveCastle(wRt, wK, moves[(legal_move_idx as usize)..(legal_move_idx as usize)+4].to_string(), 'R'); let mut bRt: i64 = mm.makeMoveCastle(bRt, bK, moves[(legal_move_idx as usize)..(legal_move_idx as usize)+4].to_string(), 'r');
-            let mut EPt: i64 = mm.makeMoveEP(wP|bP, moves[(legal_move_idx as usize)..(legal_move_idx as usize)+4].to_string());
+        for i in (0..valid_moves.len()).step_by(4) {
+            let mut wPt: i64 = mm.makeMove(wP, valid_moves[i..i+4].to_string(), 'P'); let mut wNt: i64 = mm.makeMove(wN, valid_moves[i..i+4].to_string(), 'N');
+            let mut wBt: i64 = mm.makeMove(wB, valid_moves[i..i+4].to_string(), 'B'); let mut wRt: i64 = mm.makeMove(wR, valid_moves[i..i+4].to_string(), 'R');
+            let mut wQt: i64 = mm.makeMove(wQ, valid_moves[i..i+4].to_string(), 'Q'); let mut wKt: i64 = mm.makeMove(wK, valid_moves[i..i+4].to_string(), 'K');
+            let mut bPt: i64 = mm.makeMove(bP, valid_moves[i..i+4].to_string(), 'p'); let mut bNt: i64 = mm.makeMove(bN, valid_moves[i..i+4].to_string(), 'n');
+            let mut bBt: i64 = mm.makeMove(bB, valid_moves[i..i+4].to_string(), 'b'); let mut bRt: i64 = mm.makeMove(bR, valid_moves[i..i+4].to_string(), 'r');
+            let mut bQt: i64 = mm.makeMove(bQ, valid_moves[i..i+4].to_string(), 'q'); let mut bKt: i64 = mm.makeMove(bK, valid_moves[i..i+4].to_string(), 'k');
+            let mut wRt: i64 = mm.makeMoveCastle(wRt, wK, valid_moves[i..i+4].to_string(), 'R'); let mut bRt: i64 = mm.makeMoveCastle(bRt, bK, valid_moves[i..i+4].to_string(), 'r');
+            let mut EPt: i64 = mm.makeMoveEP(wP|bP, valid_moves[i..i+4].to_string());
 
             let mut cwKt: bool = cwK; let mut cwQt: bool = cwQ; let mut cbKt: bool = cbK; let mut cbQt: bool = cbQ;
 
-            if moves.chars().nth((legal_move_idx as usize) + 3).unwrap().is_numeric() {
-                let m1: u32 = moves.chars().nth(legal_move_idx as usize).unwrap().to_digit(10).unwrap();
-                let m2: u32 = moves.chars().nth((legal_move_idx as usize) + 1).unwrap().to_digit(10).unwrap();
-                let m3: u32 = moves.chars().nth((legal_move_idx as usize) + 2).unwrap().to_digit(10).unwrap();
-                let m4: u32 = moves.chars().nth((legal_move_idx as usize) + 3).unwrap().to_digit(10).unwrap();
+            if valid_moves.chars().nth(i + 3).unwrap().is_numeric() {
+                let m1: u32 = valid_moves.chars().nth(i).unwrap().to_digit(10).unwrap();
+                let m2: u32 = valid_moves.chars().nth(i + 1).unwrap().to_digit(10).unwrap();
+                let m3: u32 = valid_moves.chars().nth(i + 2).unwrap().to_digit(10).unwrap();
+                let m4: u32 = valid_moves.chars().nth(i + 3).unwrap().to_digit(10).unwrap();
                 let start_shift: u32 = 64 - 1 - (m1 * 8 + m2);
                 let end_shift: u32 = 64 - 1 - (m3 * 8 + m4);
                 if ((1 << start_shift) & wK) != 0 { // white king move
@@ -1487,12 +1594,16 @@ impl BestMoveFinder {
                 }
             }
 
-            let score: i64 = -self.negaMaxAlphaBeta(-beta, -alpha, mm, wPt, wNt, wBt, wRt, wQt, wKt, bPt, bNt, bBt, bRt, bQt, bKt, EPt, cwKt, cwQt, cbKt, cbQt, !whites_turn, depth+1);
-            if score >= best_score {
+            let mut score: f64 = -self.negaMaxAlphaBeta(-beta, -alpha, mm, wPt, wNt, wBt, wRt, wQt, wKt, bPt, bNt, bBt, bRt, bQt, bKt, EPt, cwKt, cwQt, cbKt, cbQt, !whites_turn, depth+1);
+            if score == self.mate_score as f64 {
+                score -= depth as f64;
+            }
+            if score > best_score {
                 best_score = score;
                 if depth == 0 {
-                    self.best_move_idx = legal_move_idx;
-                    println!("Considering {:?} with score: {:?}", moves[(legal_move_idx as usize)..(legal_move_idx as usize)+4].to_string(), score);
+                    self.best_move_idx = i as i64;
+                    self.next_move = valid_moves[i..i+4].to_string();
+                    println!("Considering {:?} with score: {:?}", valid_moves[i..i+4].to_string(), score);
                 }
             }
 
@@ -1502,16 +1613,16 @@ impl BestMoveFinder {
             if alpha >= beta {
                 break;
             }
-            legal_move_idx = self.getNextLegalMoveIdx(&moves, mm, wP, wN, wB, wR, wQ, wK, bP, bN, bB, bR, bQ, bK, EP, cwK, cwQ, cbK, cbQ, whites_turn, (legal_move_idx+4) as usize);
+            // legal_move_idx = self.getNextLegalMoveIdx(&moves, mm, wP, wN, wB, wR, wQ, wK, bP, bN, bB, bR, bQ, bK, EP, cwK, cwQ, cbK, cbQ, whites_turn, (legal_move_idx+4) as usize);
         }
         best_score
     }
 
 
-    fn pvSearch(&mut self, mut alpha: i64, beta: i64, mm: &mut Moves, wP: i64, wN: i64, wB: i64, wR: i64, wQ: i64, wK: i64, bP: i64, bN: i64, bB: i64, bR: i64, bQ: i64, bK: i64, EP: i64, cwK: bool, cwQ: bool, cbK: bool, cbQ: bool, whites_turn: bool, depth: u32) -> i64 {
-        let mut best_score: i64;
+    fn pvSearch(&mut self, mut alpha: f64, beta: f64, mm: &mut Moves, wP: i64, wN: i64, wB: i64, wR: i64, wQ: i64, wK: i64, bP: i64, bN: i64, bB: i64, bR: i64, bQ: i64, bK: i64, EP: i64, cwK: bool, cwQ: bool, cbK: bool, cbQ: bool, whites_turn: bool, depth: u32) -> f64 {
+        let mut best_score: f64;
         if depth == self.search_depth {
-            best_score = self.evaluate(wP, wN, wB, wR, wQ, wK, bP, bN, bB, bR, bQ, bK);
+            best_score = self.evaluate(mm, wP, wN, wB, wR, wQ, wK, bP, bN, bB, bR, bQ, bK, whites_turn);
             return best_score;
         }
         let mut moves: String = String::new();
@@ -1526,7 +1637,7 @@ impl BestMoveFinder {
         // get first move
         let mut first_legal_move: i64 = self.getNextLegalMoveIdx(&moves, mm, wP, wN, wB, wR, wQ, wK, bP, bN, bB, bR, bQ, bK, EP, cwK, cwQ, cbK, cbQ, whites_turn, 0); // diff
         if first_legal_move == -1 {
-            return if whites_turn {self.mate_score} else {-self.mate_score};
+            return if whites_turn {self.mate_score as f64} else {-self.mate_score as f64};
         }
         // make first move
         let mut wPt: i64 = mm.makeMove(wP, moves[(first_legal_move as usize)..(first_legal_move as usize)+4].to_string(), 'P'); let mut wNt: i64 = mm.makeMove(wN, moves[(first_legal_move as usize)..(first_legal_move as usize)+4].to_string(), 'N');
@@ -1581,7 +1692,7 @@ impl BestMoveFinder {
         // evaluate new position
         best_score = -self.pvSearch(-beta, -alpha, mm, wPt, wNt, wBt, wRt, wQt, wKt, bPt, bNt, bBt, bRt, bQt, bKt, EPt, cwKt, cwQt, cbKt, cbQt, !whites_turn, depth+1);
         self.move_counter += 1;
-        if best_score.abs() == self.mate_score {
+        if best_score.abs() == (self.mate_score as f64) {
             // self.next_move = moves[(first_legal_move as usize)..(first_legal_move as usize)+4].to_string();
             return best_score;
         }
@@ -1596,7 +1707,7 @@ impl BestMoveFinder {
         self.best_move_idx = first_legal_move;
         // search subsequent moves using zero window search
         for i in (((first_legal_move + 4) as usize)..moves.len()).step_by(4) {
-            let mut score: i64;
+            let mut score: f64;
             self.move_counter += 1;
             // legal non-castle moves
             wPt = mm.makeMove(wP, moves[i..i+4].to_string(), 'P'); wNt = mm.makeMove(wN, moves[i..i+4].to_string(), 'N');
@@ -1659,13 +1770,13 @@ impl BestMoveFinder {
                     alpha = score;
                 }
             }
-            if (score != i64::MIN) && (score > best_score) {
+            if (score != f64::MIN) && (score > best_score) {
                 if score >= beta {
                     // self.next_move = moves[i..i+4].to_string();
                     return score;
                 }
                 best_score = score;
-                if best_score.abs() == self.mate_score {
+                if best_score.abs() == (self.mate_score as f64) {
                     // self.next_move = moves[i..i+4].to_string();
                     return best_score;
                 }
@@ -1675,18 +1786,47 @@ impl BestMoveFinder {
     }
 
 
-    fn evaluate(&self, wP: i64, wN: i64, wB: i64, wR: i64, wQ: i64, wK: i64, bP: i64, bN: i64, bB: i64, bR: i64, bQ: i64, bK: i64) -> i64 {
-        let mut score: i64 = 0;
-        score += (wP.count_ones() as i64) * 1;
-        score += (wN.count_ones() as i64) * 3;
-        score += (wB.count_ones() as i64) * 3;
-        score += (wR.count_ones() as i64) * 5;
-        score += (wQ.count_ones() as i64) * 9;
-        score -= (bP.count_ones() as i64) * 1;
-        score -= (bN.count_ones() as i64) * 3;
-        score -= (bB.count_ones() as i64) * 3;
-        score -= (bR.count_ones() as i64) * 5;
-        score -= (bQ.count_ones() as i64) * 9;
+    fn evaluate(&self, mm: &Moves, wP: i64, wN: i64, wB: i64, wR: i64, wQ: i64, wK: i64, bP: i64, bN: i64, bB: i64, bR: i64, bQ: i64, bK: i64, whites_turn: bool) -> f64 {
+        if mm.checkmate {
+            return if whites_turn {-self.mate_score as f64} else {self.mate_score as f64};
+        } else if mm.stalemate {
+            return self.stale_score as f64;
+        }
+        
+        let mut score: f64 = 0.0;
+        for i in 0..64 {
+            let shift = 64 - 1 - i;
+            if usgn_r_shift!(wP, shift) & 1 == 1 {
+                score += (self.piece_scores[&'P'] as f64) + (self.piece_position_scores[&'P'][i / 8][i % 8] as f64) * self.piece_position_scale;
+            }
+            if usgn_r_shift!(wN, shift) & 1 == 1 {
+                score += (self.piece_scores[&'N'] as f64) + (self.piece_position_scores[&'N'][i / 8][i % 8] as f64) * self.piece_position_scale;
+            }
+            if usgn_r_shift!(wB, shift) & 1 == 1 {
+                score += (self.piece_scores[&'B'] as f64) + (self.piece_position_scores[&'B'][i / 8][i % 8] as f64) * self.piece_position_scale;
+            }
+            if usgn_r_shift!(wR, shift) & 1 == 1 {
+                score += (self.piece_scores[&'R'] as f64) + (self.piece_position_scores[&'R'][i / 8][i % 8] as f64) * self.piece_position_scale;
+            }
+            if usgn_r_shift!(wQ, shift) & 1 == 1 {
+                score += (self.piece_scores[&'Q'] as f64) + (self.piece_position_scores[&'Q'][i / 8][i % 8] as f64) * self.piece_position_scale;
+            }
+            if usgn_r_shift!(bP, shift) & 1 == 1 {
+                score -= (self.piece_scores[&'P'] as f64) + (self.piece_position_scores[&'p'][i / 8][i % 8] as f64) * self.piece_position_scale;
+            }
+            if usgn_r_shift!(bN, shift) & 1 == 1 {
+                score -= (self.piece_scores[&'N'] as f64) + (self.piece_position_scores[&'N'][i / 8][i % 8] as f64) * self.piece_position_scale;
+            }
+            if usgn_r_shift!(bB, shift) & 1 == 1 {
+                score -= (self.piece_scores[&'B'] as f64) + (self.piece_position_scores[&'B'][i / 8][i % 8] as f64) * self.piece_position_scale;
+            }
+            if usgn_r_shift!(bR, shift) & 1 == 1 {
+                score -= (self.piece_scores[&'R'] as f64) + (self.piece_position_scores[&'R'][i / 8][i % 8] as f64) * self.piece_position_scale;
+            }
+            if usgn_r_shift!(bQ, shift) & 1 == 1 {
+                score -= (self.piece_scores[&'Q'] as f64) + (self.piece_position_scores[&'Q'][i / 8][i % 8] as f64) * self.piece_position_scale;
+            }
+        }
         score
     }
 
@@ -1708,11 +1848,11 @@ impl BestMoveFinder {
     }
 
 
-    fn zWSearch(&self, beta: i64, mm: &mut Moves, wP: i64, wN: i64, wB: i64, wR: i64, wQ: i64, wK: i64, bP: i64, bN: i64, bB: i64, bR: i64, bQ: i64, bK: i64, EP: i64, cwK: bool, cwQ: bool, cbK: bool, cbQ: bool, whites_turn: bool, depth: u32) -> i64 {
-        let mut score: i64 = i64::MIN;
+    fn zWSearch(&self, beta: f64, mm: &mut Moves, wP: i64, wN: i64, wB: i64, wR: i64, wQ: i64, wK: i64, bP: i64, bN: i64, bB: i64, bR: i64, bQ: i64, bK: i64, EP: i64, cwK: bool, cwQ: bool, cbK: bool, cbQ: bool, whites_turn: bool, depth: u32) -> f64 {
+        let mut score: f64 = f64::MIN;
         // alpha == beta - 1
         if depth == self.search_depth {
-            score = self.evaluate(wP, wN, wB, wR, wQ, wK, bP, bN, bB, bR, bQ, bK);
+            score = self.evaluate(mm, wP, wN, wB, wR, wQ, wK, bP, bN, bB, bR, bQ, bK, whites_turn);
             return score;
         }
         let mut moves: String = String::new();
@@ -1772,13 +1912,13 @@ impl BestMoveFinder {
                 }
             }
             if ((wKt & mm.unsafeForWhite(wPt, wNt, wBt, wRt, wQt, wKt, bPt, bNt, bBt, bRt, bQt, bKt)) == 0 && whites_turn) || ((bKt & mm.unsafeForBlack(wPt, wNt, wBt, wRt, wQt, wKt, bPt, bNt, bBt, bRt, bQt, bKt)) == 0 && !whites_turn) {
-                score = -self.zWSearch(1-beta, mm, wPt, wNt, wBt, wRt, wQt, wKt, bPt, bNt, bBt, bRt, bQt, bKt, EPt, cwKt, cwQt, cbKt, cbQt, !whites_turn, depth+1);
+                score = -self.zWSearch(1.0-beta, mm, wPt, wNt, wBt, wRt, wQt, wKt, bPt, bNt, bBt, bRt, bQt, bKt, EPt, cwKt, cwQt, cbKt, cbQt, !whites_turn, depth+1);
             }
             if score >= beta {
                 return score; // fail hard beta cutoff
             }
         }
-        return beta - 1; // fail hard, return alpha
+        return beta - 1.0; // fail hard, return alpha
     }
 }
 
@@ -1915,7 +2055,7 @@ mod tests {
         let mut m: Moves = Moves::new();
         let mut p: Perft = Perft::new(3);
         let mut bmf: BestMoveFinder = BestMoveFinder::new(3);
-        let moves: String = m.getValidMoves(gs.wP, gs.wN, gs.wB, gs.wR, gs.wQ, gs.wK, gs.bP, gs.bN, gs.bB, gs.bR, gs.bQ, gs.bK, gs.EP, gs.cwK, gs.cwQ, gs.cbK, gs.cbQ, gs.whites_turn);
+        // let moves: String = m.getValidMoves(gs.wP, gs.wN, gs.wB, gs.wR, gs.wQ, gs.wK, gs.bP, gs.bN, gs.bB, gs.bR, gs.bQ, gs.bK, gs.EP, gs.cwK, gs.cwQ, gs.cbK, gs.cbQ, gs.whites_turn);
         // let x: i64 = bmf.negaMaxAlphaBeta(-5000, 5000, &mut m, gs.wP, gs.wN, gs.wB, gs.wR, gs.wQ, gs.wK, gs.bP, gs.bN, gs.bB, gs.bR, gs.bQ, gs.bK, gs.EP, gs.cwK, gs.cwQ, gs.cbK, gs.cbQ, true, 0);
         // println!("{:?}", x);
         // println!("{:?}", bmf.considered_moves);

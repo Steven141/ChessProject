@@ -7,7 +7,6 @@ Handles user input and displays current game state information.
 
 import pygame as pg
 import ai_move_finder_rust
-from multiprocessing import Process, Queue
 import ChessProject # rust engine library
 
 
@@ -39,14 +38,11 @@ def main() -> None:
     clk = pg.time.Clock()
     screen.fill(pg.Color('white'))
     move_log_font = pg.font.SysFont('Arial', 14, False, False)
-    # game_state = engine_advanced.GameState()
     gs = ChessProject.GameState()
-    # gs.importFEN('7r/P7/3k4/1p6/1p6/1P6/RP6/4K3 w - - 0 1') # TODO auto promo bug / no highlight FIXED
-    # gs.importFEN('r1n4r/1P6/3k4/1p6/1p6/1P6/RP6/4K3 w - - 0 1') # test highlight
-    # gs.importFEN('1R6/PK4r1/8/8/1p6/1P4k1/1P6/8 w - - 0 1') # king wring potential moves FIXED
-    # gs.importFEN('6R1/8/8/4Q3/8/KP3k2/1r6/8 w - - 0 1') # unwrap None in rust
+    # gs.importFEN('kp5Q/8/1K6/8/8/8/8/8 w - - 0 1')
+    # gs.importFEN('kb5Q/8/1K6/8/8/8/8/8 w - - 0 1')
     m = ChessProject.Moves()
-    valid_moves = m.getValidMoves(gs.wP, gs.wN, gs.wB, gs.wR, gs.wQ, gs.wK, gs.bP, gs.bN, gs.bB, gs.bR, gs.bQ, gs.bK, gs.EP, gs.cwK, gs.cwQ, gs.cbK, gs.cbQ, gs.whites_turn)
+    valid_moves = m.getValidMoves(gs.wP, gs.wN, gs.wB, gs.wR, gs.wQ, gs.wK, gs.bP, gs.bN, gs.bB, gs.bR, gs.bQ, gs.bK, gs.EP, gs.cwK, gs.cwQ, gs.cbK, gs.cbQ, gs.whites_turn, 0)
     move_made = False # flag for when move is made
     animate = False
 
@@ -55,11 +51,10 @@ def main() -> None:
     sq_selected: tuple[int] = () # last click of user (row, col)
     player_clicks: list[tuple[int]] = [] # keep track of selected squares
     game_over = False
-    player_one = False # True if human is playing white. False if AI is playing
+    player_one = True # True if human is playing white. False if AI is playing
     player_two = False # True if human is playing black. False if AI is playing
 
     ai_thinking = False
-    # move_finder_process = None
     move_undone = False
 
     while running:
@@ -91,18 +86,21 @@ def main() -> None:
                                 animate = True
                                 sq_selected = ()
                                 player_clicks = []
+                                break
                             if move_ep == valid_moves[i:i+4]:
                                 gs.makeMove(m, valid_moves[i:i+4])
                                 move_made = True
                                 animate = True
                                 sq_selected = ()
                                 player_clicks = []
+                                break
                             if move_promo == valid_moves[i:i+4] and ((player_clicks[0][0] == 1 and player_clicks[1][0] == 0) if gs.whites_turn else (player_clicks[0][0] == 6 and player_clicks[1][0] == 7)):
                                 gs.makeMove(m, valid_moves[i:i+4])
                                 move_made = True
                                 animate = True
                                 sq_selected = ()
                                 player_clicks = []
+                                break
                         if not move_made:
                             player_clicks = [sq_selected]
 
@@ -113,10 +111,8 @@ def main() -> None:
                 print('Thinking...')
                 ai_move = ai_move_finder_rust.findBestMove(gs, m, valid_moves)
                 print('Done thinking')
-                # print(f"valid = {valid_moves}")
-                # if ai_move == '':
-                #     ai_move = ai_move_finder_rust.findRandomMove(valid_moves)
-                # print(f"ai = {ai_move}")
+                if ai_move == '':
+                    ai_move = ai_move_finder_rust.findRandomMove(valid_moves)
                 gs.makeMove(m, ai_move)
                 move_made = True
                 animate = True
@@ -125,7 +121,7 @@ def main() -> None:
         if move_made:
             if animate:
                 animateMove(gs.move_log[-4:], screen, gs, clk)
-            valid_moves = m.getValidMoves(gs.wP, gs.wN, gs.wB, gs.wR, gs.wQ, gs.wK, gs.bP, gs.bN, gs.bB, gs.bR, gs.bQ, gs.bK, gs.EP, gs.cwK, gs.cwQ, gs.cbK, gs.cbQ, gs.whites_turn)
+            valid_moves = m.getValidMoves(gs.wP, gs.wN, gs.wB, gs.wR, gs.wQ, gs.wK, gs.bP, gs.bN, gs.bB, gs.bR, gs.bQ, gs.bK, gs.EP, gs.cwK, gs.cwQ, gs.cbK, gs.cbQ, gs.whites_turn, 0)
             move_made = False
             animate = False
             move_undone = False
@@ -134,7 +130,7 @@ def main() -> None:
 
         if valid_moves == '':
             game_over = True
-            drawEndGameText(screen, 'Black wins' if gs.whites_turn else 'White wins')
+            drawEndGameText(screen, 'Stalemate' if m.stalemate else 'Black wins by checkmate' if gs.whites_turn else 'White wins by checkmate')
 
         clk.tick(FPS)
         pg.display.flip()

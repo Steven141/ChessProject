@@ -208,7 +208,8 @@ def findMoveNegaMaxAlphaBeta(game_state, valid_moves, depth, alpha, beta, turn_m
     move_counter += 1
     if depth == 0:
         return turn_multiplier * scoreBoard(game_state)
-
+    if game_state.stalemate:
+        return STALEMATE
     max_score = -CHECKMATE
     for move in valid_moves:
         game_state.makeMove(move)
