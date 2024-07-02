@@ -39,8 +39,6 @@ def main() -> None:
     screen.fill(pg.Color('white'))
     move_log_font = pg.font.SysFont('Arial', 14, False, False)
     gs = ChessProject.GameState()
-    # gs.importFEN('kp5Q/8/1K6/8/8/8/8/8 w - - 0 1')
-    # gs.importFEN('kb5Q/8/1K6/8/8/8/8/8 w - - 0 1')
     m = ChessProject.Moves()
     valid_moves = m.getValidMoves(gs.wP, gs.wN, gs.wB, gs.wR, gs.wQ, gs.wK, gs.bP, gs.bN, gs.bB, gs.bR, gs.bQ, gs.bK, gs.EP, gs.cwK, gs.cwQ, gs.cbK, gs.cbQ, gs.whites_turn, 0)
     move_made = False # flag for when move is made
