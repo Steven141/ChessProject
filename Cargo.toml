@@ -8,6 +8,7 @@ edition = "2021"
 [lib]
 name = "ChessProject"
 crate-type = ["cdylib"]
+path = "src/V3/lib.rs"
 
 # pyo3 gives rust bindings for python
 [dependencies]

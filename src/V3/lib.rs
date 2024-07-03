@@ -17,6 +17,9 @@ use rand::thread_rng;
 use rand::seq::SliceRandom;
 
 
+// pub mod engine_modules;
+
+
 /// Holds specific bitboards
 #[pyclass(module = "ChessProject", get_all, set_all)]
 #[derive(Clone)]
@@ -520,6 +523,7 @@ impl Moves {
             moves = self.possibleMovesB(wP, wN, wB, wR, wQ, wK, bP, bN, bB, bR, bQ, bK, EP, cbK, cbQ);
         }
         if depth == 0 {
+            // TODO: look to replace shuffling with sorting
             let mut move_groups: Vec<&str> = moves.as_bytes().chunks(4).map(|chunk| from_utf8(chunk).unwrap()).collect();
             move_groups.shuffle(&mut thread_rng());
             moves = move_groups.join("");
