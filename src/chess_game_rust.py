@@ -1,5 +1,5 @@
 """
-File contains game driver logic.
+File contains game driver logic using the rust engine library.
 
 Handles user input and displays current game state information.
 """

@@ -4,7 +4,6 @@ File contains code for the chess bot
 
 
 import random
-from engine_advanced import Move
 import ChessProject # rust engine library
 
 
@@ -23,7 +22,7 @@ def findRandomMove(valid_moves) -> str:
 """
 Helper to make first recursive call
 """
-def findBestMove(game_state, m, valid_moves) -> Move:
+def findBestMove(game_state, m, valid_moves) -> str:
     global next_move, move_counter
     next_move = None
     # random.shuffle(valid_moves)

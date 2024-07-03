@@ -2,16 +2,15 @@
 
 
 #![allow(non_snake_case)]
-#![allow(unused_parens)]
-#![allow(unused_assignments)]
-#![allow(unused_mut)]
-#![allow(unused_variables)]
-#![allow(unused_imports)]
-#![allow(unused_macros)]
+// #![allow(unused_parens)]
+// #![allow(unused_assignments)]
+// #![allow(unused_mut)]
+// #![allow(unused_variables)]
+// #![allow(unused_imports)]
+// #![allow(unused_macros)]
 
 
 use pyo3::prelude::*;
-use std::time::Instant;
 use std::collections::HashMap;
 use std::str::from_utf8;
 use rand::thread_rng;
@@ -333,51 +332,51 @@ impl GameState {
             let board_idx_shift: i64 = 64 - 1 - board_idx;
             match fen_str.chars().nth(char_idx).unwrap() {
                 'P' => {
-                    self.wP |= (1 << board_idx_shift);
+                    self.wP |= 1 << board_idx_shift;
                     board_idx += 1;
                 },
                 'N' => {
-                    self.wN |= (1 << board_idx_shift);
+                    self.wN |= 1 << board_idx_shift;
                     board_idx += 1;
                 },
                 'B' => {
-                    self.wB |= (1 << board_idx_shift);
+                    self.wB |= 1 << board_idx_shift;
                     board_idx += 1;
                 },
                 'R' => {
-                    self.wR |= (1 << board_idx_shift);
+                    self.wR |= 1 << board_idx_shift;
                     board_idx += 1;
                 },
                 'Q' => {
-                    self.wQ |= (1 << board_idx_shift);
+                    self.wQ |= 1 << board_idx_shift;
                     board_idx += 1;
                 },
                 'K' => {
-                    self.wK |= (1 << board_idx_shift);
+                    self.wK |= 1 << board_idx_shift;
                     board_idx += 1;
                 },
                 'p' => {
-                    self.bP |= (1 << board_idx_shift);
+                    self.bP |= 1 << board_idx_shift;
                     board_idx += 1;
                 },
                 'n' => {
-                    self.bN |= (1 << board_idx_shift);
+                    self.bN |= 1 << board_idx_shift;
                     board_idx += 1;
                 },
                 'b' => {
-                    self.bB |= (1 << board_idx_shift);
+                    self.bB |= 1 << board_idx_shift;
                     board_idx += 1;
                 },
                 'r' => {
-                    self.bR |= (1 << board_idx_shift);
+                    self.bR |= 1 << board_idx_shift;
                     board_idx += 1;
                 },
                 'q' => {
-                    self.bQ |= (1 << board_idx_shift);
+                    self.bQ |= 1 << board_idx_shift;
                     board_idx += 1;
                 },
                 'k' => {
-                    self.bK |= (1 << board_idx_shift);
+                    self.bK |= 1 << board_idx_shift;
                     board_idx += 1;
                 },
                 '1' => board_idx += 1,
@@ -411,7 +410,6 @@ impl GameState {
         char_idx += 1;
         if fen_str.chars().nth(char_idx).unwrap() != '-' {
             self.EP = self.masks.file_masks[fen_str.chars().nth(char_idx).unwrap() as usize - 'a' as usize];
-            char_idx += 1;
         }
         self.updateBoardArray()
         // Rest of FEN not used
@@ -515,11 +513,11 @@ impl Moves {
 
 
     fn getValidMoves(&mut self, wP: i64, wN: i64, wB: i64, wR: i64, wQ: i64, wK: i64, bP: i64, bN: i64, bB: i64, bR: i64, bQ: i64, bK: i64, EP: i64, cwK: bool, cwQ: bool, cbK: bool, cbQ: bool, whites_turn: bool, depth: u32) -> String {
-        let mut moves: String = String::new();
+        let mut moves: String;
         if whites_turn {
-            moves = self.possibleMovesW(wP, wN, wB, wR, wQ, wK, bP, bN, bB, bR, bQ, bK, EP, cwK, cwQ, cbK, cbQ);
+            moves = self.possibleMovesW(wP, wN, wB, wR, wQ, wK, bP, bN, bB, bR, bQ, bK, EP, cwK, cwQ);
         } else {
-            moves = self.possibleMovesB(wP, wN, wB, wR, wQ, wK, bP, bN, bB, bR, bQ, bK, EP, cwK, cwQ, cbK, cbQ);
+            moves = self.possibleMovesB(wP, wN, wB, wR, wQ, wK, bP, bN, bB, bR, bQ, bK, EP, cbK, cbQ);
         }
         if depth == 0 {
             let mut move_groups: Vec<&str> = moves.as_bytes().chunks(4).map(|chunk| from_utf8(chunk).unwrap()).collect();
@@ -560,16 +558,16 @@ impl Moves {
         let m2: u32 = move_str.chars().nth(1).unwrap().to_digit(10).unwrap_or(0);
         let m3: u32 = move_str.chars().nth(2).unwrap().to_digit(10).unwrap_or(0);
         let m4: u32 = move_str.chars().nth(3).unwrap().to_digit(10).unwrap_or(0);
-        let mut start_shift: u32 = 0;
-        let mut end_shift: u32 = 0;
-        let mut start_bitboard: i64 = 0;
-        let mut end_bitboard: i64 = 0;
+        let start_shift: u32;
+        let end_shift: u32;
+        let start_bitboard: i64;
+        let end_bitboard: i64;
         if move_str.chars().nth(3).unwrap().is_numeric() { // regular move
             start_shift = 64 - 1 - (m1 * 8 + m2);
             end_shift = 64 - 1 - (m3 * 8 + m4);
             if usgn_r_shift!(bitboard, start_shift) & 1 == 1 {
                 bitboard &= !(1 << start_shift); // remove moving piece from board
-                bitboard |= (1 << end_shift); // add at new position
+                bitboard |= 1 << end_shift; // add at new position
             } else {
                 bitboard &= !(1 << end_shift); // remove piece at end
             }
@@ -586,7 +584,7 @@ impl Moves {
                 end_shift = 64 - 1 - end_bitboard.leading_zeros();
             }
             if p_type == move_str.chars().nth(2).unwrap() {
-                bitboard |= (1 << end_shift);
+                bitboard |= 1 << end_shift;
             } else {
                 bitboard &= !(1 << start_shift);
                 bitboard &= !(1 << end_shift);
@@ -607,7 +605,7 @@ impl Moves {
             }
             if (bitboard >> start_shift) & 1 == 1 {
                 bitboard &= !(1 << start_shift);
-                bitboard |= (1 << end_shift);
+                bitboard |= 1 << end_shift;
             }
         } else {
             panic!("INVALID MOVE TYPE");
@@ -619,19 +617,17 @@ impl Moves {
     fn makeMoveCastle(&self, mut rook: i64, king: i64, move_str: String, p_type: char) -> i64 {
         let r1: usize = move_str.chars().nth(0).unwrap().to_digit(10).unwrap_or(0) as usize;
         let c1: usize = move_str.chars().nth(1).unwrap().to_digit(10).unwrap_or(0) as usize;
-        let r2: usize = move_str.chars().nth(2).unwrap().to_digit(10).unwrap_or(0) as usize;
-        let c2: usize = move_str.chars().nth(3).unwrap().to_digit(10).unwrap_or(0) as usize;
         let start_shift: usize = 64 - 1 - (r1 * 8 + c1);
         if (usgn_r_shift!(king, start_shift) & 1 == 1) && ((move_str == "0402") || (move_str == "0406") || (move_str == "7472") || (move_str == "7476")) {
             if p_type == 'R' { // white
                 match move_str.as_str() {
                     "7476" => { // king side
                         rook &= !(1 << self.castle_rooks[3]);
-                        rook |= (1 << (self.castle_rooks[3] + 2));
+                        rook |= 1 << (self.castle_rooks[3] + 2);
                     },
                     "7472" => { // queen side
                         rook &= !(1 << self.castle_rooks[2]);
-                        rook |= (1 << (self.castle_rooks[2] - 3));
+                        rook |= 1 << (self.castle_rooks[2] - 3);
                     },
                     _ => (),
                 }
@@ -639,11 +635,11 @@ impl Moves {
                 match move_str.as_str() {
                     "0406" => { // king side
                         rook &= !(1 << self.castle_rooks[1]);
-                        rook |= (1 << (self.castle_rooks[1] + 2));
+                        rook |= 1 << (self.castle_rooks[1] + 2);
                     },
                     "0402" => { // queen side
                         rook &= !(1 << self.castle_rooks[0]);
-                        rook |= (1 << (self.castle_rooks[0] - 3));
+                        rook |= 1 << (self.castle_rooks[0] - 3);
                     },
                     _ => (),
                 }
@@ -657,7 +653,6 @@ impl Moves {
         let r1: usize = move_str.chars().nth(0).unwrap().to_digit(10).unwrap_or(0) as usize;
         let c1: usize = move_str.chars().nth(1).unwrap().to_digit(10).unwrap_or(0) as usize;
         let r2: usize = move_str.chars().nth(2).unwrap().to_digit(10).unwrap_or(0) as usize;
-        let c2: usize = move_str.chars().nth(3).unwrap().to_digit(10).unwrap_or(0) as usize;
         let start_shift: usize = 64 - 1 - (r1 * 8 + c1);
         if move_str.chars().nth(3).unwrap().is_numeric() && ((r1 as i64 - r2 as i64).abs() == 2) && ((usgn_r_shift!(bitboard, start_shift) & 1) == 1) {
             self.masks.file_masks[c1]
@@ -667,7 +662,7 @@ impl Moves {
     }
 
 
-    fn possibleMovesW(&mut self, wP: i64, wN: i64, wB: i64, wR: i64, wQ: i64, wK: i64, bP: i64, bN: i64, bB: i64, bR: i64, bQ: i64, bK: i64, EP: i64, cwK: bool, cwQ: bool, cbK: bool, cbQ: bool) -> String {
+    fn possibleMovesW(&mut self, wP: i64, wN: i64, wB: i64, wR: i64, wQ: i64, wK: i64, bP: i64, bN: i64, bB: i64, bR: i64, bQ: i64, bK: i64, EP: i64, cwK: bool, cwQ: bool) -> String {
         self.masks.not_allied_pieces = !(wP|wN|wB|wR|wQ|wK|bK); // avoid illegal bK capture
         self.masks.enemy_pieces = bP|bN|bB|bR|bQ; // avoid illegal bK capture
         self.masks.empty = !(wP|wN|wB|wR|wQ|wK|bP|bN|bB|bR|bQ|bK);
@@ -682,7 +677,7 @@ impl Moves {
     }
 
 
-    fn possibleMovesB(&mut self, wP: i64, wN: i64, wB: i64, wR: i64, wQ: i64, wK: i64, bP: i64, bN: i64, bB: i64, bR: i64, bQ: i64, bK: i64, EP: i64, cwK: bool, cwQ: bool, cbK: bool, cbQ: bool) -> String {
+    fn possibleMovesB(&mut self, wP: i64, wN: i64, wB: i64, wR: i64, wQ: i64, wK: i64, bP: i64, bN: i64, bB: i64, bR: i64, bQ: i64, bK: i64, EP: i64, cbK: bool, cbQ: bool) -> String {
         self.masks.not_allied_pieces = !(bP|bN|bB|bR|bQ|bK|wK); // avoid illegal wK capture
         self.masks.enemy_pieces = wP|wN|wB|wR|wQ; // avoid illegal wK capture
         self.masks.empty = !(wP|wN|wB|wR|wQ|wK|bP|bN|bB|bR|bQ|bK);
@@ -959,7 +954,7 @@ impl Moves {
             let knight_idx: usize = knight.leading_zeros() as usize;
 
             // allign the knight_span_c6 mask
-            let mut moves: i64 = 0;
+            let mut moves: i64;
             if knight_idx <= knight_span_c6_idx {
                 moves = self.masks.knight_span_c6 << (knight_span_c6_idx - knight_idx);
             } else {
@@ -996,7 +991,7 @@ impl Moves {
             let king_idx: usize = king.leading_zeros() as usize;
 
             // allign the king_span_c7 mask
-            let mut moves: i64 = 0;
+            let mut moves: i64;
             if king_idx <= king_span_c7_idx {
                 moves = self.masks.king_span_c7 << (king_span_c7_idx - king_idx);
             } else {
@@ -1085,11 +1080,11 @@ impl Moves {
     }
 
 
-    fn unsafeForBlack(&mut self, mut wP: i64, mut wN: i64, mut wB: i64, mut wR: i64, mut wQ: i64, mut wK: i64, mut bP: i64, mut bN: i64, mut bB: i64, mut bR: i64, mut bQ: i64, mut bK: i64) -> i64 {
+    fn unsafeForBlack(&mut self, wP: i64, mut wN: i64, wB: i64, wR: i64, wQ: i64, mut wK: i64, bP: i64, bN: i64, bB: i64, bR: i64, bQ: i64, bK: i64) -> i64 {
         self.masks.occupied = wP|wN|wB|wR|wQ|wK|bP|bN|bB|bR|bQ|bK;
         // pawn threats
         let mut unsafe_b: i64 = (wP << 7) & !self.masks.file_masks[0]; // pawn right capture
-        unsafe_b |= ((wP << 9) & !self.masks.file_masks[7]); // pawn left capture
+        unsafe_b |= (wP << 9) & !self.masks.file_masks[7]; // pawn left capture
 
         // knight threat
         let mut knight: i64 = wN & !wrap_op!(wN, 1, '-');
@@ -1097,7 +1092,7 @@ impl Moves {
         while knight != 0 {
             let knight_idx: usize = knight.leading_zeros() as usize;
             // allign the knight_span_c6 mask
-            let mut moves: i64 = 0;
+            let mut moves: i64;
             if knight_idx <= knight_span_c6_idx {
                 moves = self.masks.knight_span_c6 << (knight_span_c6_idx - knight_idx);
             } else {
@@ -1142,7 +1137,7 @@ impl Moves {
         while king != 0 {
             let king_idx: usize = king.leading_zeros() as usize;
             // allign the king_span_c7 mask
-            let mut moves: i64 = 0;
+            let mut moves: i64;
             if king_idx <= king_span_c7_idx {
                 moves = self.masks.king_span_c7 << (king_span_c7_idx - king_idx);
             } else {
@@ -1162,11 +1157,11 @@ impl Moves {
     }
 
 
-    fn unsafeForWhite(&mut self, mut wP: i64, mut wN: i64, mut wB: i64, mut wR: i64, mut wQ: i64, mut wK: i64, mut bP: i64, mut bN: i64, mut bB: i64, mut bR: i64, mut bQ: i64, mut bK: i64) -> i64 {
+    fn unsafeForWhite(&mut self, wP: i64, wN: i64, wB: i64, wR: i64, wQ: i64, wK: i64, bP: i64, mut bN: i64, bB: i64, bR: i64, bQ: i64, mut bK: i64) -> i64 {
         self.masks.occupied = wP|wN|wB|wR|wQ|wK|bP|bN|bB|bR|bQ|bK;
         // pawn threats
         let mut unsafe_w: i64 = usgn_r_shift!(bP, 7) & !self.masks.file_masks[7]; // pawn right capture
-        unsafe_w |= (usgn_r_shift!(bP, 9) & !self.masks.file_masks[0]); // pawn left capture
+        unsafe_w |= usgn_r_shift!(bP, 9) & !self.masks.file_masks[0]; // pawn left capture
 
         // knight threat
         let mut knight: i64 = bN & !wrap_op!(bN, 1, '-');
@@ -1174,7 +1169,7 @@ impl Moves {
         while knight != 0 {
             let knight_idx: usize = knight.leading_zeros() as usize;
             // allign the knight_span_c6 mask
-            let mut moves: i64 = 0;
+            let mut moves: i64;
             if knight_idx <= knight_span_c6_idx {
                 moves = self.masks.knight_span_c6 << (knight_span_c6_idx - knight_idx);
             } else {
@@ -1219,7 +1214,7 @@ impl Moves {
         while king != 0 {
             let king_idx: usize = king.leading_zeros() as usize;
             // allign the king_span_c7 mask
-            let mut moves: i64 = 0;
+            let mut moves: i64;
             if king_idx <= king_span_c7_idx {
                 moves = self.masks.king_span_c7 << (king_span_c7_idx - king_idx);
             } else {
@@ -1263,11 +1258,11 @@ impl Perft {
 
     fn perft(&mut self, mm: &mut Moves, wP: i64, wN: i64, wB: i64, wR: i64, wQ: i64, wK: i64, bP: i64, bN: i64, bB: i64, bR: i64, bQ: i64, bK: i64, EP: i64, cwK: bool, cwQ: bool, cbK: bool, cbQ: bool, whites_turn: bool, depth: u32) {
         if depth < self.max_depth {
-            let mut moves: String = String::new();
+            let moves: String;
             if whites_turn {
-                moves = mm.possibleMovesW(wP, wN, wB, wR, wQ, wK, bP, bN, bB, bR, bQ, bK, EP, cwK, cwQ, cbK, cbQ);
+                moves = mm.possibleMovesW(wP, wN, wB, wR, wQ, wK, bP, bN, bB, bR, bQ, bK, EP, cwK, cwQ);
             } else {
-                moves = mm.possibleMovesB(wP, wN, wB, wR, wQ, wK, bP, bN, bB, bR, bQ, bK, EP, cwK, cwQ, cbK, cbQ);
+                moves = mm.possibleMovesB(wP, wN, wB, wR, wQ, wK, bP, bN, bB, bR, bQ, bK, EP, cbK, cbQ);
             }
             for i in (0..moves.len()).step_by(4) {
                 let wPt: i64 = mm.makeMove(wP, moves[i..i+4].to_string(), 'P'); let wNt: i64 = mm.makeMove(wN, moves[i..i+4].to_string(), 'N');
@@ -1335,11 +1330,11 @@ impl Perft {
 
 
     fn perftRoot(&mut self, mm: &mut Moves, wP: i64, wN: i64, wB: i64, wR: i64, wQ: i64, wK: i64, bP: i64, bN: i64, bB: i64, bR: i64, bQ: i64, bK: i64, EP: i64, cwK: bool, cwQ: bool, cbK: bool, cbQ: bool, whites_turn: bool, depth: u32) {
-        let mut moves: String = String::new();
+        let moves: String;
         if whites_turn {
-            moves = mm.possibleMovesW(wP, wN, wB, wR, wQ, wK, bP, bN, bB, bR, bQ, bK, EP, cwK, cwQ, cbK, cbQ);
+            moves = mm.possibleMovesW(wP, wN, wB, wR, wQ, wK, bP, bN, bB, bR, bQ, bK, EP, cwK, cwQ);
         } else {
-            moves = mm.possibleMovesB(wP, wN, wB, wR, wQ, wK, bP, bN, bB, bR, bQ, bK, EP, cwK, cwQ, cbK, cbQ);
+            moves = mm.possibleMovesB(wP, wN, wB, wR, wQ, wK, bP, bN, bB, bR, bQ, bK, EP, cbK, cbQ);
         }
         for i in (0..moves.len()).step_by(4) {
             let wPt: i64 = mm.makeMove(wP, moves[i..i+4].to_string(), 'P'); let wNt: i64 = mm.makeMove(wN, moves[i..i+4].to_string(), 'N');
@@ -1510,7 +1505,7 @@ impl BestMoveFinder {
         // Positive = better for current recursive player perspective
         self.move_counter += 1;
         if depth == self.search_depth {
-            return (if whites_turn {1.0} else {-1.0}) * self.evaluate(mm, wP, wN, wB, wR, wQ, wK, bP, bN, bB, bR, bQ, bK, whites_turn);
+            return (if whites_turn {1.0} else {-1.0}) * self.evaluate(mm, wP, wN, wB, wR, wQ, bP, bN, bB, bR, bQ, whites_turn);
         }
         let mut best_score: f64 = -self.mate_score as f64;
         let valid_moves: String = mm.getValidMoves(wP, wN, wB, wR, wQ, wK, bP, bN, bB, bR, bQ, bK, EP, cwK, cwQ, cbK, cbQ, whites_turn, depth);
@@ -1518,14 +1513,14 @@ impl BestMoveFinder {
             return self.stale_score as f64;
         }
         for i in (0..valid_moves.len()).step_by(4) {
-            let mut wPt: i64 = mm.makeMove(wP, valid_moves[i..i+4].to_string(), 'P'); let mut wNt: i64 = mm.makeMove(wN, valid_moves[i..i+4].to_string(), 'N');
-            let mut wBt: i64 = mm.makeMove(wB, valid_moves[i..i+4].to_string(), 'B'); let mut wRt: i64 = mm.makeMove(wR, valid_moves[i..i+4].to_string(), 'R');
-            let mut wQt: i64 = mm.makeMove(wQ, valid_moves[i..i+4].to_string(), 'Q'); let mut wKt: i64 = mm.makeMove(wK, valid_moves[i..i+4].to_string(), 'K');
-            let mut bPt: i64 = mm.makeMove(bP, valid_moves[i..i+4].to_string(), 'p'); let mut bNt: i64 = mm.makeMove(bN, valid_moves[i..i+4].to_string(), 'n');
-            let mut bBt: i64 = mm.makeMove(bB, valid_moves[i..i+4].to_string(), 'b'); let mut bRt: i64 = mm.makeMove(bR, valid_moves[i..i+4].to_string(), 'r');
-            let mut bQt: i64 = mm.makeMove(bQ, valid_moves[i..i+4].to_string(), 'q'); let mut bKt: i64 = mm.makeMove(bK, valid_moves[i..i+4].to_string(), 'k');
-            let mut wRt: i64 = mm.makeMoveCastle(wRt, wK, valid_moves[i..i+4].to_string(), 'R'); let mut bRt: i64 = mm.makeMoveCastle(bRt, bK, valid_moves[i..i+4].to_string(), 'r');
-            let mut EPt: i64 = mm.makeMoveEP(wP|bP, valid_moves[i..i+4].to_string());
+            let wPt: i64 = mm.makeMove(wP, valid_moves[i..i+4].to_string(), 'P'); let wNt: i64 = mm.makeMove(wN, valid_moves[i..i+4].to_string(), 'N');
+            let wBt: i64 = mm.makeMove(wB, valid_moves[i..i+4].to_string(), 'B'); let wRt: i64 = mm.makeMove(wR, valid_moves[i..i+4].to_string(), 'R');
+            let wQt: i64 = mm.makeMove(wQ, valid_moves[i..i+4].to_string(), 'Q'); let wKt: i64 = mm.makeMove(wK, valid_moves[i..i+4].to_string(), 'K');
+            let bPt: i64 = mm.makeMove(bP, valid_moves[i..i+4].to_string(), 'p'); let bNt: i64 = mm.makeMove(bN, valid_moves[i..i+4].to_string(), 'n');
+            let bBt: i64 = mm.makeMove(bB, valid_moves[i..i+4].to_string(), 'b'); let bRt: i64 = mm.makeMove(bR, valid_moves[i..i+4].to_string(), 'r');
+            let bQt: i64 = mm.makeMove(bQ, valid_moves[i..i+4].to_string(), 'q'); let bKt: i64 = mm.makeMove(bK, valid_moves[i..i+4].to_string(), 'k');
+            let wRt: i64 = mm.makeMoveCastle(wRt, wK, valid_moves[i..i+4].to_string(), 'R'); let bRt: i64 = mm.makeMoveCastle(bRt, bK, valid_moves[i..i+4].to_string(), 'r');
+            let EPt: i64 = mm.makeMoveEP(wP|bP, valid_moves[i..i+4].to_string());
 
             let mut cwKt: bool = cwK; let mut cwQt: bool = cwQ; let mut cbKt: bool = cbK; let mut cbQt: bool = cbQ;
 
@@ -1577,7 +1572,7 @@ impl BestMoveFinder {
                 if depth == 0 {
                     self.best_move_idx = i as i64;
                     self.next_move = valid_moves[i..i+4].to_string();
-                    println!("Considering {:?} with score: {:?}", valid_moves[i..i+4].to_string(), score);
+                    println!("Considering {:?} with score: {:?}", move_to_algebra!(valid_moves[i..i+4]), score);
                 }
             }
 
@@ -1592,7 +1587,7 @@ impl BestMoveFinder {
     }
 
 
-    fn evaluate(&self, mm: &Moves, wP: i64, wN: i64, wB: i64, wR: i64, wQ: i64, wK: i64, bP: i64, bN: i64, bB: i64, bR: i64, bQ: i64, bK: i64, whites_turn: bool) -> f64 {
+    fn evaluate(&self, mm: &Moves, wP: i64, wN: i64, wB: i64, wR: i64, wQ: i64, bP: i64, bN: i64, bB: i64, bR: i64, bQ: i64, whites_turn: bool) -> f64 {
         if mm.checkmate {
             return if whites_turn {-self.mate_score as f64} else {self.mate_score as f64};
         } else if mm.stalemate {
@@ -1681,10 +1676,6 @@ macro_rules! as_bin_str {
 /// Macro to perform wrapping operations
 #[macro_export]
 macro_rules! wrap_op {
-    ($lv:expr, '!') => {
-        $lv.wrapping_neg()
-    };
-
     ($lv:expr, $rv:expr, $op:expr) => {
         match $op {
             '+' => $lv.wrapping_add($rv),
@@ -1726,6 +1717,7 @@ macro_rules! move_to_algebra {
 
 
 /// Macro to add classes to PyModule
+#[macro_export]
 macro_rules! add_classes {
     ($module:ident, $($class:ty),+) => {
         $(
@@ -1736,6 +1728,7 @@ macro_rules! add_classes {
 
 
 /// Macro to add functions to PyModule
+#[macro_export]
 macro_rules! add_functions {
     ($module:ident, $($function:ident),+) => {
         $(
@@ -1763,10 +1756,10 @@ mod tests {
     #[test]
     fn basic_test() {
         println!("Basic Test!");
-        let mut gs = GameState::new();
-        let mut m: Moves = Moves::new();
-        let mut p: Perft = Perft::new(3);
-        let mut bmf: BestMoveFinder = BestMoveFinder::new(3);
+        // let mut gs = GameState::new();
+        // let mut m: Moves = Moves::new();
+        // let mut p: Perft = Perft::new(3);
+        // let mut bmf: BestMoveFinder = BestMoveFinder::new(3);
         println!("DONE!");
         // panic!();
     }
