@@ -4,6 +4,9 @@
 use pyo3::prelude::*;
 use std::collections::HashMap;
 use crate::engine_modules::moves::Moves;
+use std::str::from_utf8;
+use rand::thread_rng;
+use rand::seq::SliceRandom;
 
 
 #[pyclass(module = "ChessProject", get_all, set_all)]
@@ -110,32 +113,44 @@ impl BestMoveFinder {
 
     fn negaMaxAlphaBeta(&mut self, mut alpha: f64, beta: f64, mm: &mut Moves, wP: i64, wN: i64, wB: i64, wR: i64, wQ: i64, wK: i64, bP: i64, bN: i64, bB: i64, bR: i64, bQ: i64, bK: i64, EP: i64, cwK: bool, cwQ: bool, cbK: bool, cbQ: bool, whites_turn: bool, depth: u32) -> f64 {
         // Positive = better for current recursive player perspective
+        // alpha = minimum score that the maximizing player is assured of
+        // beta = maximum score that the minimizing player is assured of
         self.move_counter += 1;
         if depth == self.search_depth {
             return (if whites_turn {1.0} else {-1.0}) * self.evaluate(mm, wP, wN, wB, wR, wQ, bP, bN, bB, bR, bQ, whites_turn);
         }
         let mut best_score: f64 = -self.mate_score as f64;
-        let valid_moves: String = mm.getValidMoves(wP, wN, wB, wR, wQ, wK, bP, bN, bB, bR, bQ, bK, EP, cwK, cwQ, cbK, cbQ, whites_turn, depth);
-        if mm.stalemate {
-            return self.stale_score as f64;
+        let mut moves: String;
+        if whites_turn {
+            moves = mm.possibleMovesW(wP, wN, wB, wR, wQ, wK, bP, bN, bB, bR, bQ, bK, EP, cwK, cwQ);
+        } else {
+            moves = mm.possibleMovesB(wP, wN, wB, wR, wQ, wK, bP, bN, bB, bR, bQ, bK, EP, cbK, cbQ);
         }
-        for i in (0..valid_moves.len()).step_by(4) {
-            let wPt: i64 = mm.makeMove(wP, valid_moves[i..i+4].to_string(), 'P'); let wNt: i64 = mm.makeMove(wN, valid_moves[i..i+4].to_string(), 'N');
-            let wBt: i64 = mm.makeMove(wB, valid_moves[i..i+4].to_string(), 'B'); let wRt: i64 = mm.makeMove(wR, valid_moves[i..i+4].to_string(), 'R');
-            let wQt: i64 = mm.makeMove(wQ, valid_moves[i..i+4].to_string(), 'Q'); let wKt: i64 = mm.makeMove(wK, valid_moves[i..i+4].to_string(), 'K');
-            let bPt: i64 = mm.makeMove(bP, valid_moves[i..i+4].to_string(), 'p'); let bNt: i64 = mm.makeMove(bN, valid_moves[i..i+4].to_string(), 'n');
-            let bBt: i64 = mm.makeMove(bB, valid_moves[i..i+4].to_string(), 'b'); let bRt: i64 = mm.makeMove(bR, valid_moves[i..i+4].to_string(), 'r');
-            let bQt: i64 = mm.makeMove(bQ, valid_moves[i..i+4].to_string(), 'q'); let bKt: i64 = mm.makeMove(bK, valid_moves[i..i+4].to_string(), 'k');
-            let wRt: i64 = mm.makeMoveCastle(wRt, wK, valid_moves[i..i+4].to_string(), 'R'); let bRt: i64 = mm.makeMoveCastle(bRt, bK, valid_moves[i..i+4].to_string(), 'r');
-            let EPt: i64 = mm.makeMoveEP(wP|bP, valid_moves[i..i+4].to_string());
+        if depth == 0 {
+            // TODO: look to replace shuffling with sorting
+            println!("Depth: {:?}", self.search_depth);
+            let mut move_groups: Vec<&str> = moves.as_bytes().chunks(4).map(|chunk| from_utf8(chunk).unwrap()).collect();
+            move_groups.shuffle(&mut thread_rng());
+            moves = move_groups.join("");
+        }
+        let mut valid_move_found: bool = false;
+        for i in (0..moves.len()).step_by(4) {
+            let wPt: i64 = mm.makeMove(wP, moves[i..i+4].to_string(), 'P'); let wNt: i64 = mm.makeMove(wN, moves[i..i+4].to_string(), 'N');
+            let wBt: i64 = mm.makeMove(wB, moves[i..i+4].to_string(), 'B'); let wRt: i64 = mm.makeMove(wR, moves[i..i+4].to_string(), 'R');
+            let wQt: i64 = mm.makeMove(wQ, moves[i..i+4].to_string(), 'Q'); let wKt: i64 = mm.makeMove(wK, moves[i..i+4].to_string(), 'K');
+            let bPt: i64 = mm.makeMove(bP, moves[i..i+4].to_string(), 'p'); let bNt: i64 = mm.makeMove(bN, moves[i..i+4].to_string(), 'n');
+            let bBt: i64 = mm.makeMove(bB, moves[i..i+4].to_string(), 'b'); let bRt: i64 = mm.makeMove(bR, moves[i..i+4].to_string(), 'r');
+            let bQt: i64 = mm.makeMove(bQ, moves[i..i+4].to_string(), 'q'); let bKt: i64 = mm.makeMove(bK, moves[i..i+4].to_string(), 'k');
+            let wRt: i64 = mm.makeMoveCastle(wRt, wK, moves[i..i+4].to_string(), 'R'); let bRt: i64 = mm.makeMoveCastle(bRt, bK, moves[i..i+4].to_string(), 'r');
+            let EPt: i64 = mm.makeMoveEP(wP|bP, moves[i..i+4].to_string());
 
             let mut cwKt: bool = cwK; let mut cwQt: bool = cwQ; let mut cbKt: bool = cbK; let mut cbQt: bool = cbQ;
 
-            if valid_moves.chars().nth(i + 3).unwrap().is_numeric() {
-                let m1: u32 = valid_moves.chars().nth(i).unwrap().to_digit(10).unwrap();
-                let m2: u32 = valid_moves.chars().nth(i + 1).unwrap().to_digit(10).unwrap();
-                let m3: u32 = valid_moves.chars().nth(i + 2).unwrap().to_digit(10).unwrap();
-                let m4: u32 = valid_moves.chars().nth(i + 3).unwrap().to_digit(10).unwrap();
+            if moves.chars().nth(i + 3).unwrap().is_numeric() {
+                let m1: u32 = moves.chars().nth(i).unwrap().to_digit(10).unwrap();
+                let m2: u32 = moves.chars().nth(i + 1).unwrap().to_digit(10).unwrap();
+                let m3: u32 = moves.chars().nth(i + 2).unwrap().to_digit(10).unwrap();
+                let m4: u32 = moves.chars().nth(i + 3).unwrap().to_digit(10).unwrap();
                 let start_shift: u32 = 64 - 1 - (m1 * 8 + m2);
                 let end_shift: u32 = 64 - 1 - (m3 * 8 + m4);
                 if ((1 << start_shift) & wK) != 0 { // white king move
@@ -170,25 +185,42 @@ impl BestMoveFinder {
                 }
             }
 
-            let mut score: f64 = -self.negaMaxAlphaBeta(-beta, -alpha, mm, wPt, wNt, wBt, wRt, wQt, wKt, bPt, bNt, bBt, bRt, bQt, bKt, EPt, cwKt, cwQt, cbKt, cbQt, !whites_turn, depth+1);
-            if score == self.mate_score as f64 {
-                score -= depth as f64;
-            }
-            if score > best_score {
-                best_score = score;
-                if depth == 0 {
-                    self.best_move_idx = i as i64;
-                    self.next_move = valid_moves[i..i+4].to_string();
-                    println!("Considering {:?} with score: {:?}", move_to_algebra!(valid_moves[i..i+4]), score);
+            let is_valid_move: bool = ((wKt & mm.unsafeForWhite(wPt, wNt, wBt, wRt, wQt, wKt, bPt, bNt, bBt, bRt, bQt, bKt)) == 0 && whites_turn) || ((bKt & mm.unsafeForBlack(wPt, wNt, wBt, wRt, wQt, wKt, bPt, bNt, bBt, bRt, bQt, bKt)) == 0 && !whites_turn);
+            if is_valid_move {
+
+                valid_move_found = true;
+
+                let mut score: f64 = -self.negaMaxAlphaBeta(-beta, -alpha, mm, wPt, wNt, wBt, wRt, wQt, wKt, bPt, bNt, bBt, bRt, bQt, bKt, EPt, cwKt, cwQt, cbKt, cbQt, !whites_turn, depth+1);
+                if score == self.mate_score as f64 {
+                    score -= depth as f64;
+                }
+                if score > best_score {
+                    best_score = score;
+                    if depth == 0 {
+                        self.best_move_idx = i as i64;
+                        self.next_move = moves[i..i+4].to_string();
+                        println!("Considering {:?} with score: {:?}", move_to_algebra!(moves[i..i+4]), score);
+                    }
+                }
+
+                if best_score > alpha {
+                    alpha = best_score;
+                }
+                if alpha >= beta {
+                    break;
                 }
             }
-
-            if best_score > alpha {
-                alpha = best_score;
+        }
+        if !valid_move_found {
+            if ((wK & mm.unsafeForWhite(wP, wN, wB, wR, wQ, wK, bP, bN, bB, bR, bQ, bK)) != 0 && whites_turn) || ((bK & mm.unsafeForBlack(wP, wN, wB, wR, wQ, wK, bP, bN, bB, bR, bQ, bK)) != 0 && !whites_turn) {
+                mm.checkmate = true;
+            } else {
+                mm.stalemate = true;
+                return self.stale_score as f64;
             }
-            if alpha >= beta {
-                break;
-            }
+        } else {
+            mm.checkmate = false;
+            mm.stalemate = false;
         }
         best_score
     }

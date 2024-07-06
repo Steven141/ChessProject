@@ -4,11 +4,12 @@ File contains code for the chess bot
 
 
 import random
+import time
 import ChessProject # rust engine library
 
 
 CHECKMATE = 1000
-DEPTH = 5
+DEPTH = 6
 
 
 """
@@ -27,8 +28,9 @@ def findBestMove(game_state, m, valid_moves) -> str:
     next_move = None
     # random.shuffle(valid_moves)
     move_counter = 0
+    start_t = time.time()
     findMoveNegaMaxAlphaBeta(game_state, m, DEPTH, -CHECKMATE, CHECKMATE, valid_moves)
-    print(f'Number of moves: {move_counter}')
+    print(f'Number of moves: {move_counter} in {time.time() - start_t}s')
     return next_move
 
 
@@ -40,6 +42,5 @@ def findMoveNegaMaxAlphaBeta(gs, m, depth, alpha, beta, valid_moves) -> int:
     bmf = ChessProject.BestMoveFinder(depth)
     max_score = bmf.negaMaxAlphaBeta(alpha, beta, m, gs.wP, gs.wN, gs.wB, gs.wR, gs.wQ, gs.wK, gs.bP, gs.bN, gs.bB, gs.bR, gs.bQ, gs.bK, gs.EP, gs.cwK, gs.cwQ, gs.cbK, gs.cbQ, gs.whites_turn, 0)
     move_counter = bmf.move_counter
-    # next_move = valid_moves[bmf.best_move_idx:bmf.best_move_idx+4]
     next_move = bmf.next_move
     return max_score
