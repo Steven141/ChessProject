@@ -40,7 +40,7 @@ def main() -> None:
     move_log_font = pg.font.SysFont('Arial', 14, False, False)
     gs = ChessProject.GameState()
     m = ChessProject.Moves()
-    valid_moves = m.getValidMoves(gs.wP, gs.wN, gs.wB, gs.wR, gs.wQ, gs.wK, gs.bP, gs.bN, gs.bB, gs.bR, gs.bQ, gs.bK, gs.EP, gs.cwK, gs.cwQ, gs.cbK, gs.cbQ, gs.whites_turn, 0)
+    valid_moves = m.getValidMoves(gs.bitboards, gs.cwK, gs.cwQ, gs.cbK, gs.cbQ, gs.whites_turn, 0)
     move_made = False # flag for when move is made
     animate = False
 
@@ -119,7 +119,7 @@ def main() -> None:
         if move_made:
             if animate:
                 animateMove(gs.move_log[-4:], screen, gs, clk)
-            valid_moves = m.getValidMoves(gs.wP, gs.wN, gs.wB, gs.wR, gs.wQ, gs.wK, gs.bP, gs.bN, gs.bB, gs.bR, gs.bQ, gs.bK, gs.EP, gs.cwK, gs.cwQ, gs.cbK, gs.cbQ, gs.whites_turn, 0)
+            valid_moves = m.getValidMoves(gs.bitboards, gs.cwK, gs.cwQ, gs.cbK, gs.cbQ, gs.whites_turn, 0)
             move_made = False
             animate = False
             move_undone = False
@@ -176,7 +176,7 @@ def highlightSquares(screen, game_state, valid_moves, sq_selected) -> None:
                     screen.blit(s, (int(move[1])*SQ_SIZE, (2 if game_state.whites_turn else 5)*SQ_SIZE))
                 elif move[3] == 'P' and (int(move[0]) == c and (r == 1 if game_state.whites_turn else r == 6)):
                     screen.blit(s, (int(move[1])*SQ_SIZE, (0 if game_state.whites_turn else 7)*SQ_SIZE))
-                elif int(move[0]) == r and int(move[1]) == c:
+                elif int(move[0]) == r and int(move[1]) == c and move[3] != 'E' and move[3] != 'P':
                     screen.blit(s, (int(move[3])*SQ_SIZE, int(move[2])*SQ_SIZE))
 
 

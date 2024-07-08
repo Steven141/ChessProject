@@ -4,6 +4,7 @@
 use pyo3::prelude::*;
 use std::collections::HashMap;
 use crate::engine_modules::moves::Moves;
+use crate::piece::Piece;
 use std::str::from_utf8;
 use rand::thread_rng;
 use rand::seq::SliceRandom;
@@ -20,7 +21,7 @@ pub struct BestMoveFinder {
     next_move: String,
     piece_scores: HashMap<char, i64>,
     piece_position_scores: HashMap<char, [[i64; 8]; 8]>,
-    piece_position_scale: f64,
+    mvv_lva: [[i64; 12]; 12], // [attacker][victim]
 }
 
 
@@ -31,118 +32,128 @@ impl BestMoveFinder {
     fn new(search_depth: u32) -> Self {
         BestMoveFinder {
             search_depth: search_depth,
-            mate_score: 1000,
+            mate_score: 10000,
             stale_score: 0,
             move_counter: 0,
             best_move_idx: -1,
             considered_moves: String::new(),
             next_move: String::new(),
             piece_scores: HashMap::from([
-                ('Q', 9),
-                ('R', 5),
-                ('B', 3),
-                ('N', 3),
-                ('P', 1),
+                ('K', 10000),
+                ('Q', 1000),
+                ('R', 500),
+                ('B', 350),
+                ('N', 300),
+                ('P', 100),
             ]),
             piece_position_scores: HashMap::from([
+                ('K', [
+                    [0,   0,   0,   0,   0,   0,   0,   0],
+                    [0,   0,   5,   5,   5,   5,   0,   0],
+                    [0,   5,   5,  10,  10,   5,   5,   0],
+                    [0,   5,  10,  20,  20,  10,   5,   0],
+                    [0,   5,  10,  20,  20,  10,   5,   0],
+                    [0,   0,   5,  10,  10,   5,   0,   0],
+                    [0,   5,   5,  -5,  -5,   0,   5,   0],
+                    [0,   0,   5,   0, -15,   0,  10,   0],
+                ]),
                 ('Q', [
-                    [1, 1, 1, 3, 1, 1, 1, 1],
-                    [1, 2, 3, 3, 3, 1, 1, 1],
-                    [1, 4, 3, 3, 3, 4, 2, 1],
-                    [1, 2, 3, 3, 3, 2, 2, 1],
-                    [1, 2, 3, 3, 3, 2, 2, 1],
-                    [1, 4, 3, 3, 3, 4, 2, 1],
-                    [1, 2, 3, 3, 3, 1, 1, 1],
-                    [1, 1, 1, 3, 1, 1, 1, 1],
+                    [0,   0,   0,  10,   0,   0,   0,   0],
+                    [0,   5,  10,  10,  10,   0,   0,   0],
+                    [0,  10,  10,  10,  10,  10,   5,   0],
+                    [0,   5,  10,  10,  10,   5,   5,   0],
+                    [0,   5,  10,  10,  10,   5,   5,   0],
+                    [0,  10,  10,  10,  10,  10,   5,   0],
+                    [0,   5,  10,  10,  10,   0,   0,   0],
+                    [0,   0,   0,  10,   0,   0,   0,   0],
                 ]),
                 ('R', [
-                    [4, 3, 4, 4, 4, 4, 3, 4],
-                    [4, 4, 4, 4, 4, 4, 4, 4],
-                    [1, 1, 2, 3, 3, 2, 1, 1],
-                    [1, 2, 3, 4, 4, 3, 2, 1],
-                    [1, 2, 3, 4, 4, 3, 2, 1],
-                    [1, 1, 2, 3, 3, 2, 1, 1],
-                    [4, 4, 4, 4, 4, 4, 4, 4],
-                    [4, 3, 4, 4, 4, 4, 3, 4],
+                    [50,  50,  50,  50,  50,  50,  50,  50],
+                    [50,  50,  50,  50,  50,  50,  50,  50],
+                    [ 0,   0,  10,  20,  20,  10,   0,   0],
+                    [ 0,   0,  10,  20,  20,  10,   0,   0],
+                    [ 0,   0,  10,  20,  20,  10,   0,   0],
+                    [ 0,   0,  10,  20,  20,  10,   0,   0],
+                    [ 0,   0,  10,  20,  20,  10,   0,   0],
+                    [ 0,   0,   0,  20,  20,   0,   0,   0],
                 ]),
                 ('B', [
-                    [4, 3, 2, 1, 1, 2, 3, 4],
-                    [3, 4, 3, 2, 2, 3, 4, 3],
-                    [2, 3, 4, 3, 3, 4, 3, 2],
-                    [1, 2, 3, 4, 4, 3, 2, 1],
-                    [1, 2, 3, 4, 4, 3, 2, 1],
-                    [2, 3, 4, 3, 3, 4, 3, 2],
-                    [3, 4, 3, 2, 2, 3, 4, 3],
-                    [4, 3, 2, 1, 1, 2, 3, 4],
+                    [0,   0,   0,   0,   0,   0,   0,   0],
+                    [0,   0,   0,   0,   0,   0,   0,   0],
+                    [0,   0,   0,  10,  10,   0,   0,   0],
+                    [0,   0,  10,  20,  20,  10,   0,   0],
+                    [0,   0,  10,  20,  20,  10,   0,   0],
+                    [0,  10,   0,   0,   0,   0,  10,   0],
+                    [0,  30,   0,   0,   0,   0,  30,   0],
+                    [0,   0, -10,   0,   0, -10,   0,   0],
                 ]),
                 ('N', [
-                    [1, 1, 1, 1, 1, 1, 1, 1],
-                    [1, 2, 2, 2, 2, 2, 2, 1],
-                    [1, 2, 3, 3, 3, 3, 2, 1],
-                    [1, 2, 3, 4, 4, 3, 2, 1],
-                    [1, 2, 3, 4, 4, 3, 2, 1],
-                    [1, 2, 3, 3, 3, 3, 2, 1],
-                    [1, 2, 2, 2, 2, 2, 2, 1],
-                    [1, 1, 1, 1, 1, 1, 1, 1],
+                    [-5,   0,   0,   0,   0,   0,   0,  -5],
+                    [-5,   0,   0,  10,  10,   0,   0,  -5],
+                    [-5,   5,  20,  20,  20,  20,   5,  -5],
+                    [-5,  10,  20,  30,  30,  20,  10,  -5],
+                    [-5,  10,  20,  30,  30,  20,  10,  -5],
+                    [-5,   5,  20,  10,  10,  20,   5,  -5],
+                    [-5,   0,   0,   0,   0,   0,   0,  -5],
+                    [-5, -10,   0,   0,   0,   0, -10,  -5],
                 ]),
                 ('P', [
-                    [8, 8, 8, 8, 8, 8, 8, 8],
-                    [8, 8, 8, 8, 8, 8, 8, 8],
-                    [5, 6, 6, 7, 7, 6, 6, 5],
-                    [2, 3, 3, 5, 5, 3, 3, 2],
-                    [1, 2, 3, 4, 4, 3, 2, 1],
-                    [1, 1, 2, 3, 3, 2, 1, 1],
-                    [1, 1, 1, 0, 0, 1, 1, 1],
-                    [0, 0, 0, 0, 0, 0, 0, 0],
-                ]),
-                ('p', [
-                    [0, 0, 0, 0, 0, 0, 0, 0],
-                    [1, 1, 1, 0, 0, 1, 1, 1],
-                    [1, 1, 2, 3, 3, 2, 1, 1],
-                    [1, 2, 3, 4, 4, 3, 2, 1],
-                    [2, 3, 3, 5, 5, 3, 3, 2],
-                    [5, 6, 6, 7, 7, 6, 6, 5],
-                    [8, 8, 8, 8, 8, 8, 8, 8],
-                    [8, 8, 8, 8, 8, 8, 8, 8],
+                    [90,  90,  90,  90,  90,  90,  90,  90],
+                    [30,  30,  30,  40,  40,  30,  30,  30],
+                    [20,  20,  20,  30,  30,  30,  20,  20],
+                    [10,  10,  10,  20,  20,  10,  10,  10],
+                    [ 5,   5,  10,  20,  20,   5,   5,   5],
+                    [ 0,   0,   0,   5,   5,   0,   0,   0],
+                    [ 0,   0,   0, -10, -10,   0,   0,   0],
+                    [ 0,   0,   0,   0,   0,   0,   0,   0],
                 ]),
             ]),
-            piece_position_scale: 0.1,
+            mvv_lva: [
+                // (Victims) Pawn Knight Bishop   Rook  Queen   King            (Attackers)
+                [105, 205, 305, 405, 505, 605,  105, 205, 305, 405, 505, 605], // Pawn
+                [104, 204, 304, 404, 504, 604,  104, 204, 304, 404, 504, 604], // Knight
+                [103, 203, 303, 403, 503, 603,  103, 203, 303, 403, 503, 603], // Bishop
+                [102, 202, 302, 402, 502, 602,  102, 202, 302, 402, 502, 602], // Rook
+                [101, 201, 301, 401, 501, 601,  101, 201, 301, 401, 501, 601], // Queen
+                [100, 200, 300, 400, 500, 600,  100, 200, 300, 400, 500, 600], // King
+
+                [105, 205, 305, 405, 505, 605,  105, 205, 305, 405, 505, 605],
+                [104, 204, 304, 404, 504, 604,  104, 204, 304, 404, 504, 604],
+                [103, 203, 303, 403, 503, 603,  103, 203, 303, 403, 503, 603],
+                [102, 202, 302, 402, 502, 602,  102, 202, 302, 402, 502, 602],
+                [101, 201, 301, 401, 501, 601,  101, 201, 301, 401, 501, 601],
+                [100, 200, 300, 400, 500, 600,  100, 200, 300, 400, 500, 600],
+            ],
         }
     }
 
 
-    fn negaMaxAlphaBeta(&mut self, mut alpha: f64, beta: f64, mm: &mut Moves, wP: i64, wN: i64, wB: i64, wR: i64, wQ: i64, wK: i64, bP: i64, bN: i64, bB: i64, bR: i64, bQ: i64, bK: i64, EP: i64, cwK: bool, cwQ: bool, cbK: bool, cbQ: bool, whites_turn: bool, depth: u32) -> f64 {
-        // Positive = better for current recursive player perspective
-        // alpha = minimum score that the maximizing player is assured of
-        // beta = maximum score that the minimizing player is assured of
+    fn quiescenceSearch(&mut self, mut alpha: i64, beta: i64, mm: &mut Moves, bitboards: [i64; 13], cwK: bool, cwQ: bool, cbK: bool, cbQ: bool, whites_turn: bool) -> i64 {
+        // look deeper for non-quiet moves (attacking)
         self.move_counter += 1;
-        if depth == self.search_depth {
-            return (if whites_turn {1.0} else {-1.0}) * self.evaluate(mm, wP, wN, wB, wR, wQ, bP, bN, bB, bR, bQ, whites_turn);
+        let eval: i64 = (if whites_turn {1} else {-1}) * self.evaluateBoard(mm, bitboards, whites_turn);
+        if eval >= beta {
+            return beta;
         }
-        let mut best_score: f64 = -self.mate_score as f64;
-        let mut moves: String;
+        if eval > alpha {
+            alpha = eval;
+        }
+        let moves: String;
         if whites_turn {
-            moves = mm.possibleMovesW(wP, wN, wB, wR, wQ, wK, bP, bN, bB, bR, bQ, bK, EP, cwK, cwQ);
+            moves = mm.possibleMovesW(bitboards, cwK, cwQ);
         } else {
-            moves = mm.possibleMovesB(wP, wN, wB, wR, wQ, wK, bP, bN, bB, bR, bQ, bK, EP, cbK, cbQ);
+            moves = mm.possibleMovesB(bitboards, cbK, cbQ);
         }
-        if depth == 0 {
-            // TODO: look to replace shuffling with sorting
-            println!("Depth: {:?}", self.search_depth);
-            let mut move_groups: Vec<&str> = moves.as_bytes().chunks(4).map(|chunk| from_utf8(chunk).unwrap()).collect();
-            move_groups.shuffle(&mut thread_rng());
-            moves = move_groups.join("");
-        }
-        let mut valid_move_found: bool = false;
         for i in (0..moves.len()).step_by(4) {
-            let wPt: i64 = mm.makeMove(wP, moves[i..i+4].to_string(), 'P'); let wNt: i64 = mm.makeMove(wN, moves[i..i+4].to_string(), 'N');
-            let wBt: i64 = mm.makeMove(wB, moves[i..i+4].to_string(), 'B'); let wRt: i64 = mm.makeMove(wR, moves[i..i+4].to_string(), 'R');
-            let wQt: i64 = mm.makeMove(wQ, moves[i..i+4].to_string(), 'Q'); let wKt: i64 = mm.makeMove(wK, moves[i..i+4].to_string(), 'K');
-            let bPt: i64 = mm.makeMove(bP, moves[i..i+4].to_string(), 'p'); let bNt: i64 = mm.makeMove(bN, moves[i..i+4].to_string(), 'n');
-            let bBt: i64 = mm.makeMove(bB, moves[i..i+4].to_string(), 'b'); let bRt: i64 = mm.makeMove(bR, moves[i..i+4].to_string(), 'r');
-            let bQt: i64 = mm.makeMove(bQ, moves[i..i+4].to_string(), 'q'); let bKt: i64 = mm.makeMove(bK, moves[i..i+4].to_string(), 'k');
-            let wRt: i64 = mm.makeMoveCastle(wRt, wK, moves[i..i+4].to_string(), 'R'); let bRt: i64 = mm.makeMoveCastle(bRt, bK, moves[i..i+4].to_string(), 'r');
-            let EPt: i64 = mm.makeMoveEP(wP|bP, moves[i..i+4].to_string());
+            let mut bitboards_t: [i64; 13] = [0; 13];
+            bitboards_t[Piece::wP.idx()] = mm.makeMove(bitboards[Piece::wP.idx()], moves[i..i+4].to_string(), 'P'); bitboards_t[Piece::wN.idx()] = mm.makeMove(bitboards[Piece::wN.idx()], moves[i..i+4].to_string(), 'N');
+            bitboards_t[Piece::wB.idx()] = mm.makeMove(bitboards[Piece::wB.idx()], moves[i..i+4].to_string(), 'B'); bitboards_t[Piece::wR.idx()] = mm.makeMove(bitboards[Piece::wR.idx()], moves[i..i+4].to_string(), 'R');
+            bitboards_t[Piece::wQ.idx()] = mm.makeMove(bitboards[Piece::wQ.idx()], moves[i..i+4].to_string(), 'Q'); bitboards_t[Piece::wK.idx()] = mm.makeMove(bitboards[Piece::wK.idx()], moves[i..i+4].to_string(), 'K');
+            bitboards_t[Piece::bP.idx()] = mm.makeMove(bitboards[Piece::bP.idx()], moves[i..i+4].to_string(), 'p'); bitboards_t[Piece::bN.idx()] = mm.makeMove(bitboards[Piece::bN.idx()], moves[i..i+4].to_string(), 'n');
+            bitboards_t[Piece::bB.idx()] = mm.makeMove(bitboards[Piece::bB.idx()], moves[i..i+4].to_string(), 'b'); bitboards_t[Piece::bR.idx()] = mm.makeMove(bitboards[Piece::bR.idx()], moves[i..i+4].to_string(), 'r');
+            bitboards_t[Piece::bQ.idx()] = mm.makeMove(bitboards[Piece::bQ.idx()], moves[i..i+4].to_string(), 'q'); bitboards_t[Piece::bK.idx()] = mm.makeMove(bitboards[Piece::bK.idx()], moves[i..i+4].to_string(), 'k');
+            bitboards_t[Piece::wR.idx()] = mm.makeMoveCastle(bitboards_t[Piece::wR.idx()], bitboards[Piece::wK.idx()], moves[i..i+4].to_string(), 'R'); bitboards_t[Piece::bR.idx()] = mm.makeMoveCastle(bitboards_t[Piece::bR.idx()], bitboards[Piece::bK.idx()], moves[i..i+4].to_string(), 'r');
+            bitboards_t[Piece::EP.idx()] = mm.makeMoveEP(bitboards[Piece::wP.idx()] | bitboards[Piece::bP.idx()], moves[i..i+4].to_string());
 
             let mut cwKt: bool = cwK; let mut cwQt: bool = cwQ; let mut cbKt: bool = cbK; let mut cbQt: bool = cbQ;
 
@@ -153,22 +164,114 @@ impl BestMoveFinder {
                 let m4: u32 = moves.chars().nth(i + 3).unwrap().to_digit(10).unwrap();
                 let start_shift: u32 = 64 - 1 - (m1 * 8 + m2);
                 let end_shift: u32 = 64 - 1 - (m3 * 8 + m4);
-                if ((1 << start_shift) & wK) != 0 { // white king move
+                if ((1 << start_shift) & bitboards[Piece::wK.idx()]) != 0 { // white king move
                     (cwKt, cwQt) = (false, false);
                 }
-                if ((1 << start_shift) & bK) != 0 { // black king move
+                if ((1 << start_shift) & bitboards[Piece::bK.idx()]) != 0 { // black king move
                     (cbKt, cbQt) = (false, false);
                 }
-                if ((1 << start_shift) & wR & 1) != 0 { // white king side rook move
+                if ((1 << start_shift) & bitboards[Piece::wR.idx()] & 1) != 0 { // white king side rook move
                     cwKt = false;
                 }
-                if ((1 << start_shift) & wR & (1 << 7)) != 0 { // white queen side rook move
+                if ((1 << start_shift) & bitboards[Piece::wR.idx()] & (1 << 7)) != 0 { // white queen side rook move
                     cwQt = false;
                 }
-                if ((1 << start_shift) & bR & (1 << 56)) != 0 { // black king side rook move
+                if ((1 << start_shift) & bitboards[Piece::bR.idx()] & (1 << 56)) != 0 { // black king side rook move
                     cbKt = false;
                 }
-                if ((1 << start_shift) & bR & (1 << 63)) != 0 { // black queen side rook move
+                if ((1 << start_shift) & bitboards[Piece::bR.idx()] & (1 << 63)) != 0 { // black queen side rook move
+                    cbQt = false;
+                }
+                if (((1 as i64) << end_shift) & 1) != 0 { // white king side rook taken
+                    cwKt = false;
+                }
+                if (((1 as i64) << end_shift) & (1 << 7)) != 0 { // white queen side rook taken
+                    cwQt = false;
+                }
+                if ((1 << end_shift) & ((1 as i64) << 56)) != 0 { // black king side rook taken
+                    cbKt = false;
+                }
+                if ((1 << end_shift) & ((1 as i64) << 63)) != 0 { // black queen side rook taken
+                    cbQt = false;
+                }
+            }
+            let is_valid_move: bool = ((bitboards_t[Piece::wK.idx()] & mm.unsafeForWhite(bitboards_t)) == 0 && whites_turn) || ((bitboards_t[Piece::bK.idx()] & mm.unsafeForBlack(bitboards_t)) == 0 && !whites_turn);
+            let is_attacking_move: bool = is_valid_move && ((bitboards[Piece::wP.idx()]|bitboards[Piece::wN.idx()]|bitboards[Piece::wB.idx()]|bitboards[Piece::wR.idx()]|bitboards[Piece::wQ.idx()]).count_ones() != (bitboards_t[Piece::wP.idx()]|bitboards_t[Piece::wN.idx()]|bitboards_t[Piece::wB.idx()]|bitboards_t[Piece::wR.idx()]|bitboards_t[Piece::wQ.idx()]).count_ones() || (bitboards[Piece::bP.idx()]|bitboards[Piece::bN.idx()]|bitboards[Piece::bB.idx()]|bitboards[Piece::bR.idx()]|bitboards[Piece::bQ.idx()]).count_ones() != (bitboards_t[Piece::bP.idx()]|bitboards_t[Piece::bN.idx()]|bitboards_t[Piece::bB.idx()]|bitboards_t[Piece::bR.idx()]|bitboards_t[Piece::bQ.idx()]).count_ones());
+            if is_attacking_move {
+                let score: i64 = -self.quiescenceSearch(-beta, -alpha, mm, bitboards_t, cwKt, cwQt, cbKt, cbQt, !whites_turn);
+                if score >= beta {
+                    return beta;
+                }
+                if score > alpha {
+                    alpha = score;
+                }
+            }
+        }
+        alpha
+    }
+
+
+    fn negaMaxAlphaBeta(&mut self, mut alpha: i64, beta: i64, mm: &mut Moves, bitboards: [i64; 13], cwK: bool, cwQ: bool, cbK: bool, cbQ: bool, whites_turn: bool, depth: u32) -> i64 {
+        // Positive = better for current recursive player perspective
+        // alpha = minimum score that the maximizing player is assured of
+        // beta = maximum score that the minimizing player is assured of
+        self.move_counter += 1;
+        if depth == self.search_depth {
+            return self.quiescenceSearch(alpha, beta, mm, bitboards, cwK, cwQ, cbK, cbQ, whites_turn);
+            // return (if whites_turn {1} else {-1}) * self.evaluateBoard(mm, bitboards, whites_turn);
+        }
+        // self.move_counter += 1;
+        let mut best_score: i64 = -self.mate_score;
+        let mut moves: String;
+        if whites_turn {
+            moves = mm.possibleMovesW(bitboards, cwK, cwQ);
+        } else {
+            moves = mm.possibleMovesB(bitboards, cbK, cbQ);
+        }
+        if depth == 0 {
+            // TODO: look to replace shuffling with sorting
+            println!("Depth: {:?}", self.search_depth);
+            let mut move_groups: Vec<&str> = moves.as_bytes().chunks(4).map(|chunk| from_utf8(chunk).unwrap()).collect();
+            move_groups.shuffle(&mut thread_rng());
+            moves = move_groups.join("");
+        }
+        let mut valid_move_found: bool = false;
+        for i in (0..moves.len()).step_by(4) {
+            let mut bitboards_t: [i64; 13] = [0; 13];
+            bitboards_t[Piece::wP.idx()] = mm.makeMove(bitboards[Piece::wP.idx()], moves[i..i+4].to_string(), 'P'); bitboards_t[Piece::wN.idx()] = mm.makeMove(bitboards[Piece::wN.idx()], moves[i..i+4].to_string(), 'N');
+            bitboards_t[Piece::wB.idx()] = mm.makeMove(bitboards[Piece::wB.idx()], moves[i..i+4].to_string(), 'B'); bitboards_t[Piece::wR.idx()] = mm.makeMove(bitboards[Piece::wR.idx()], moves[i..i+4].to_string(), 'R');
+            bitboards_t[Piece::wQ.idx()] = mm.makeMove(bitboards[Piece::wQ.idx()], moves[i..i+4].to_string(), 'Q'); bitboards_t[Piece::wK.idx()] = mm.makeMove(bitboards[Piece::wK.idx()], moves[i..i+4].to_string(), 'K');
+            bitboards_t[Piece::bP.idx()] = mm.makeMove(bitboards[Piece::bP.idx()], moves[i..i+4].to_string(), 'p'); bitboards_t[Piece::bN.idx()] = mm.makeMove(bitboards[Piece::bN.idx()], moves[i..i+4].to_string(), 'n');
+            bitboards_t[Piece::bB.idx()] = mm.makeMove(bitboards[Piece::bB.idx()], moves[i..i+4].to_string(), 'b'); bitboards_t[Piece::bR.idx()] = mm.makeMove(bitboards[Piece::bR.idx()], moves[i..i+4].to_string(), 'r');
+            bitboards_t[Piece::bQ.idx()] = mm.makeMove(bitboards[Piece::bQ.idx()], moves[i..i+4].to_string(), 'q'); bitboards_t[Piece::bK.idx()] = mm.makeMove(bitboards[Piece::bK.idx()], moves[i..i+4].to_string(), 'k');
+            bitboards_t[Piece::wR.idx()] = mm.makeMoveCastle(bitboards_t[Piece::wR.idx()], bitboards[Piece::wK.idx()], moves[i..i+4].to_string(), 'R'); bitboards_t[Piece::bR.idx()] = mm.makeMoveCastle(bitboards_t[Piece::bR.idx()], bitboards[Piece::bK.idx()], moves[i..i+4].to_string(), 'r');
+            bitboards_t[Piece::EP.idx()] = mm.makeMoveEP(bitboards[Piece::wP.idx()] | bitboards[Piece::bP.idx()], moves[i..i+4].to_string());
+
+            let mut cwKt: bool = cwK; let mut cwQt: bool = cwQ; let mut cbKt: bool = cbK; let mut cbQt: bool = cbQ;
+
+            if moves.chars().nth(i + 3).unwrap().is_numeric() {
+                let m1: u32 = moves.chars().nth(i).unwrap().to_digit(10).unwrap();
+                let m2: u32 = moves.chars().nth(i + 1).unwrap().to_digit(10).unwrap();
+                let m3: u32 = moves.chars().nth(i + 2).unwrap().to_digit(10).unwrap();
+                let m4: u32 = moves.chars().nth(i + 3).unwrap().to_digit(10).unwrap();
+                let start_shift: u32 = 64 - 1 - (m1 * 8 + m2);
+                let end_shift: u32 = 64 - 1 - (m3 * 8 + m4);
+                if ((1 << start_shift) & bitboards[Piece::wK.idx()]) != 0 { // white king move
+                    (cwKt, cwQt) = (false, false);
+                }
+                if ((1 << start_shift) & bitboards[Piece::bK.idx()]) != 0 { // black king move
+                    (cbKt, cbQt) = (false, false);
+                }
+                if ((1 << start_shift) & bitboards[Piece::wR.idx()] & 1) != 0 { // white king side rook move
+                    cwKt = false;
+                }
+                if ((1 << start_shift) & bitboards[Piece::wR.idx()] & (1 << 7)) != 0 { // white queen side rook move
+                    cwQt = false;
+                }
+                if ((1 << start_shift) & bitboards[Piece::bR.idx()] & (1 << 56)) != 0 { // black king side rook move
+                    cbKt = false;
+                }
+                if ((1 << start_shift) & bitboards[Piece::bR.idx()] & (1 << 63)) != 0 { // black queen side rook move
                     cbQt = false;
                 }
                 if (((1 as i64) << end_shift) & 1) != 0 { // white king side rook taken
@@ -185,14 +288,14 @@ impl BestMoveFinder {
                 }
             }
 
-            let is_valid_move: bool = ((wKt & mm.unsafeForWhite(wPt, wNt, wBt, wRt, wQt, wKt, bPt, bNt, bBt, bRt, bQt, bKt)) == 0 && whites_turn) || ((bKt & mm.unsafeForBlack(wPt, wNt, wBt, wRt, wQt, wKt, bPt, bNt, bBt, bRt, bQt, bKt)) == 0 && !whites_turn);
+            let is_valid_move: bool = ((bitboards_t[Piece::wK.idx()] & mm.unsafeForWhite(bitboards_t)) == 0 && whites_turn) || ((bitboards_t[Piece::bK.idx()] & mm.unsafeForBlack(bitboards_t)) == 0 && !whites_turn);
             if is_valid_move {
 
                 valid_move_found = true;
 
-                let mut score: f64 = -self.negaMaxAlphaBeta(-beta, -alpha, mm, wPt, wNt, wBt, wRt, wQt, wKt, bPt, bNt, bBt, bRt, bQt, bKt, EPt, cwKt, cwQt, cbKt, cbQt, !whites_turn, depth+1);
-                if score == self.mate_score as f64 {
-                    score -= depth as f64;
+                let mut score: i64 = -self.negaMaxAlphaBeta(-beta, -alpha, mm, bitboards_t, cwKt, cwQt, cbKt, cbQt, !whites_turn, depth+1);
+                if score == self.mate_score {
+                    score -= depth as i64;
                 }
                 if score > best_score {
                     best_score = score;
@@ -212,11 +315,11 @@ impl BestMoveFinder {
             }
         }
         if !valid_move_found {
-            if ((wK & mm.unsafeForWhite(wP, wN, wB, wR, wQ, wK, bP, bN, bB, bR, bQ, bK)) != 0 && whites_turn) || ((bK & mm.unsafeForBlack(wP, wN, wB, wR, wQ, wK, bP, bN, bB, bR, bQ, bK)) != 0 && !whites_turn) {
+            if ((bitboards[Piece::wK.idx()] & mm.unsafeForWhite(bitboards)) != 0 && whites_turn) || ((bitboards[Piece::bK.idx()] & mm.unsafeForBlack(bitboards)) != 0 && !whites_turn) {
                 mm.checkmate = true;
             } else {
                 mm.stalemate = true;
-                return self.stale_score as f64;
+                return self.stale_score;
             }
         } else {
             mm.checkmate = false;
@@ -226,47 +329,73 @@ impl BestMoveFinder {
     }
 
 
-    fn evaluate(&self, mm: &Moves, wP: i64, wN: i64, wB: i64, wR: i64, wQ: i64, bP: i64, bN: i64, bB: i64, bR: i64, bQ: i64, whites_turn: bool) -> f64 {
+    fn evaluateBoard(&self, mm: &Moves, bitboards: [i64; 13], whites_turn: bool) -> i64 {
         if mm.checkmate {
-            return if whites_turn {-self.mate_score as f64} else {self.mate_score as f64};
+            return if whites_turn {-self.mate_score} else {self.mate_score};
         } else if mm.stalemate {
-            return self.stale_score as f64;
+            return self.stale_score;
         }
         
-        let mut score: f64 = 0.0;
+        let mut score: i64 = 0;
         for i in 0..64 {
             let shift = 64 - 1 - i;
-            if usgn_r_shift!(wP, shift) & 1 == 1 {
-                score += (self.piece_scores[&'P'] as f64) + (self.piece_position_scores[&'P'][i / 8][i % 8] as f64) * self.piece_position_scale;
+            if usgn_r_shift!(bitboards[Piece::wP.idx()], shift) & 1 == 1 {
+                score += self.piece_scores[&'P'] + self.piece_position_scores[&'P'][i / 8][i % 8];
             }
-            if usgn_r_shift!(wN, shift) & 1 == 1 {
-                score += (self.piece_scores[&'N'] as f64) + (self.piece_position_scores[&'N'][i / 8][i % 8] as f64) * self.piece_position_scale;
+            if usgn_r_shift!(bitboards[Piece::wN.idx()], shift) & 1 == 1 {
+                score += self.piece_scores[&'N'] + self.piece_position_scores[&'N'][i / 8][i % 8];
             }
-            if usgn_r_shift!(wB, shift) & 1 == 1 {
-                score += (self.piece_scores[&'B'] as f64) + (self.piece_position_scores[&'B'][i / 8][i % 8] as f64) * self.piece_position_scale;
+            if usgn_r_shift!(bitboards[Piece::wB.idx()], shift) & 1 == 1 {
+                score += self.piece_scores[&'B'] + self.piece_position_scores[&'B'][i / 8][i % 8];
             }
-            if usgn_r_shift!(wR, shift) & 1 == 1 {
-                score += (self.piece_scores[&'R'] as f64) + (self.piece_position_scores[&'R'][i / 8][i % 8] as f64) * self.piece_position_scale;
+            if usgn_r_shift!(bitboards[Piece::wR.idx()], shift) & 1 == 1 {
+                score += self.piece_scores[&'R'] + self.piece_position_scores[&'R'][i / 8][i % 8];
             }
-            if usgn_r_shift!(wQ, shift) & 1 == 1 {
-                score += (self.piece_scores[&'Q'] as f64) + (self.piece_position_scores[&'Q'][i / 8][i % 8] as f64) * self.piece_position_scale;
+            if usgn_r_shift!(bitboards[Piece::wQ.idx()], shift) & 1 == 1 {
+                score += self.piece_scores[&'Q']  + self.piece_position_scores[&'Q'][i / 8][i % 8];
             }
-            if usgn_r_shift!(bP, shift) & 1 == 1 {
-                score -= (self.piece_scores[&'P'] as f64) + (self.piece_position_scores[&'p'][i / 8][i % 8] as f64) * self.piece_position_scale;
+            if usgn_r_shift!(bitboards[Piece::wK.idx()], shift) & 1 == 1 {
+                score += self.piece_scores[&'K'] + self.piece_position_scores[&'K'][i / 8][i % 8];
             }
-            if usgn_r_shift!(bN, shift) & 1 == 1 {
-                score -= (self.piece_scores[&'N'] as f64) + (self.piece_position_scores[&'N'][i / 8][i % 8] as f64) * self.piece_position_scale;
+            if usgn_r_shift!(bitboards[Piece::bP.idx()], shift) & 1 == 1 {
+                score -= self.piece_scores[&'P'] + self.piece_position_scores[&'P'][7 - (i / 8)][i % 8];
             }
-            if usgn_r_shift!(bB, shift) & 1 == 1 {
-                score -= (self.piece_scores[&'B'] as f64) + (self.piece_position_scores[&'B'][i / 8][i % 8] as f64) * self.piece_position_scale;
+            if usgn_r_shift!(bitboards[Piece::bN.idx()], shift) & 1 == 1 {
+                score -= self.piece_scores[&'N'] + self.piece_position_scores[&'N'][7 - (i / 8)][i % 8];
             }
-            if usgn_r_shift!(bR, shift) & 1 == 1 {
-                score -= (self.piece_scores[&'R'] as f64) + (self.piece_position_scores[&'R'][i / 8][i % 8] as f64) * self.piece_position_scale;
+            if usgn_r_shift!(bitboards[Piece::bB.idx()], shift) & 1 == 1 {
+                score -= self.piece_scores[&'B'] + self.piece_position_scores[&'B'][7 - (i / 8)][i % 8];
             }
-            if usgn_r_shift!(bQ, shift) & 1 == 1 {
-                score -= (self.piece_scores[&'Q'] as f64) + (self.piece_position_scores[&'Q'][i / 8][i % 8] as f64) * self.piece_position_scale;
+            if usgn_r_shift!(bitboards[Piece::bR.idx()], shift) & 1 == 1 {
+                score -= self.piece_scores[&'R'] + self.piece_position_scores[&'R'][7 - (i / 8)][i % 8];
+            }
+            if usgn_r_shift!(bitboards[Piece::bQ.idx()], shift) & 1 == 1 {
+                score -= self.piece_scores[&'Q'] + self.piece_position_scores[&'Q'][7 - (i / 8)][i % 8];
+            }
+            if usgn_r_shift!(bitboards[Piece::bK.idx()], shift) & 1 == 1 {
+                score -= self.piece_scores[&'K'] + self.piece_position_scores[&'K'][7 - (i / 8)][i % 8];
             }
         }
         score
+    }
+}
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::engine_modules::game_state::GameState;
+    use crate::engine_modules::moves::Moves;
+
+    #[test]
+    fn qu_test() {
+        println!("Basic Test!");
+        let mut gs = GameState::new();
+        let mut m: Moves = Moves::new();
+        // let mut p: Perft = Perft::new(3);
+        let mut bmf: BestMoveFinder = BestMoveFinder::new(2);
+        bmf.negaMaxAlphaBeta(-10000, 10000, &mut m, gs.bitboards, gs.cwK, gs.cwQ, gs.cbK, gs.cbQ, true, 0);
+        println!("DONE!");
+        // panic!();
     }
 }

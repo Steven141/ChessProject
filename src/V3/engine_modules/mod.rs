@@ -5,3 +5,4 @@ pub mod game_state;
 pub mod moves;
 pub mod perft;
 pub mod best_move_finder;
+pub mod piece;

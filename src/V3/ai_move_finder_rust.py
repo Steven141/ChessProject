@@ -8,8 +8,8 @@ import time
 import ChessProject # rust engine library
 
 
-CHECKMATE = 1000
-DEPTH = 6
+CHECKMATE = 10000
+DEPTH = 5
 
 
 """
@@ -40,7 +40,7 @@ Recursive NegaMax algo with alpha beta pruning
 def findMoveNegaMaxAlphaBeta(gs, m, depth, alpha, beta, valid_moves) -> int:
     global next_move, move_counter
     bmf = ChessProject.BestMoveFinder(depth)
-    max_score = bmf.negaMaxAlphaBeta(alpha, beta, m, gs.wP, gs.wN, gs.wB, gs.wR, gs.wQ, gs.wK, gs.bP, gs.bN, gs.bB, gs.bR, gs.bQ, gs.bK, gs.EP, gs.cwK, gs.cwQ, gs.cbK, gs.cbQ, gs.whites_turn, 0)
+    max_score = bmf.negaMaxAlphaBeta(alpha, beta, m, gs.bitboards, gs.cwK, gs.cwQ, gs.cbK, gs.cbQ, gs.whites_turn, 0)
     move_counter = bmf.move_counter
     next_move = bmf.next_move
     return max_score

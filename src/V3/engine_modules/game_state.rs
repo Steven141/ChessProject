@@ -4,29 +4,18 @@
 use pyo3::prelude::*;
 use crate::engine_modules::special_bitboards::SpecialBitBoards;
 use crate::engine_modules::moves::Moves;
+use crate::engine_modules::piece::Piece as Piece;
 
 
 #[pyclass(module = "ChessProject", get_all, set_all)]
 pub struct GameState {
     board: [[char; 8]; 8],
+    pub bitboards: [i64; 13],
     pub cwK: bool,
     pub cwQ: bool,
     pub cbK: bool,
     pub cbQ: bool,
     whites_turn: bool,
-    pub wP: i64,
-    pub wN: i64,
-    pub wB: i64,
-    pub wR: i64,
-    pub wQ: i64,
-    pub wK: i64,
-    pub bP: i64,
-    pub bN: i64,
-    pub bB: i64,
-    pub bR: i64,
-    pub bQ: i64,
-    pub bK: i64,
-    pub EP: i64,
     masks: SpecialBitBoards,
     move_log: String,
     recent_piece_moved: char,
@@ -49,24 +38,12 @@ impl GameState {
                 ['P', 'P', 'P', 'P', 'P', 'P', 'P', 'P'],
                 ['R', 'N', 'B', 'Q', 'K', 'B', 'N', 'R'],
             ],
+            bitboards: [0; 13],
             cwK: true,
             cwQ: true,
             cbK: true,
             cbQ: true,
             whites_turn: true,
-            wP: 0,
-            wN: 0,
-            wB: 0,
-            wR: 0,
-            wQ: 0,
-            wK: 0,
-            bP: 0,
-            bN: 0,
-            bB: 0,
-            bR: 0,
-            bQ: 0,
-            bK: 0,
-            EP: 0,
             masks: SpecialBitBoards::new(),
             move_log: String::new(),
             recent_piece_moved: ' ',
@@ -82,18 +59,18 @@ impl GameState {
             let mut bin_str: String = String::from("0000000000000000000000000000000000000000000000000000000000000000");
             bin_str.replace_range(i..i+1, "1");
             match self.board[i / 8][i % 8] {
-                'P' => self.wP += self.binToI64(&bin_str),
-                'N' => self.wN += self.binToI64(&bin_str),
-                'B' => self.wB += self.binToI64(&bin_str),
-                'R' => self.wR += self.binToI64(&bin_str),
-                'Q' => self.wQ += self.binToI64(&bin_str),
-                'K' => self.wK += self.binToI64(&bin_str),
-                'p' => self.bP += self.binToI64(&bin_str),
-                'n' => self.bN += self.binToI64(&bin_str),
-                'b' => self.bB += self.binToI64(&bin_str),
-                'r' => self.bR += self.binToI64(&bin_str),
-                'q' => self.bQ += self.binToI64(&bin_str),
-                'k' => self.bK += self.binToI64(&bin_str),
+                'P' => self.bitboards[Piece::wP.idx()] += self.binToI64(&bin_str),
+                'N' => self.bitboards[Piece::wN.idx()] += self.binToI64(&bin_str),
+                'B' => self.bitboards[Piece::wB.idx()] += self.binToI64(&bin_str),
+                'R' => self.bitboards[Piece::wR.idx()] += self.binToI64(&bin_str),
+                'Q' => self.bitboards[Piece::wQ.idx()] += self.binToI64(&bin_str),
+                'K' => self.bitboards[Piece::wK.idx()] += self.binToI64(&bin_str),
+                'p' => self.bitboards[Piece::bP.idx()] += self.binToI64(&bin_str),
+                'n' => self.bitboards[Piece::bN.idx()] += self.binToI64(&bin_str),
+                'b' => self.bitboards[Piece::bB.idx()] += self.binToI64(&bin_str),
+                'r' => self.bitboards[Piece::bR.idx()] += self.binToI64(&bin_str),
+                'q' => self.bitboards[Piece::bQ.idx()] += self.binToI64(&bin_str),
+                'k' => self.bitboards[Piece::bK.idx()] += self.binToI64(&bin_str),
                 _ => (),
             }
         }
@@ -113,40 +90,40 @@ impl GameState {
         let mut new_board: [[char; 8]; 8] = [[' '; 8]; 8];
         for i in 0..64 {
             let shift = 64 - 1 - i;
-            if usgn_r_shift!(self.wP, shift) & 1 == 1 {
+            if usgn_r_shift!(self.bitboards[Piece::wP.idx()], shift) & 1 == 1 {
                 new_board[i / 8][i % 8] = 'P';
             }
-            if usgn_r_shift!(self.wN, shift) & 1 == 1 {
+            if usgn_r_shift!(self.bitboards[Piece::wN.idx()], shift) & 1 == 1 {
                 new_board[i / 8][i % 8] = 'N';
             }
-            if usgn_r_shift!(self.wB, shift) & 1 == 1 {
+            if usgn_r_shift!(self.bitboards[Piece::wB.idx()], shift) & 1 == 1 {
                 new_board[i / 8][i % 8] = 'B';
             }
-            if usgn_r_shift!(self.wR, shift) & 1 == 1 {
+            if usgn_r_shift!(self.bitboards[Piece::wR.idx()], shift) & 1 == 1 {
                 new_board[i / 8][i % 8] = 'R';
             }
-            if usgn_r_shift!(self.wQ, shift) & 1 == 1 {
+            if usgn_r_shift!(self.bitboards[Piece::wQ.idx()], shift) & 1 == 1 {
                 new_board[i / 8][i % 8] = 'Q';
             }
-            if usgn_r_shift!(self.wK, shift) & 1 == 1 {
+            if usgn_r_shift!(self.bitboards[Piece::wK.idx()], shift) & 1 == 1 {
                 new_board[i / 8][i % 8] = 'K';
             }
-            if usgn_r_shift!(self.bP, shift) & 1 == 1 {
+            if usgn_r_shift!(self.bitboards[Piece::bP.idx()], shift) & 1 == 1 {
                 new_board[i / 8][i % 8] = 'p';
             }
-            if usgn_r_shift!(self.bN, shift) & 1 == 1 {
+            if usgn_r_shift!(self.bitboards[Piece::bN.idx()], shift) & 1 == 1 {
                 new_board[i / 8][i % 8] = 'n';
             }
-            if usgn_r_shift!(self.bB, shift) & 1 == 1 {
+            if usgn_r_shift!(self.bitboards[Piece::bB.idx()], shift) & 1 == 1 {
                 new_board[i / 8][i % 8] = 'b';
             }
-            if usgn_r_shift!(self.bR, shift) & 1 == 1 {
+            if usgn_r_shift!(self.bitboards[Piece::bR.idx()], shift) & 1 == 1 {
                 new_board[i / 8][i % 8] = 'r';
             }
-            if usgn_r_shift!(self.bQ, shift) & 1 == 1 {
+            if usgn_r_shift!(self.bitboards[Piece::bQ.idx()], shift) & 1 == 1 {
                 new_board[i / 8][i % 8] = 'q';
             }
-            if usgn_r_shift!(self.bK, shift) & 1 == 1 {
+            if usgn_r_shift!(self.bitboards[Piece::bK.idx()], shift) & 1 == 1 {
                 new_board[i / 8][i % 8] = 'k';
             }
         }
@@ -164,40 +141,40 @@ impl GameState {
         self.board = [[' '; 8]; 8];
         for i in 0..64 {
             let shift = 64 - 1 - i;
-            if usgn_r_shift!(self.wP, shift) & 1 == 1 {
+            if usgn_r_shift!(self.bitboards[Piece::wP.idx()], shift) & 1 == 1 {
                 self.board[i / 8][i % 8] = 'P';
             }
-            if usgn_r_shift!(self.wN, shift) & 1 == 1 {
+            if usgn_r_shift!(self.bitboards[Piece::wN.idx()], shift) & 1 == 1 {
                 self.board[i / 8][i % 8] = 'N';
             }
-            if usgn_r_shift!(self.wB, shift) & 1 == 1 {
+            if usgn_r_shift!(self.bitboards[Piece::wB.idx()], shift) & 1 == 1 {
                 self.board[i / 8][i % 8] = 'B';
             }
-            if usgn_r_shift!(self.wR, shift) & 1 == 1 {
+            if usgn_r_shift!(self.bitboards[Piece::wR.idx()], shift) & 1 == 1 {
                 self.board[i / 8][i % 8] = 'R';
             }
-            if usgn_r_shift!(self.wQ, shift) & 1 == 1 {
+            if usgn_r_shift!(self.bitboards[Piece::wQ.idx()], shift) & 1 == 1 {
                 self.board[i / 8][i % 8] = 'Q';
             }
-            if usgn_r_shift!(self.wK, shift) & 1 == 1 {
+            if usgn_r_shift!(self.bitboards[Piece::wK.idx()], shift) & 1 == 1 {
                 self.board[i / 8][i % 8] = 'K';
             }
-            if usgn_r_shift!(self.bP, shift) & 1 == 1 {
+            if usgn_r_shift!(self.bitboards[Piece::bP.idx()], shift) & 1 == 1 {
                 self.board[i / 8][i % 8] = 'p';
             }
-            if usgn_r_shift!(self.bN, shift) & 1 == 1 {
+            if usgn_r_shift!(self.bitboards[Piece::bN.idx()], shift) & 1 == 1 {
                 self.board[i / 8][i % 8] = 'n';
             }
-            if usgn_r_shift!(self.bB, shift) & 1 == 1 {
+            if usgn_r_shift!(self.bitboards[Piece::bB.idx()], shift) & 1 == 1 {
                 self.board[i / 8][i % 8] = 'b';
             }
-            if usgn_r_shift!(self.bR, shift) & 1 == 1 {
+            if usgn_r_shift!(self.bitboards[Piece::bR.idx()], shift) & 1 == 1 {
                 self.board[i / 8][i % 8] = 'r';
             }
-            if usgn_r_shift!(self.bQ, shift) & 1 == 1 {
+            if usgn_r_shift!(self.bitboards[Piece::bQ.idx()], shift) & 1 == 1 {
                 self.board[i / 8][i % 8] = 'q';
             }
-            if usgn_r_shift!(self.bK, shift) & 1 == 1 {
+            if usgn_r_shift!(self.bitboards[Piece::bK.idx()], shift) & 1 == 1 {
                 self.board[i / 8][i % 8] = 'k';
             }
         }
@@ -205,10 +182,10 @@ impl GameState {
 
 
     pub fn importFEN(&mut self, fen_str: String) {
-        self.wP = 0; self.wN = 0; self.wB = 0;
-        self.wR = 0; self.wQ = 0; self.wK = 0;
-        self.bP = 0; self.bN = 0; self.bB = 0;
-        self.bR = 0; self.bQ = 0; self.bK = 0;
+        self.bitboards[Piece::wP.idx()] = 0; self.bitboards[Piece::wN.idx()] = 0; self.bitboards[Piece::wB.idx()] = 0;
+        self.bitboards[Piece::wR.idx()] = 0; self.bitboards[Piece::wQ.idx()] = 0; self.bitboards[Piece::wK.idx()] = 0;
+        self.bitboards[Piece::bP.idx()] = 0; self.bitboards[Piece::bN.idx()] = 0; self.bitboards[Piece::bB.idx()] = 0;
+        self.bitboards[Piece::bR.idx()] = 0; self.bitboards[Piece::bQ.idx()] = 0; self.bitboards[Piece::bK.idx()] = 0;
         self.cwK = false; self.cwQ = false;
         self.cbK = false; self.cbQ = false;
         let mut char_idx: usize = 0;
@@ -217,51 +194,51 @@ impl GameState {
             let board_idx_shift: i64 = 64 - 1 - board_idx;
             match fen_str.chars().nth(char_idx).unwrap() {
                 'P' => {
-                    self.wP |= 1 << board_idx_shift;
+                    self.bitboards[Piece::wP.idx()] |= 1 << board_idx_shift;
                     board_idx += 1;
                 },
                 'N' => {
-                    self.wN |= 1 << board_idx_shift;
+                    self.bitboards[Piece::wN.idx()] |= 1 << board_idx_shift;
                     board_idx += 1;
                 },
                 'B' => {
-                    self.wB |= 1 << board_idx_shift;
+                    self.bitboards[Piece::wB.idx()] |= 1 << board_idx_shift;
                     board_idx += 1;
                 },
                 'R' => {
-                    self.wR |= 1 << board_idx_shift;
+                    self.bitboards[Piece::wR.idx()] |= 1 << board_idx_shift;
                     board_idx += 1;
                 },
                 'Q' => {
-                    self.wQ |= 1 << board_idx_shift;
+                    self.bitboards[Piece::wQ.idx()] |= 1 << board_idx_shift;
                     board_idx += 1;
                 },
                 'K' => {
-                    self.wK |= 1 << board_idx_shift;
+                    self.bitboards[Piece::wK.idx()] |= 1 << board_idx_shift;
                     board_idx += 1;
                 },
                 'p' => {
-                    self.bP |= 1 << board_idx_shift;
+                    self.bitboards[Piece::bP.idx()] |= 1 << board_idx_shift;
                     board_idx += 1;
                 },
                 'n' => {
-                    self.bN |= 1 << board_idx_shift;
+                    self.bitboards[Piece::bN.idx()] |= 1 << board_idx_shift;
                     board_idx += 1;
                 },
                 'b' => {
-                    self.bB |= 1 << board_idx_shift;
+                    self.bitboards[Piece::bB.idx()] |= 1 << board_idx_shift;
                     board_idx += 1;
                 },
                 'r' => {
-                    self.bR |= 1 << board_idx_shift;
+                    self.bitboards[Piece::bR.idx()] |= 1 << board_idx_shift;
                     board_idx += 1;
                 },
                 'q' => {
-                    self.bQ |= 1 << board_idx_shift;
+                    self.bitboards[Piece::bQ.idx()] |= 1 << board_idx_shift;
                     board_idx += 1;
                 },
                 'k' => {
-                    self.bK |= 1 << board_idx_shift;
+                    self.bitboards[Piece::bK.idx()] |= 1 << board_idx_shift;
                     board_idx += 1;
                 },
                 '1' => board_idx += 1,
@@ -294,7 +271,7 @@ impl GameState {
 
         char_idx += 1;
         if fen_str.chars().nth(char_idx).unwrap() != '-' {
-            self.EP = self.masks.file_masks[fen_str.chars().nth(char_idx).unwrap() as usize - 'a' as usize];
+            self.bitboards[Piece::EP.idx()] = self.masks.file_masks[fen_str.chars().nth(char_idx).unwrap() as usize - 'a' as usize];
         }
         self.updateBoardArray()
         // Rest of FEN not used
@@ -313,21 +290,21 @@ impl GameState {
             self.recent_piece_moved = self.board[move_str.chars().nth(0).unwrap().to_digit(10).unwrap() as usize][move_str.chars().nth(1).unwrap().to_digit(10).unwrap() as usize];
         }
         self.move_log.push_str(&move_str);
-        let wK_cached: i64 = self.wK;
-        let bK_cached: i64 = self.bK;
-        let wR_cached: i64 = self.wR;
-        let bR_cached: i64 = self.bR;
-        let wP_cached: i64 = self.wP;
-        let bP_cached: i64 = self.bP;
+        let wK_cached: i64 = self.bitboards[Piece::wK.idx()];
+        let bK_cached: i64 = self.bitboards[Piece::bK.idx()];
+        let wR_cached: i64 = self.bitboards[Piece::wR.idx()];
+        let bR_cached: i64 = self.bitboards[Piece::bR.idx()];
+        let wP_cached: i64 = self.bitboards[Piece::wP.idx()];
+        let bP_cached: i64 = self.bitboards[Piece::bP.idx()];
 
-        self.wP = mm.makeMove(self.wP, move_str.clone(), 'P'); self.wN = mm.makeMove(self.wN, move_str.clone(), 'N');
-        self.wB = mm.makeMove(self.wB, move_str.clone(), 'B'); self.wR = mm.makeMove(self.wR, move_str.clone(), 'R');
-        self.wQ = mm.makeMove(self.wQ, move_str.clone(), 'Q'); self.wK = mm.makeMove(self.wK, move_str.clone(), 'K');
-        self.bP = mm.makeMove(self.bP, move_str.clone(), 'p'); self.bN = mm.makeMove(self.bN, move_str.clone(), 'n');
-        self.bB = mm.makeMove(self.bB, move_str.clone(), 'b'); self.bR = mm.makeMove(self.bR, move_str.clone(), 'r');
-        self.bQ = mm.makeMove(self.bQ, move_str.clone(), 'q'); self.bK = mm.makeMove(self.bK, move_str.clone(), 'k');
-        self.wR = mm.makeMoveCastle(self.wR, wK_cached, move_str.clone(), 'R'); self.bR = mm.makeMoveCastle(self.bR, bK_cached, move_str.clone(), 'r');
-        self.EP = mm.makeMoveEP(wP_cached|bP_cached, move_str.clone());
+        self.bitboards[Piece::wP.idx()] = mm.makeMove(self.bitboards[Piece::wP.idx()], move_str.clone(), 'P'); self.bitboards[Piece::wN.idx()] = mm.makeMove(self.bitboards[Piece::wN.idx()], move_str.clone(), 'N');
+        self.bitboards[Piece::wB.idx()] = mm.makeMove(self.bitboards[Piece::wB.idx()], move_str.clone(), 'B'); self.bitboards[Piece::wR.idx()] = mm.makeMove(self.bitboards[Piece::wR.idx()], move_str.clone(), 'R');
+        self.bitboards[Piece::wQ.idx()] = mm.makeMove(self.bitboards[Piece::wQ.idx()], move_str.clone(), 'Q'); self.bitboards[Piece::wK.idx()] = mm.makeMove(self.bitboards[Piece::wK.idx()], move_str.clone(), 'K');
+        self.bitboards[Piece::bP.idx()] = mm.makeMove(self.bitboards[Piece::bP.idx()], move_str.clone(), 'p'); self.bitboards[Piece::bN.idx()] = mm.makeMove(self.bitboards[Piece::bN.idx()], move_str.clone(), 'n');
+        self.bitboards[Piece::bB.idx()] = mm.makeMove(self.bitboards[Piece::bB.idx()], move_str.clone(), 'b'); self.bitboards[Piece::bR.idx()] = mm.makeMove(self.bitboards[Piece::bR.idx()], move_str.clone(), 'r');
+        self.bitboards[Piece::bQ.idx()] = mm.makeMove(self.bitboards[Piece::bQ.idx()], move_str.clone(), 'q'); self.bitboards[Piece::bK.idx()] = mm.makeMove(self.bitboards[Piece::bK.idx()], move_str.clone(), 'k');
+        self.bitboards[Piece::wR.idx()] = mm.makeMoveCastle(self.bitboards[Piece::wR.idx()], wK_cached, move_str.clone(), 'R'); self.bitboards[Piece::bR.idx()] = mm.makeMoveCastle(self.bitboards[Piece::bR.idx()], bK_cached, move_str.clone(), 'r');
+        self.bitboards[Piece::EP.idx()] = mm.makeMoveEP(wP_cached|bP_cached, move_str.clone());
 
         if move_str.chars().nth(3).unwrap().is_numeric() {
             let m1: u32 = move_str.chars().nth(0).unwrap().to_digit(10).unwrap();
