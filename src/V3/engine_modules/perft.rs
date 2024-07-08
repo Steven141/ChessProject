@@ -2,6 +2,7 @@
 
 
 use pyo3::prelude::*;
+use crate::castle_rights::CastleRights;
 use crate::moves::Moves;
 use crate::piece::Piece;
 
@@ -26,13 +27,13 @@ impl Perft {
     }
 
 
-    fn perft(&mut self, mm: &mut Moves, bitboards: [i64; 13], cwK: bool, cwQ: bool, cbK: bool, cbQ: bool, whites_turn: bool, depth: u32) {
+    fn perft(&mut self, mm: &mut Moves, bitboards: [i64; 13], castle_rights: [bool; 4], whites_turn: bool, depth: u32) {
         if depth < self.max_depth {
             let moves: String;
             if whites_turn {
-                moves = mm.possibleMovesW(bitboards, cwK, cwQ);
+                moves = mm.possibleMovesW(bitboards, castle_rights);
             } else {
-                moves = mm.possibleMovesB(bitboards, cbK, cbQ);
+                moves = mm.possibleMovesB(bitboards, castle_rights);
             }
             for i in (0..moves.len()).step_by(4) {
                 let mut bitboards_t: [i64; 13] = [0; 13];
@@ -45,7 +46,7 @@ impl Perft {
                 bitboards_t[Piece::WR] = mm.makeMoveCastle(bitboards_t[Piece::WR], bitboards[Piece::WK], moves[i..i+4].to_string(), 'R'); bitboards_t[Piece::BR] = mm.makeMoveCastle(bitboards_t[Piece::BR], bitboards[Piece::BK], moves[i..i+4].to_string(), 'r');
                 bitboards_t[Piece::EP] = mm.makeMoveEP(bitboards[Piece::WP] | bitboards[Piece::BP], moves[i..i+4].to_string());
 
-                let mut cwKt: bool = cwK; let mut cwQt: bool = cwQ; let mut cbKt: bool = cbK; let mut cbQt: bool = cbQ;
+                let mut castle_rights_t: [bool; 4] = castle_rights;
 
                 if moves.chars().nth(i + 3).unwrap().is_numeric() {
                     let m1: u32 = moves.chars().nth(i).unwrap().to_digit(10).unwrap();
@@ -55,34 +56,34 @@ impl Perft {
                     let start_shift: u32 = 64 - 1 - (m1 * 8 + m2);
                     let end_shift: u32 = 64 - 1 - (m3 * 8 + m4);
                     if ((1 << start_shift) & bitboards[Piece::WK]) != 0 { // white king move
-                        (cwKt, cwQt) = (false, false);
+                        (castle_rights_t[CastleRights::CWK], castle_rights_t[CastleRights::CWQ]) = (false, false);
                     }
                     if ((1 << start_shift) & bitboards[Piece::BK]) != 0 { // black king move
-                        (cbKt, cbQt) = (false, false);
+                        (castle_rights_t[CastleRights::CBK], castle_rights_t[CastleRights::CBQ]) = (false, false);
                     }
                     if ((1 << start_shift) & bitboards[Piece::WR] & 1) != 0 { // white king side rook move
-                        cwKt = false;
+                        castle_rights_t[CastleRights::CWK] = false;
                     }
                     if ((1 << start_shift) & bitboards[Piece::WR] & (1 << 7)) != 0 { // white queen side rook move
-                        cwQt = false;
+                        castle_rights_t[CastleRights::CWQ] = false;
                     }
                     if ((1 << start_shift) & bitboards[Piece::BR] & (1 << 56)) != 0 { // black king side rook move
-                        cbKt = false;
+                        castle_rights_t[CastleRights::CBK] = false;
                     }
                     if ((1 << start_shift) & bitboards[Piece::BR] & (1 << 63)) != 0 { // black queen side rook move
-                        cbQt = false;
+                        castle_rights_t[CastleRights::CBQ] = false;
                     }
                     if (((1 as i64) << end_shift) & 1) != 0 { // white king side rook taken
-                        cwKt = false;
+                        castle_rights_t[CastleRights::CWK] = false;
                     }
                     if (((1 as i64) << end_shift) & (1 << 7)) != 0 { // white queen side rook taken
-                        cwQt = false;
+                        castle_rights_t[CastleRights::CWQ] = false;
                     }
                     if ((1 << end_shift) & ((1 as i64) << 56)) != 0 { // black king side rook taken
-                        cbKt = false;
+                        castle_rights_t[CastleRights::CBK] = false;
                     }
                     if ((1 << end_shift) & ((1 as i64) << 63)) != 0 { // black queen side rook taken
-                        cbQt = false;
+                        castle_rights_t[CastleRights::CBQ] = false;
                     }
                 }
 
@@ -91,7 +92,7 @@ impl Perft {
                         self.move_counter += 1
                     }
                     // println!("{:?}", self.move_counter);
-                    self.perft(mm, bitboards_t, cwKt, cwQt, cbKt, cbQt, !whites_turn, depth + 1)
+                    self.perft(mm, bitboards_t, castle_rights_t, !whites_turn, depth + 1)
                 }
             }
         } else if self.move_counter == 0 {
@@ -100,12 +101,12 @@ impl Perft {
     }
 
 
-    fn perftRoot(&mut self, mm: &mut Moves, bitboards: [i64; 13], cwK: bool, cwQ: bool, cbK: bool, cbQ: bool, whites_turn: bool, depth: u32) {
+    fn perftRoot(&mut self, mm: &mut Moves, bitboards: [i64; 13], castle_rights: [bool; 4], whites_turn: bool, depth: u32) {
         let moves: String;
         if whites_turn {
-            moves = mm.possibleMovesW(bitboards, cwK, cwQ);
+            moves = mm.possibleMovesW(bitboards, castle_rights);
         } else {
-            moves = mm.possibleMovesB(bitboards, cbK, cbQ);
+            moves = mm.possibleMovesB(bitboards, castle_rights);
         }
         for i in (0..moves.len()).step_by(4) {
             let mut bitboards_t: [i64; 13] = [0; 13];
@@ -118,7 +119,7 @@ impl Perft {
             bitboards_t[Piece::WR] = mm.makeMoveCastle(bitboards_t[Piece::WR], bitboards[Piece::WK], moves[i..i+4].to_string(), 'R'); bitboards_t[Piece::BR] = mm.makeMoveCastle(bitboards_t[Piece::BR], bitboards[Piece::BK], moves[i..i+4].to_string(), 'r');
             bitboards_t[Piece::EP] = mm.makeMoveEP(bitboards[Piece::WP] | bitboards[Piece::BP], moves[i..i+4].to_string());
 
-            let mut cwKt: bool = cwK; let mut cwQt: bool = cwQ; let mut cbKt: bool = cbK; let mut cbQt: bool = cbQ;
+            let mut castle_rights_t: [bool; 4] = castle_rights;
 
             if moves.chars().nth(i + 3).unwrap().is_numeric() {
                 let m1: u32 = moves.chars().nth(i).unwrap().to_digit(10).unwrap();
@@ -128,39 +129,39 @@ impl Perft {
                 let start_shift: u32 = 64 - 1 - (m1 * 8 + m2);
                 let end_shift: u32 = 64 - 1 - (m3 * 8 + m4);
                 if ((1 << start_shift) & bitboards[Piece::WK]) != 0 { // white king move
-                    (cwKt, cwQt) = (false, false);
+                    (castle_rights_t[CastleRights::CWK], castle_rights_t[CastleRights::CWQ]) = (false, false);
                 }
                 if ((1 << start_shift) & bitboards[Piece::BK]) != 0 { // black king move
-                    (cbKt, cbQt) = (false, false);
+                    (castle_rights_t[CastleRights::CBK], castle_rights_t[CastleRights::CBQ]) = (false, false);
                 }
                 if ((1 << start_shift) & bitboards[Piece::WR] & 1) != 0 { // white king side rook move
-                    cwKt = false;
+                    castle_rights_t[CastleRights::CWK] = false;
                 }
                 if ((1 << start_shift) & bitboards[Piece::WR] & (1 << 7)) != 0 { // white queen side rook move
-                    cwQt = false;
+                    castle_rights_t[CastleRights::CWQ] = false;
                 }
                 if ((1 << start_shift) & bitboards[Piece::BR] & (1 << 56)) != 0 { // black king side rook move
-                    cbKt = false;
+                    castle_rights_t[CastleRights::CBK] = false;
                 }
                 if ((1 << start_shift) & bitboards[Piece::BR] & (1 << 63)) != 0 { // black queen side rook move
-                    cbQt = false;
+                    castle_rights_t[CastleRights::CBQ] = false;
                 }
                 if (((1 as i64) << end_shift) & 1) != 0 { // white king side rook taken
-                    cwKt = false;
+                    castle_rights_t[CastleRights::CWK] = false;
                 }
                 if (((1 as i64) << end_shift) & (1 << 7)) != 0 { // white queen side rook taken
-                    cwQt = false;
+                    castle_rights_t[CastleRights::CWQ] = false;
                 }
                 if ((1 << end_shift) & ((1 as i64) << 56)) != 0 { // black king side rook taken
-                    cbKt = false;
+                    castle_rights_t[CastleRights::CBK] = false;
                 }
                 if ((1 << end_shift) & ((1 as i64) << 63)) != 0 { // black queen side rook taken
-                    cbQt = false;
+                    castle_rights_t[CastleRights::CBQ] = false;
                 }
             }
 
             if ((bitboards_t[Piece::WK] & mm.unsafeForWhite(bitboards_t)) == 0 && whites_turn) || ((bitboards_t[Piece::BK] & mm.unsafeForBlack(bitboards_t)) == 0 && !whites_turn) {
-                self.perft(mm, bitboards_t, cwKt, cwQt, cbKt, cbQt, !whites_turn, depth + 1);
+                self.perft(mm, bitboards_t, castle_rights_t, !whites_turn, depth + 1);
                 println!("{} {}", move_to_algebra!(moves[i..i+4]), self.move_counter);
                 self.total_move_counter += self.move_counter;
                 self.move_counter = 0;
@@ -194,7 +195,7 @@ mod tests {
         let gs = GameState::new();
         let mut m: Moves = Moves::new();
         let mut p: Perft = Perft::new(5);
-        p.perftRoot(&mut m, gs.bitboards, gs.cwK, gs.cwQ, gs.cbK, gs.cbQ, true, 0);
+        p.perftRoot(&mut m, gs.bitboards, gs.castle_rights, true, 0);
         assert!(p.total_move_counter == 4865609);
     }
 
@@ -204,7 +205,7 @@ mod tests {
         let mut m: Moves = Moves::new();
         let mut p: Perft = Perft::new(4);
         gs.importFEN(String::from("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq -"));
-        p.perftRoot(&mut m, gs.bitboards, gs.cwK, gs.cwQ, gs.cbK, gs.cbQ, true, 0);
+        p.perftRoot(&mut m, gs.bitboards, gs.castle_rights, true, 0);
         assert!(p.total_move_counter == 4085603);
     }
 
@@ -214,7 +215,7 @@ mod tests {
         let mut m: Moves = Moves::new();
         let mut p: Perft = Perft::new(6);
         gs.importFEN(String::from("8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - -"));
-        p.perftRoot(&mut m, gs.bitboards, gs.cwK, gs.cwQ, gs.cbK, gs.cbQ, true, 0);
+        p.perftRoot(&mut m, gs.bitboards, gs.castle_rights, true, 0);
         assert!(p.total_move_counter == 11030083);
     }
 
@@ -224,7 +225,7 @@ mod tests {
         let mut m: Moves = Moves::new();
         let mut p: Perft = Perft::new(5);
         gs.importFEN(String::from("r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq - 0 1"));
-        p.perftRoot(&mut m, gs.bitboards, gs.cwK, gs.cwQ, gs.cbK, gs.cbQ, true, 0);
+        p.perftRoot(&mut m, gs.bitboards, gs.castle_rights, true, 0);
         assert!(p.total_move_counter == 15833292);
     }
 
@@ -234,7 +235,7 @@ mod tests {
         let mut m: Moves = Moves::new();
         let mut p: Perft = Perft::new(5);
         gs.importFEN(String::from("1k6/1b6/8/8/7R/8/8/4K2R b K - 0 1"));
-        p.perftRoot(&mut m, gs.bitboards, gs.cwK, gs.cwQ, gs.cbK, gs.cbQ, false, 0);
+        p.perftRoot(&mut m, gs.bitboards, gs.castle_rights, false, 0);
         assert!(p.total_move_counter == 1063513);
     }
 
@@ -244,7 +245,7 @@ mod tests {
         let mut m: Moves = Moves::new();
         let mut p: Perft = Perft::new(6);
         gs.importFEN(String::from("3k4/3p4/8/K1P4r/8/8/8/8 b - - 0 1"));
-        p.perftRoot(&mut m, gs.bitboards, gs.cwK, gs.cwQ, gs.cbK, gs.cbQ, false, 0);
+        p.perftRoot(&mut m, gs.bitboards, gs.castle_rights, false, 0);
         assert!(p.total_move_counter == 1134888);
     }
 
@@ -254,7 +255,7 @@ mod tests {
         let mut m: Moves = Moves::new();
         let mut p: Perft = Perft::new(6);
         gs.importFEN(String::from("8/8/4k3/8/2p5/8/B2P2K1/8 w - - 0 1"));
-        p.perftRoot(&mut m, gs.bitboards, gs.cwK, gs.cwQ, gs.cbK, gs.cbQ, true, 0);
+        p.perftRoot(&mut m, gs.bitboards, gs.castle_rights, true, 0);
         assert!(p.total_move_counter == 1015133);
     }
 
@@ -264,7 +265,7 @@ mod tests {
         let mut m: Moves = Moves::new();
         let mut p: Perft = Perft::new(6);
         gs.importFEN(String::from("8/8/1k6/2b5/2pP4/8/5K2/8 b - d3 0 1"));
-        p.perftRoot(&mut m, gs.bitboards, gs.cwK, gs.cwQ, gs.cbK, gs.cbQ, false, 0);
+        p.perftRoot(&mut m, gs.bitboards, gs.castle_rights, false, 0);
         assert!(p.total_move_counter == 1440467);
     }
 
@@ -274,7 +275,7 @@ mod tests {
         let mut m: Moves = Moves::new();
         let mut p: Perft = Perft::new(6);
         gs.importFEN(String::from("5k2/8/8/8/8/8/8/4K2R w K - 0 1"));
-        p.perftRoot(&mut m, gs.bitboards, gs.cwK, gs.cwQ, gs.cbK, gs.cbQ, true, 0);
+        p.perftRoot(&mut m, gs.bitboards, gs.castle_rights, true, 0);
         assert!(p.total_move_counter == 661072);
     }
 
@@ -284,7 +285,7 @@ mod tests {
         let mut m: Moves = Moves::new();
         let mut p: Perft = Perft::new(6);
         gs.importFEN(String::from("3k4/8/8/8/8/8/8/R3K3 w Q - 0 1"));
-        p.perftRoot(&mut m, gs.bitboards, gs.cwK, gs.cwQ, gs.cbK, gs.cbQ, true, 0);
+        p.perftRoot(&mut m, gs.bitboards, gs.castle_rights, true, 0);
         assert!(p.total_move_counter == 803711);
     }
 
@@ -294,7 +295,7 @@ mod tests {
         let mut m: Moves = Moves::new();
         let mut p: Perft = Perft::new(4);
         gs.importFEN(String::from("r3k2r/1b4bq/8/8/8/8/7B/R3K2R w KQkq - 0 1"));
-        p.perftRoot(&mut m, gs.bitboards, gs.cwK, gs.cwQ, gs.cbK, gs.cbQ, true, 0);
+        p.perftRoot(&mut m, gs.bitboards, gs.castle_rights, true, 0);
         assert!(p.total_move_counter == 1274206);
     }
 
@@ -304,7 +305,7 @@ mod tests {
         let mut m: Moves = Moves::new();
         let mut p: Perft = Perft::new(4);
         gs.importFEN(String::from("r3k2r/8/3Q4/8/8/5q2/8/R3K2R b KQkq - 0 1"));
-        p.perftRoot(&mut m, gs.bitboards, gs.cwK, gs.cwQ, gs.cbK, gs.cbQ, false, 0);
+        p.perftRoot(&mut m, gs.bitboards, gs.castle_rights, false, 0);
         assert!(p.total_move_counter == 1720476);
     }
 
@@ -314,7 +315,7 @@ mod tests {
         let mut m: Moves = Moves::new();
         let mut p: Perft = Perft::new(6);
         gs.importFEN(String::from("2K2r2/4P3/8/8/8/8/8/3k4 w - - 0 1"));
-        p.perftRoot(&mut m, gs.bitboards, gs.cwK, gs.cwQ, gs.cbK, gs.cbQ, true, 0);
+        p.perftRoot(&mut m, gs.bitboards, gs.castle_rights, true, 0);
         assert!(p.total_move_counter == 3821001);
     }
 
@@ -324,7 +325,7 @@ mod tests {
         let mut m: Moves = Moves::new();
         let mut p: Perft = Perft::new(5);
         gs.importFEN(String::from("8/8/1P2K3/8/2n5/1q6/8/5k2 b - - 0 1"));
-        p.perftRoot(&mut m, gs.bitboards, gs.cwK, gs.cwQ, gs.cbK, gs.cbQ, false, 0);
+        p.perftRoot(&mut m, gs.bitboards, gs.castle_rights, false, 0);
         assert!(p.total_move_counter == 1004658);
     }
 
@@ -334,7 +335,7 @@ mod tests {
         let mut m: Moves = Moves::new();
         let mut p: Perft = Perft::new(6);
         gs.importFEN(String::from("4k3/1P6/8/8/8/8/K7/8 w - - 0 1"));
-        p.perftRoot(&mut m, gs.bitboards, gs.cwK, gs.cwQ, gs.cbK, gs.cbQ, true, 0);
+        p.perftRoot(&mut m, gs.bitboards, gs.castle_rights, true, 0);
         assert!(p.total_move_counter == 217342);
     }
 
@@ -344,7 +345,7 @@ mod tests {
         let mut m: Moves = Moves::new();
         let mut p: Perft = Perft::new(6);
         gs.importFEN(String::from("8/P1k5/K7/8/8/8/8/8 w - - 0 1"));
-        p.perftRoot(&mut m, gs.bitboards, gs.cwK, gs.cwQ, gs.cbK, gs.cbQ, true, 0);
+        p.perftRoot(&mut m, gs.bitboards, gs.castle_rights, true, 0);
         assert!(p.total_move_counter == 92683);
     }
 
@@ -354,7 +355,7 @@ mod tests {
         let mut m: Moves = Moves::new();
         let mut p: Perft = Perft::new(6);
         gs.importFEN(String::from("K1k5/8/P7/8/8/8/8/8 w - - 0 1"));
-        p.perftRoot(&mut m, gs.bitboards, gs.cwK, gs.cwQ, gs.cbK, gs.cbQ, true, 0);
+        p.perftRoot(&mut m, gs.bitboards, gs.castle_rights, true, 0);
         assert!(p.total_move_counter == 2217);
     }
 
@@ -364,7 +365,7 @@ mod tests {
         let mut m: Moves = Moves::new();
         let mut p: Perft = Perft::new(7);
         gs.importFEN(String::from("8/k1P5/8/1K6/8/8/8/8 w - - 0 1"));
-        p.perftRoot(&mut m, gs.bitboards, gs.cwK, gs.cwQ, gs.cbK, gs.cbQ, true, 0);
+        p.perftRoot(&mut m, gs.bitboards, gs.castle_rights, true, 0);
         assert!(p.total_move_counter == 567584);
     }
 
@@ -374,7 +375,7 @@ mod tests {
         let mut m: Moves = Moves::new();
         let mut p: Perft = Perft::new(4);
         gs.importFEN(String::from("8/8/2k5/5q2/5n2/8/5K2/8 b - - 0 1"));
-        p.perftRoot(&mut m, gs.bitboards, gs.cwK, gs.cwQ, gs.cbK, gs.cbQ, false, 0);
+        p.perftRoot(&mut m, gs.bitboards, gs.castle_rights, false, 0);
         assert!(p.total_move_counter == 23527);
     }
 }

@@ -2,6 +2,7 @@
 
 
 use pyo3::prelude::*;
+use crate::castle_rights::CastleRights;
 use crate::special_bitboards::SpecialBitBoards;
 use crate::piece::Piece;
 use std::str::from_utf8;
@@ -31,12 +32,12 @@ impl Moves {
     }
 
 
-    pub fn getValidMoves(&mut self, bitboards: [i64; 13], cwK: bool, cwQ: bool, cbK: bool, cbQ: bool, whites_turn: bool, depth: u32) -> String {
+    pub fn getValidMoves(&mut self, bitboards: [i64; 13], castle_rights: [bool; 4], whites_turn: bool, depth: u32) -> String {
         let mut moves: String;
         if whites_turn {
-            moves = self.possibleMovesW(bitboards, cwK, cwQ);
+            moves = self.possibleMovesW(bitboards, castle_rights);
         } else {
-            moves = self.possibleMovesB(bitboards, cbK, cbQ);
+            moves = self.possibleMovesB(bitboards, castle_rights);
         }
         if depth == 0 {
             // TODO: look to replace shuffling with sorting
@@ -183,7 +184,7 @@ impl Moves {
     }
 
 
-    pub fn possibleMovesW(&mut self, bitboards: [i64; 13], cwK: bool, cwQ: bool) -> String {
+    pub fn possibleMovesW(&mut self, bitboards: [i64; 13], castle_rights: [bool; 4]) -> String {
         self.masks.not_allied_pieces = !(bitboards[Piece::WP]|bitboards[Piece::WN]|bitboards[Piece::WB]|bitboards[Piece::WR]|bitboards[Piece::WQ]|bitboards[Piece::WK]|bitboards[Piece::BK]); // avoid illegal bK capture
         self.masks.enemy_pieces = bitboards[Piece::BP]|bitboards[Piece::BN]|bitboards[Piece::BB]|bitboards[Piece::BR]|bitboards[Piece::BQ]; // avoid illegal bK capture
         self.masks.empty = !(bitboards[Piece::WP]|bitboards[Piece::WN]|bitboards[Piece::WB]|bitboards[Piece::WR]|bitboards[Piece::WQ]|bitboards[Piece::WK]|bitboards[Piece::BP]|bitboards[Piece::BN]|bitboards[Piece::BB]|bitboards[Piece::BR]|bitboards[Piece::BQ]|bitboards[Piece::BK]);
@@ -194,11 +195,11 @@ impl Moves {
             + &self.possibleR(bitboards[Piece::WR])
             + &self.possibleN(bitboards[Piece::WN])
             + &self.possibleK(bitboards[Piece::WK])
-            + &self.possibleCastleW(bitboards, cwK, cwQ)
+            + &self.possibleCastleW(bitboards, castle_rights)
     }
 
 
-    pub fn possibleMovesB(&mut self, bitboards: [i64; 13], cbK: bool, cbQ: bool) -> String {
+    pub fn possibleMovesB(&mut self, bitboards: [i64; 13], castle_rights: [bool; 4]) -> String {
         self.masks.not_allied_pieces = !(bitboards[Piece::BP]|bitboards[Piece::BN]|bitboards[Piece::BB]|bitboards[Piece::BR]|bitboards[Piece::BQ]|bitboards[Piece::BK]|bitboards[Piece::WK]); // avoid illegal wK capture
         self.masks.enemy_pieces = bitboards[Piece::WP]|bitboards[Piece::WN]|bitboards[Piece::WB]|bitboards[Piece::WR]|bitboards[Piece::WQ]; // avoid illegal wK capture
         self.masks.empty = !(bitboards[Piece::WP]|bitboards[Piece::WN]|bitboards[Piece::WB]|bitboards[Piece::WR]|bitboards[Piece::WQ]|bitboards[Piece::WK]|bitboards[Piece::BP]|bitboards[Piece::BN]|bitboards[Piece::BB]|bitboards[Piece::BR]|bitboards[Piece::BQ]|bitboards[Piece::BK]);
@@ -209,7 +210,7 @@ impl Moves {
             + &self.possibleR(bitboards[Piece::BR])
             + &self.possibleN(bitboards[Piece::BN])
             + &self.possibleK(bitboards[Piece::BK])
-            + &self.possibleCastleB(bitboards, cbK, cbQ)
+            + &self.possibleCastleB(bitboards, castle_rights)
     }
 
 
@@ -541,16 +542,16 @@ impl Moves {
     }
 
 
-    fn possibleCastleW(&mut self, bitboards: [i64; 13], cwK: bool, cwQ: bool) -> String {
+    fn possibleCastleW(&mut self, bitboards: [i64; 13], castle_rights: [bool; 4]) -> String {
         let unsafe_w: i64 = self.unsafeForWhite(bitboards);
         let mut move_list: String = String::new(); // king move r1c1r2c1
         if unsafe_w & bitboards[Piece::WK] == 0 {
-            if cwK && (((1 << self.castle_rooks[3]) & bitboards[Piece::WR]) != 0) {
+            if castle_rights[CastleRights::CWK] && (((1 << self.castle_rooks[3]) & bitboards[Piece::WR]) != 0) {
                 if ((self.masks.occupied | unsafe_w) & ((1 << 1) | (1 << 2))) == 0 {
                     move_list += "7476";
                 }
             }
-            if cwQ && (((1 << self.castle_rooks[2]) & bitboards[Piece::WR]) != 0) {
+            if castle_rights[CastleRights::CWQ] && (((1 << self.castle_rooks[2]) & bitboards[Piece::WR]) != 0) {
                 if ((self.masks.occupied | (unsafe_w & !(1 << 6))) & ((1 << 4) | (1 << 5) | (1 << 6))) == 0 {
                     move_list += "7472";
                 }
@@ -560,16 +561,16 @@ impl Moves {
     }
 
 
-    fn possibleCastleB(&mut self, bitboards: [i64; 13], cbK: bool, cbQ: bool) -> String {
+    fn possibleCastleB(&mut self, bitboards: [i64; 13], castle_rights: [bool; 4]) -> String {
         let unsafe_b = self.unsafeForBlack(bitboards);
         let mut move_list: String = String::new(); // king move r1c1r2c1
         if unsafe_b & bitboards[Piece::BK] == 0 {
-            if cbK && (((1 << self.castle_rooks[1]) & bitboards[Piece::BR]) != 0) {
+            if castle_rights[CastleRights::CBK] && (((1 << self.castle_rooks[1]) & bitboards[Piece::BR]) != 0) {
                 if ((self.masks.occupied | unsafe_b) & ((1 << 58) | (1 << 57))) == 0 {
                     move_list += "0406";
                 }
             }
-            if cbQ && (((1 << self.castle_rooks[0]) & bitboards[Piece::BR]) != 0) {
+            if castle_rights[CastleRights::CBQ] && (((1 << self.castle_rooks[0]) & bitboards[Piece::BR]) != 0) {
                 if ((self.masks.occupied | (unsafe_b & !(1 << 62))) & ((1 << 62) | (1 << 61) | (1 << 60))) == 0 {
                     move_list += "0402";
                 }

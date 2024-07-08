@@ -1,4 +1,4 @@
-//! Enumeration of the chess pieces
+//! Module for enumeration of the chess pieces
 
 
 use std::ops::{Index, IndexMut};

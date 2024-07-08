@@ -40,7 +40,7 @@ def main() -> None:
     move_log_font = pg.font.SysFont('Arial', 14, False, False)
     gs = ChessProject.GameState()
     m = ChessProject.Moves()
-    valid_moves = m.getValidMoves(gs.bitboards, gs.cwK, gs.cwQ, gs.cbK, gs.cbQ, gs.whites_turn, 0)
+    valid_moves = m.getValidMoves(gs.bitboards, gs.castle_rights, gs.whites_turn, 0)
     move_made = False # flag for when move is made
     animate = False
 
@@ -119,7 +119,7 @@ def main() -> None:
         if move_made:
             if animate:
                 animateMove(gs.move_log[-4:], screen, gs, clk)
-            valid_moves = m.getValidMoves(gs.bitboards, gs.cwK, gs.cwQ, gs.cbK, gs.cbQ, gs.whites_turn, 0)
+            valid_moves = m.getValidMoves(gs.bitboards, gs.castle_rights, gs.whites_turn, 0)
             move_made = False
             animate = False
             move_undone = False

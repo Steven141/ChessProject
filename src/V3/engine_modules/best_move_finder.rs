@@ -3,6 +3,7 @@
 
 use pyo3::prelude::*;
 use std::collections::HashMap;
+use crate::castle_rights::CastleRights;
 use crate::moves::Moves;
 use crate::piece::Piece;
 use std::str::from_utf8;
@@ -128,7 +129,7 @@ impl BestMoveFinder {
     }
 
 
-    fn quiescenceSearch(&mut self, mut alpha: i64, beta: i64, mm: &mut Moves, bitboards: [i64; 13], cwK: bool, cwQ: bool, cbK: bool, cbQ: bool, whites_turn: bool) -> i64 {
+    fn quiescenceSearch(&mut self, mut alpha: i64, beta: i64, mm: &mut Moves, bitboards: [i64; 13], castle_rights: [bool; 4], whites_turn: bool) -> i64 {
         // look deeper for non-quiet moves (attacking)
         self.move_counter += 1;
         let eval: i64 = (if whites_turn {1} else {-1}) * self.evaluateBoard(mm, bitboards, whites_turn);
@@ -140,9 +141,9 @@ impl BestMoveFinder {
         }
         let moves: String;
         if whites_turn {
-            moves = mm.possibleMovesW(bitboards, cwK, cwQ);
+            moves = mm.possibleMovesW(bitboards, castle_rights);
         } else {
-            moves = mm.possibleMovesB(bitboards, cbK, cbQ);
+            moves = mm.possibleMovesB(bitboards, castle_rights);
         }
         for i in (0..moves.len()).step_by(4) {
             let mut bitboards_t: [i64; 13] = [0; 13];
@@ -155,7 +156,7 @@ impl BestMoveFinder {
             bitboards_t[Piece::WR] = mm.makeMoveCastle(bitboards_t[Piece::WR], bitboards[Piece::WK], moves[i..i+4].to_string(), 'R'); bitboards_t[Piece::BR] = mm.makeMoveCastle(bitboards_t[Piece::BR], bitboards[Piece::BK], moves[i..i+4].to_string(), 'r');
             bitboards_t[Piece::EP] = mm.makeMoveEP(bitboards[Piece::WP] | bitboards[Piece::BP], moves[i..i+4].to_string());
 
-            let mut cwKt: bool = cwK; let mut cwQt: bool = cwQ; let mut cbKt: bool = cbK; let mut cbQt: bool = cbQ;
+            let mut castle_rights_t: [bool; 4] = castle_rights;
 
             if moves.chars().nth(i + 3).unwrap().is_numeric() {
                 let m1: u32 = moves.chars().nth(i).unwrap().to_digit(10).unwrap();
@@ -165,40 +166,40 @@ impl BestMoveFinder {
                 let start_shift: u32 = 64 - 1 - (m1 * 8 + m2);
                 let end_shift: u32 = 64 - 1 - (m3 * 8 + m4);
                 if ((1 << start_shift) & bitboards[Piece::WK]) != 0 { // white king move
-                    (cwKt, cwQt) = (false, false);
+                    (castle_rights_t[CastleRights::CWK], castle_rights_t[CastleRights::CWQ]) = (false, false);
                 }
                 if ((1 << start_shift) & bitboards[Piece::BK]) != 0 { // black king move
-                    (cbKt, cbQt) = (false, false);
+                    (castle_rights_t[CastleRights::CBK], castle_rights_t[CastleRights::CBQ]) = (false, false);
                 }
                 if ((1 << start_shift) & bitboards[Piece::WR] & 1) != 0 { // white king side rook move
-                    cwKt = false;
+                    castle_rights_t[CastleRights::CWK] = false;
                 }
                 if ((1 << start_shift) & bitboards[Piece::WR] & (1 << 7)) != 0 { // white queen side rook move
-                    cwQt = false;
+                    castle_rights_t[CastleRights::CWQ] = false;
                 }
                 if ((1 << start_shift) & bitboards[Piece::BR] & (1 << 56)) != 0 { // black king side rook move
-                    cbKt = false;
+                    castle_rights_t[CastleRights::CBK] = false;
                 }
                 if ((1 << start_shift) & bitboards[Piece::BR] & (1 << 63)) != 0 { // black queen side rook move
-                    cbQt = false;
+                    castle_rights_t[CastleRights::CBQ] = false;
                 }
                 if (((1 as i64) << end_shift) & 1) != 0 { // white king side rook taken
-                    cwKt = false;
+                    castle_rights_t[CastleRights::CWK] = false;
                 }
                 if (((1 as i64) << end_shift) & (1 << 7)) != 0 { // white queen side rook taken
-                    cwQt = false;
+                    castle_rights_t[CastleRights::CWQ] = false;
                 }
                 if ((1 << end_shift) & ((1 as i64) << 56)) != 0 { // black king side rook taken
-                    cbKt = false;
+                    castle_rights_t[CastleRights::CBK] = false;
                 }
                 if ((1 << end_shift) & ((1 as i64) << 63)) != 0 { // black queen side rook taken
-                    cbQt = false;
+                    castle_rights_t[CastleRights::CBQ] = false;
                 }
             }
             let is_valid_move: bool = ((bitboards_t[Piece::WK] & mm.unsafeForWhite(bitboards_t)) == 0 && whites_turn) || ((bitboards_t[Piece::BK] & mm.unsafeForBlack(bitboards_t)) == 0 && !whites_turn);
             let is_attacking_move: bool = is_valid_move && ((bitboards[Piece::WP]|bitboards[Piece::WN]|bitboards[Piece::WB]|bitboards[Piece::WR]|bitboards[Piece::WQ]).count_ones() != (bitboards_t[Piece::WP]|bitboards_t[Piece::WN]|bitboards_t[Piece::WB]|bitboards_t[Piece::WR]|bitboards_t[Piece::WQ]).count_ones() || (bitboards[Piece::BP]|bitboards[Piece::BN]|bitboards[Piece::BB]|bitboards[Piece::BR]|bitboards[Piece::BQ]).count_ones() != (bitboards_t[Piece::BP]|bitboards_t[Piece::BN]|bitboards_t[Piece::BB]|bitboards_t[Piece::BR]|bitboards_t[Piece::BQ]).count_ones());
             if is_attacking_move {
-                let score: i64 = -self.quiescenceSearch(-beta, -alpha, mm, bitboards_t, cwKt, cwQt, cbKt, cbQt, !whites_turn);
+                let score: i64 = -self.quiescenceSearch(-beta, -alpha, mm, bitboards_t, castle_rights_t, !whites_turn);
                 if score >= beta {
                     return beta;
                 }
@@ -211,22 +212,22 @@ impl BestMoveFinder {
     }
 
 
-    fn negaMaxAlphaBeta(&mut self, mut alpha: i64, beta: i64, mm: &mut Moves, bitboards: [i64; 13], cwK: bool, cwQ: bool, cbK: bool, cbQ: bool, whites_turn: bool, depth: u32) -> i64 {
+    fn negaMaxAlphaBeta(&mut self, mut alpha: i64, beta: i64, mm: &mut Moves, bitboards: [i64; 13], castle_rights: [bool; 4], whites_turn: bool, depth: u32) -> i64 {
         // Positive = better for current recursive player perspective
         // alpha = minimum score that the maximizing player is assured of
         // beta = maximum score that the minimizing player is assured of
-        self.move_counter += 1;
         if depth == self.search_depth {
-            return self.quiescenceSearch(alpha, beta, mm, bitboards, cwK, cwQ, cbK, cbQ, whites_turn);
+            return self.quiescenceSearch(alpha, beta, mm, bitboards, castle_rights, whites_turn);
+            // self.move_counter += 1;
             // return (if whites_turn {1} else {-1}) * self.evaluateBoard(mm, bitboards, whites_turn);
         }
-        // self.move_counter += 1;
+        self.move_counter += 1;
         let mut best_score: i64 = -self.mate_score;
         let mut moves: String;
         if whites_turn {
-            moves = mm.possibleMovesW(bitboards, cwK, cwQ);
+            moves = mm.possibleMovesW(bitboards, castle_rights);
         } else {
-            moves = mm.possibleMovesB(bitboards, cbK, cbQ);
+            moves = mm.possibleMovesB(bitboards, castle_rights);
         }
         if depth == 0 {
             // TODO: look to replace shuffling with sorting
@@ -247,7 +248,7 @@ impl BestMoveFinder {
             bitboards_t[Piece::WR] = mm.makeMoveCastle(bitboards_t[Piece::WR], bitboards[Piece::WK], moves[i..i+4].to_string(), 'R'); bitboards_t[Piece::BR] = mm.makeMoveCastle(bitboards_t[Piece::BR], bitboards[Piece::BK], moves[i..i+4].to_string(), 'r');
             bitboards_t[Piece::EP] = mm.makeMoveEP(bitboards[Piece::WP] | bitboards[Piece::BP], moves[i..i+4].to_string());
 
-            let mut cwKt: bool = cwK; let mut cwQt: bool = cwQ; let mut cbKt: bool = cbK; let mut cbQt: bool = cbQ;
+            let mut castle_rights_t: [bool; 4] = castle_rights;
 
             if moves.chars().nth(i + 3).unwrap().is_numeric() {
                 let m1: u32 = moves.chars().nth(i).unwrap().to_digit(10).unwrap();
@@ -257,34 +258,34 @@ impl BestMoveFinder {
                 let start_shift: u32 = 64 - 1 - (m1 * 8 + m2);
                 let end_shift: u32 = 64 - 1 - (m3 * 8 + m4);
                 if ((1 << start_shift) & bitboards[Piece::WK]) != 0 { // white king move
-                    (cwKt, cwQt) = (false, false);
+                    (castle_rights_t[CastleRights::CWK], castle_rights_t[CastleRights::CWQ]) = (false, false);
                 }
                 if ((1 << start_shift) & bitboards[Piece::BK]) != 0 { // black king move
-                    (cbKt, cbQt) = (false, false);
+                    (castle_rights_t[CastleRights::CBK], castle_rights_t[CastleRights::CBQ]) = (false, false);
                 }
                 if ((1 << start_shift) & bitboards[Piece::WR] & 1) != 0 { // white king side rook move
-                    cwKt = false;
+                    castle_rights_t[CastleRights::CWK] = false;
                 }
                 if ((1 << start_shift) & bitboards[Piece::WR] & (1 << 7)) != 0 { // white queen side rook move
-                    cwQt = false;
+                    castle_rights_t[CastleRights::CWQ] = false;
                 }
                 if ((1 << start_shift) & bitboards[Piece::BR] & (1 << 56)) != 0 { // black king side rook move
-                    cbKt = false;
+                    castle_rights_t[CastleRights::CBK] = false;
                 }
                 if ((1 << start_shift) & bitboards[Piece::BR] & (1 << 63)) != 0 { // black queen side rook move
-                    cbQt = false;
+                    castle_rights_t[CastleRights::CBQ] = false;
                 }
                 if (((1 as i64) << end_shift) & 1) != 0 { // white king side rook taken
-                    cwKt = false;
+                    castle_rights_t[CastleRights::CWK] = false;
                 }
                 if (((1 as i64) << end_shift) & (1 << 7)) != 0 { // white queen side rook taken
-                    cwQt = false;
+                    castle_rights_t[CastleRights::CWQ] = false;
                 }
                 if ((1 << end_shift) & ((1 as i64) << 56)) != 0 { // black king side rook taken
-                    cbKt = false;
+                    castle_rights_t[CastleRights::CBK] = false;
                 }
                 if ((1 << end_shift) & ((1 as i64) << 63)) != 0 { // black queen side rook taken
-                    cbQt = false;
+                    castle_rights_t[CastleRights::CBQ] = false;
                 }
             }
 
@@ -293,7 +294,7 @@ impl BestMoveFinder {
 
                 valid_move_found = true;
 
-                let mut score: i64 = -self.negaMaxAlphaBeta(-beta, -alpha, mm, bitboards_t, cwKt, cwQt, cbKt, cbQt, !whites_turn, depth+1);
+                let mut score: i64 = -self.negaMaxAlphaBeta(-beta, -alpha, mm, bitboards_t, castle_rights_t, !whites_turn, depth+1);
                 if score == self.mate_score {
                     score -= depth as i64;
                 }
@@ -390,11 +391,10 @@ mod tests {
     #[test]
     fn qu_test() {
         println!("Basic Test!");
-        let mut gs = GameState::new();
+        let gs = GameState::new();
         let mut m: Moves = Moves::new();
-        // let mut p: Perft = Perft::new(3);
         let mut bmf: BestMoveFinder = BestMoveFinder::new(2);
-        bmf.negaMaxAlphaBeta(-10000, 10000, &mut m, gs.bitboards, gs.cwK, gs.cwQ, gs.cbK, gs.cbQ, true, 0);
+        bmf.negaMaxAlphaBeta(-10000, 10000, &mut m, gs.bitboards, gs.castle_rights, true, 0);
         println!("DONE!");
         // panic!();
     }

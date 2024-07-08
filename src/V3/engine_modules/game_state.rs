@@ -2,6 +2,7 @@
 
 
 use pyo3::prelude::*;
+use crate::castle_rights::CastleRights;
 use crate::special_bitboards::SpecialBitBoards;
 use crate::moves::Moves;
 use crate::piece::Piece;
@@ -11,10 +12,7 @@ use crate::piece::Piece;
 pub struct GameState {
     board: [[char; 8]; 8],
     pub bitboards: [i64; 13],
-    pub cwK: bool,
-    pub cwQ: bool,
-    pub cbK: bool,
-    pub cbQ: bool,
+    pub castle_rights: [bool; 4],
     whites_turn: bool,
     masks: SpecialBitBoards,
     move_log: String,
@@ -39,10 +37,7 @@ impl GameState {
                 ['R', 'N', 'B', 'Q', 'K', 'B', 'N', 'R'],
             ],
             bitboards: [0; 13],
-            cwK: true,
-            cwQ: true,
-            cbK: true,
-            cbQ: true,
+            castle_rights: [true; 4],
             whites_turn: true,
             masks: SpecialBitBoards::new(),
             move_log: String::new(),
@@ -186,8 +181,8 @@ impl GameState {
         self.bitboards[Piece::WR] = 0; self.bitboards[Piece::WQ] = 0; self.bitboards[Piece::WK] = 0;
         self.bitboards[Piece::BP] = 0; self.bitboards[Piece::BN] = 0; self.bitboards[Piece::BB] = 0;
         self.bitboards[Piece::BR] = 0; self.bitboards[Piece::BQ] = 0; self.bitboards[Piece::BK] = 0;
-        self.cwK = false; self.cwQ = false;
-        self.cbK = false; self.cbQ = false;
+        self.castle_rights[CastleRights::CWK] = false; self.castle_rights[CastleRights::CWQ] = false;
+        self.castle_rights[CastleRights::CBK] = false; self.castle_rights[CastleRights::CBQ] = false;
         let mut char_idx: usize = 0;
         let mut board_idx: i64 = 0;
         while fen_str.chars().nth(char_idx).unwrap() != ' ' {
@@ -260,10 +255,10 @@ impl GameState {
 
         while fen_str.chars().nth(char_idx).unwrap() != ' ' {
             match fen_str.chars().nth(char_idx).unwrap() {
-                'K' => self.cwK = true,
-                'Q' => self.cwQ = true,
-                'k' => self.cbK = true,
-                'q' => self.cbQ = true,
+                'K' => self.castle_rights[CastleRights::CWK] = true,
+                'Q' => self.castle_rights[CastleRights::CWQ] = true,
+                'k' => self.castle_rights[CastleRights::CBK] = true,
+                'q' => self.castle_rights[CastleRights::CBQ] = true,
                 _ => (),
             }
             char_idx += 1;
@@ -314,34 +309,34 @@ impl GameState {
             let start_shift: u32 = 64 - 1 - (m1 * 8 + m2);
             let end_shift: u32 = 64 - 1 - (m3 * 8 + m4);
             if ((1 << start_shift) & wK_cached) != 0 { // white king move
-                (self.cwK, self.cwQ) = (false, false);
+                (self.castle_rights[CastleRights::CWK], self.castle_rights[CastleRights::CWQ]) = (false, false);
             }
             if ((1 << start_shift) & bK_cached) != 0 { // black king move
-                (self.cbK, self.cbQ) = (false, false);
+                (self.castle_rights[CastleRights::CBK], self.castle_rights[CastleRights::CBQ]) = (false, false);
             }
             if ((1 << start_shift) & wR_cached & 1) != 0 { // white king side rook move
-                self.cwK = false;
+                self.castle_rights[CastleRights::CWK] = false;
             }
             if ((1 << start_shift) & wR_cached & (1 << 7)) != 0 { // white queen side rook move
-                self.cwQ = false;
+                self.castle_rights[CastleRights::CWQ] = false;
             }
             if ((1 << start_shift) & bR_cached & (1 << 56)) != 0 { // black king side rook move
-                self.cbK = false;
+                self.castle_rights[CastleRights::CBK] = false;
             }
             if ((1 << start_shift) & bR_cached & (1 << 63)) != 0 { // black queen side rook move
-                self.cbQ = false;
+                self.castle_rights[CastleRights::CBQ] = false;
             }
             if (((1 as i64) << end_shift) & 1) != 0 { // white king side rook taken
-                self.cwK = false;
+                self.castle_rights[CastleRights::CWK] = false;
             }
             if (((1 as i64) << end_shift) & (1 << 7)) != 0 { // white queen side rook taken
-                self.cwQ = false;
+                self.castle_rights[CastleRights::CWQ] = false;
             }
             if ((1 << end_shift) & ((1 as i64) << 56)) != 0 { // black king side rook taken
-                self.cbK = false;
+                self.castle_rights[CastleRights::CBK] = false;
             }
             if ((1 << end_shift) & ((1 as i64) << 63)) != 0 { // black queen side rook taken
-                self.cbQ = false;
+                self.castle_rights[CastleRights::CBQ] = false;
             }
         }
 
