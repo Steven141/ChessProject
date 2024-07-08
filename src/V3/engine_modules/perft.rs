@@ -36,14 +36,14 @@ impl Perft {
             }
             for i in (0..moves.len()).step_by(4) {
                 let mut bitboards_t: [i64; 13] = [0; 13];
-                bitboards_t[Piece::WP.idx()] = mm.makeMove(bitboards[Piece::WP.idx()], moves[i..i+4].to_string(), 'P'); bitboards_t[Piece::WN.idx()] = mm.makeMove(bitboards[Piece::WN.idx()], moves[i..i+4].to_string(), 'N');
-                bitboards_t[Piece::WB.idx()] = mm.makeMove(bitboards[Piece::WB.idx()], moves[i..i+4].to_string(), 'B'); bitboards_t[Piece::WR.idx()] = mm.makeMove(bitboards[Piece::WR.idx()], moves[i..i+4].to_string(), 'R');
-                bitboards_t[Piece::WQ.idx()] = mm.makeMove(bitboards[Piece::WQ.idx()], moves[i..i+4].to_string(), 'Q'); bitboards_t[Piece::WK.idx()] = mm.makeMove(bitboards[Piece::WK.idx()], moves[i..i+4].to_string(), 'K');
-                bitboards_t[Piece::BP.idx()] = mm.makeMove(bitboards[Piece::BP.idx()], moves[i..i+4].to_string(), 'p'); bitboards_t[Piece::BN.idx()] = mm.makeMove(bitboards[Piece::BN.idx()], moves[i..i+4].to_string(), 'n');
-                bitboards_t[Piece::BB.idx()] = mm.makeMove(bitboards[Piece::BB.idx()], moves[i..i+4].to_string(), 'b'); bitboards_t[Piece::BR.idx()] = mm.makeMove(bitboards[Piece::BR.idx()], moves[i..i+4].to_string(), 'r');
-                bitboards_t[Piece::BQ.idx()] = mm.makeMove(bitboards[Piece::BQ.idx()], moves[i..i+4].to_string(), 'q'); bitboards_t[Piece::BK.idx()] = mm.makeMove(bitboards[Piece::BK.idx()], moves[i..i+4].to_string(), 'k');
-                bitboards_t[Piece::WR.idx()] = mm.makeMoveCastle(bitboards_t[Piece::WR.idx()], bitboards[Piece::WK.idx()], moves[i..i+4].to_string(), 'R'); bitboards_t[Piece::BR.idx()] = mm.makeMoveCastle(bitboards_t[Piece::BR.idx()], bitboards[Piece::BK.idx()], moves[i..i+4].to_string(), 'r');
-                bitboards_t[Piece::EP.idx()] = mm.makeMoveEP(bitboards[Piece::WP.idx()] | bitboards[Piece::BP.idx()], moves[i..i+4].to_string());
+                bitboards_t[Piece::WP] = mm.makeMove(bitboards[Piece::WP], moves[i..i+4].to_string(), 'P'); bitboards_t[Piece::WN] = mm.makeMove(bitboards[Piece::WN], moves[i..i+4].to_string(), 'N');
+                bitboards_t[Piece::WB] = mm.makeMove(bitboards[Piece::WB], moves[i..i+4].to_string(), 'B'); bitboards_t[Piece::WR] = mm.makeMove(bitboards[Piece::WR], moves[i..i+4].to_string(), 'R');
+                bitboards_t[Piece::WQ] = mm.makeMove(bitboards[Piece::WQ], moves[i..i+4].to_string(), 'Q'); bitboards_t[Piece::WK] = mm.makeMove(bitboards[Piece::WK], moves[i..i+4].to_string(), 'K');
+                bitboards_t[Piece::BP] = mm.makeMove(bitboards[Piece::BP], moves[i..i+4].to_string(), 'p'); bitboards_t[Piece::BN] = mm.makeMove(bitboards[Piece::BN], moves[i..i+4].to_string(), 'n');
+                bitboards_t[Piece::BB] = mm.makeMove(bitboards[Piece::BB], moves[i..i+4].to_string(), 'b'); bitboards_t[Piece::BR] = mm.makeMove(bitboards[Piece::BR], moves[i..i+4].to_string(), 'r');
+                bitboards_t[Piece::BQ] = mm.makeMove(bitboards[Piece::BQ], moves[i..i+4].to_string(), 'q'); bitboards_t[Piece::BK] = mm.makeMove(bitboards[Piece::BK], moves[i..i+4].to_string(), 'k');
+                bitboards_t[Piece::WR] = mm.makeMoveCastle(bitboards_t[Piece::WR], bitboards[Piece::WK], moves[i..i+4].to_string(), 'R'); bitboards_t[Piece::BR] = mm.makeMoveCastle(bitboards_t[Piece::BR], bitboards[Piece::BK], moves[i..i+4].to_string(), 'r');
+                bitboards_t[Piece::EP] = mm.makeMoveEP(bitboards[Piece::WP] | bitboards[Piece::BP], moves[i..i+4].to_string());
 
                 let mut cwKt: bool = cwK; let mut cwQt: bool = cwQ; let mut cbKt: bool = cbK; let mut cbQt: bool = cbQ;
 
@@ -54,22 +54,22 @@ impl Perft {
                     let m4: u32 = moves.chars().nth(i + 3).unwrap().to_digit(10).unwrap();
                     let start_shift: u32 = 64 - 1 - (m1 * 8 + m2);
                     let end_shift: u32 = 64 - 1 - (m3 * 8 + m4);
-                    if ((1 << start_shift) & bitboards[Piece::WK.idx()]) != 0 { // white king move
+                    if ((1 << start_shift) & bitboards[Piece::WK]) != 0 { // white king move
                         (cwKt, cwQt) = (false, false);
                     }
-                    if ((1 << start_shift) & bitboards[Piece::BK.idx()]) != 0 { // black king move
+                    if ((1 << start_shift) & bitboards[Piece::BK]) != 0 { // black king move
                         (cbKt, cbQt) = (false, false);
                     }
-                    if ((1 << start_shift) & bitboards[Piece::WR.idx()] & 1) != 0 { // white king side rook move
+                    if ((1 << start_shift) & bitboards[Piece::WR] & 1) != 0 { // white king side rook move
                         cwKt = false;
                     }
-                    if ((1 << start_shift) & bitboards[Piece::WR.idx()] & (1 << 7)) != 0 { // white queen side rook move
+                    if ((1 << start_shift) & bitboards[Piece::WR] & (1 << 7)) != 0 { // white queen side rook move
                         cwQt = false;
                     }
-                    if ((1 << start_shift) & bitboards[Piece::BR.idx()] & (1 << 56)) != 0 { // black king side rook move
+                    if ((1 << start_shift) & bitboards[Piece::BR] & (1 << 56)) != 0 { // black king side rook move
                         cbKt = false;
                     }
-                    if ((1 << start_shift) & bitboards[Piece::BR.idx()] & (1 << 63)) != 0 { // black queen side rook move
+                    if ((1 << start_shift) & bitboards[Piece::BR] & (1 << 63)) != 0 { // black queen side rook move
                         cbQt = false;
                     }
                     if (((1 as i64) << end_shift) & 1) != 0 { // white king side rook taken
@@ -86,7 +86,7 @@ impl Perft {
                     }
                 }
 
-                if ((bitboards_t[Piece::WK.idx()] & mm.unsafeForWhite(bitboards_t)) == 0 && whites_turn) || ((bitboards_t[Piece::BK.idx()] & mm.unsafeForBlack(bitboards_t)) == 0 && !whites_turn) {
+                if ((bitboards_t[Piece::WK] & mm.unsafeForWhite(bitboards_t)) == 0 && whites_turn) || ((bitboards_t[Piece::BK] & mm.unsafeForBlack(bitboards_t)) == 0 && !whites_turn) {
                     if depth + 1 == self.max_depth { // only count leaf nodes
                         self.move_counter += 1
                     }
@@ -109,14 +109,14 @@ impl Perft {
         }
         for i in (0..moves.len()).step_by(4) {
             let mut bitboards_t: [i64; 13] = [0; 13];
-            bitboards_t[Piece::WP.idx()] = mm.makeMove(bitboards[Piece::WP.idx()], moves[i..i+4].to_string(), 'P'); bitboards_t[Piece::WN.idx()] = mm.makeMove(bitboards[Piece::WN.idx()], moves[i..i+4].to_string(), 'N');
-            bitboards_t[Piece::WB.idx()] = mm.makeMove(bitboards[Piece::WB.idx()], moves[i..i+4].to_string(), 'B'); bitboards_t[Piece::WR.idx()] = mm.makeMove(bitboards[Piece::WR.idx()], moves[i..i+4].to_string(), 'R');
-            bitboards_t[Piece::WQ.idx()] = mm.makeMove(bitboards[Piece::WQ.idx()], moves[i..i+4].to_string(), 'Q'); bitboards_t[Piece::WK.idx()] = mm.makeMove(bitboards[Piece::WK.idx()], moves[i..i+4].to_string(), 'K');
-            bitboards_t[Piece::BP.idx()] = mm.makeMove(bitboards[Piece::BP.idx()], moves[i..i+4].to_string(), 'p'); bitboards_t[Piece::BN.idx()] = mm.makeMove(bitboards[Piece::BN.idx()], moves[i..i+4].to_string(), 'n');
-            bitboards_t[Piece::BB.idx()] = mm.makeMove(bitboards[Piece::BB.idx()], moves[i..i+4].to_string(), 'b'); bitboards_t[Piece::BR.idx()] = mm.makeMove(bitboards[Piece::BR.idx()], moves[i..i+4].to_string(), 'r');
-            bitboards_t[Piece::BQ.idx()] = mm.makeMove(bitboards[Piece::BQ.idx()], moves[i..i+4].to_string(), 'q'); bitboards_t[Piece::BK.idx()] = mm.makeMove(bitboards[Piece::BK.idx()], moves[i..i+4].to_string(), 'k');
-            bitboards_t[Piece::WR.idx()] = mm.makeMoveCastle(bitboards_t[Piece::WR.idx()], bitboards[Piece::WK.idx()], moves[i..i+4].to_string(), 'R'); bitboards_t[Piece::BR.idx()] = mm.makeMoveCastle(bitboards_t[Piece::BR.idx()], bitboards[Piece::BK.idx()], moves[i..i+4].to_string(), 'r');
-            bitboards_t[Piece::EP.idx()] = mm.makeMoveEP(bitboards[Piece::WP.idx()] | bitboards[Piece::BP.idx()], moves[i..i+4].to_string());
+            bitboards_t[Piece::WP] = mm.makeMove(bitboards[Piece::WP], moves[i..i+4].to_string(), 'P'); bitboards_t[Piece::WN] = mm.makeMove(bitboards[Piece::WN], moves[i..i+4].to_string(), 'N');
+            bitboards_t[Piece::WB] = mm.makeMove(bitboards[Piece::WB], moves[i..i+4].to_string(), 'B'); bitboards_t[Piece::WR] = mm.makeMove(bitboards[Piece::WR], moves[i..i+4].to_string(), 'R');
+            bitboards_t[Piece::WQ] = mm.makeMove(bitboards[Piece::WQ], moves[i..i+4].to_string(), 'Q'); bitboards_t[Piece::WK] = mm.makeMove(bitboards[Piece::WK], moves[i..i+4].to_string(), 'K');
+            bitboards_t[Piece::BP] = mm.makeMove(bitboards[Piece::BP], moves[i..i+4].to_string(), 'p'); bitboards_t[Piece::BN] = mm.makeMove(bitboards[Piece::BN], moves[i..i+4].to_string(), 'n');
+            bitboards_t[Piece::BB] = mm.makeMove(bitboards[Piece::BB], moves[i..i+4].to_string(), 'b'); bitboards_t[Piece::BR] = mm.makeMove(bitboards[Piece::BR], moves[i..i+4].to_string(), 'r');
+            bitboards_t[Piece::BQ] = mm.makeMove(bitboards[Piece::BQ], moves[i..i+4].to_string(), 'q'); bitboards_t[Piece::BK] = mm.makeMove(bitboards[Piece::BK], moves[i..i+4].to_string(), 'k');
+            bitboards_t[Piece::WR] = mm.makeMoveCastle(bitboards_t[Piece::WR], bitboards[Piece::WK], moves[i..i+4].to_string(), 'R'); bitboards_t[Piece::BR] = mm.makeMoveCastle(bitboards_t[Piece::BR], bitboards[Piece::BK], moves[i..i+4].to_string(), 'r');
+            bitboards_t[Piece::EP] = mm.makeMoveEP(bitboards[Piece::WP] | bitboards[Piece::BP], moves[i..i+4].to_string());
 
             let mut cwKt: bool = cwK; let mut cwQt: bool = cwQ; let mut cbKt: bool = cbK; let mut cbQt: bool = cbQ;
 
@@ -127,22 +127,22 @@ impl Perft {
                 let m4: u32 = moves.chars().nth(i + 3).unwrap().to_digit(10).unwrap();
                 let start_shift: u32 = 64 - 1 - (m1 * 8 + m2);
                 let end_shift: u32 = 64 - 1 - (m3 * 8 + m4);
-                if ((1 << start_shift) & bitboards[Piece::WK.idx()]) != 0 { // white king move
+                if ((1 << start_shift) & bitboards[Piece::WK]) != 0 { // white king move
                     (cwKt, cwQt) = (false, false);
                 }
-                if ((1 << start_shift) & bitboards[Piece::BK.idx()]) != 0 { // black king move
+                if ((1 << start_shift) & bitboards[Piece::BK]) != 0 { // black king move
                     (cbKt, cbQt) = (false, false);
                 }
-                if ((1 << start_shift) & bitboards[Piece::WR.idx()] & 1) != 0 { // white king side rook move
+                if ((1 << start_shift) & bitboards[Piece::WR] & 1) != 0 { // white king side rook move
                     cwKt = false;
                 }
-                if ((1 << start_shift) & bitboards[Piece::WR.idx()] & (1 << 7)) != 0 { // white queen side rook move
+                if ((1 << start_shift) & bitboards[Piece::WR] & (1 << 7)) != 0 { // white queen side rook move
                     cwQt = false;
                 }
-                if ((1 << start_shift) & bitboards[Piece::BR.idx()] & (1 << 56)) != 0 { // black king side rook move
+                if ((1 << start_shift) & bitboards[Piece::BR] & (1 << 56)) != 0 { // black king side rook move
                     cbKt = false;
                 }
-                if ((1 << start_shift) & bitboards[Piece::BR.idx()] & (1 << 63)) != 0 { // black queen side rook move
+                if ((1 << start_shift) & bitboards[Piece::BR] & (1 << 63)) != 0 { // black queen side rook move
                     cbQt = false;
                 }
                 if (((1 as i64) << end_shift) & 1) != 0 { // white king side rook taken
@@ -159,7 +159,7 @@ impl Perft {
                 }
             }
 
-            if ((bitboards_t[Piece::WK.idx()] & mm.unsafeForWhite(bitboards_t)) == 0 && whites_turn) || ((bitboards_t[Piece::BK.idx()] & mm.unsafeForBlack(bitboards_t)) == 0 && !whites_turn) {
+            if ((bitboards_t[Piece::WK] & mm.unsafeForWhite(bitboards_t)) == 0 && whites_turn) || ((bitboards_t[Piece::BK] & mm.unsafeForBlack(bitboards_t)) == 0 && !whites_turn) {
                 self.perft(mm, bitboards_t, cwKt, cwQt, cbKt, cbQt, !whites_turn, depth + 1);
                 println!("{} {}", move_to_algebra!(moves[i..i+4]), self.move_counter);
                 self.total_move_counter += self.move_counter;

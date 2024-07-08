@@ -47,21 +47,21 @@ impl Moves {
         let mut valid_moves: String = String::new();
         for i in (0..moves.len()).step_by(4) {
             let mut bitboards_t: [i64; 13] = [0; 13];
-            bitboards_t[Piece::WP.idx()] = self.makeMove(bitboards[Piece::WP.idx()], moves[i..i+4].to_string(), 'P'); bitboards_t[Piece::WN.idx()] = self.makeMove(bitboards[Piece::WN.idx()], moves[i..i+4].to_string(), 'N');
-            bitboards_t[Piece::WB.idx()] = self.makeMove(bitboards[Piece::WB.idx()], moves[i..i+4].to_string(), 'B'); bitboards_t[Piece::WR.idx()] = self.makeMove(bitboards[Piece::WR.idx()], moves[i..i+4].to_string(), 'R');
-            bitboards_t[Piece::WQ.idx()] = self.makeMove(bitboards[Piece::WQ.idx()], moves[i..i+4].to_string(), 'Q'); bitboards_t[Piece::WK.idx()] = self.makeMove(bitboards[Piece::WK.idx()], moves[i..i+4].to_string(), 'K');
-            bitboards_t[Piece::BP.idx()] = self.makeMove(bitboards[Piece::BP.idx()], moves[i..i+4].to_string(), 'p'); bitboards_t[Piece::BN.idx()] = self.makeMove(bitboards[Piece::BN.idx()], moves[i..i+4].to_string(), 'n');
-            bitboards_t[Piece::BB.idx()] = self.makeMove(bitboards[Piece::BB.idx()], moves[i..i+4].to_string(), 'b'); bitboards_t[Piece::BR.idx()] = self.makeMove(bitboards[Piece::BR.idx()], moves[i..i+4].to_string(), 'r');
-            bitboards_t[Piece::BQ.idx()] = self.makeMove(bitboards[Piece::BQ.idx()], moves[i..i+4].to_string(), 'q'); bitboards_t[Piece::BK.idx()] = self.makeMove(bitboards[Piece::BK.idx()], moves[i..i+4].to_string(), 'k');
-            bitboards_t[Piece::WR.idx()] = self.makeMoveCastle(bitboards_t[Piece::WR.idx()], bitboards[Piece::WK.idx()], moves[i..i+4].to_string(), 'R'); bitboards_t[Piece::BR.idx()] = self.makeMoveCastle(bitboards_t[Piece::BR.idx()], bitboards[Piece::BK.idx()], moves[i..i+4].to_string(), 'r');
+            bitboards_t[Piece::WP] = self.makeMove(bitboards[Piece::WP], moves[i..i+4].to_string(), 'P'); bitboards_t[Piece::WN] = self.makeMove(bitboards[Piece::WN], moves[i..i+4].to_string(), 'N');
+            bitboards_t[Piece::WB] = self.makeMove(bitboards[Piece::WB], moves[i..i+4].to_string(), 'B'); bitboards_t[Piece::WR] = self.makeMove(bitboards[Piece::WR], moves[i..i+4].to_string(), 'R');
+            bitboards_t[Piece::WQ] = self.makeMove(bitboards[Piece::WQ], moves[i..i+4].to_string(), 'Q'); bitboards_t[Piece::WK] = self.makeMove(bitboards[Piece::WK], moves[i..i+4].to_string(), 'K');
+            bitboards_t[Piece::BP] = self.makeMove(bitboards[Piece::BP], moves[i..i+4].to_string(), 'p'); bitboards_t[Piece::BN] = self.makeMove(bitboards[Piece::BN], moves[i..i+4].to_string(), 'n');
+            bitboards_t[Piece::BB] = self.makeMove(bitboards[Piece::BB], moves[i..i+4].to_string(), 'b'); bitboards_t[Piece::BR] = self.makeMove(bitboards[Piece::BR], moves[i..i+4].to_string(), 'r');
+            bitboards_t[Piece::BQ] = self.makeMove(bitboards[Piece::BQ], moves[i..i+4].to_string(), 'q'); bitboards_t[Piece::BK] = self.makeMove(bitboards[Piece::BK], moves[i..i+4].to_string(), 'k');
+            bitboards_t[Piece::WR] = self.makeMoveCastle(bitboards_t[Piece::WR], bitboards[Piece::WK], moves[i..i+4].to_string(), 'R'); bitboards_t[Piece::BR] = self.makeMoveCastle(bitboards_t[Piece::BR], bitboards[Piece::BK], moves[i..i+4].to_string(), 'r');
 
-            let is_valid_move: bool = ((bitboards_t[Piece::WK.idx()] & self.unsafeForWhite(bitboards_t)) == 0 && whites_turn) || ((bitboards_t[Piece::BK.idx()] & self.unsafeForBlack(bitboards_t)) == 0 && !whites_turn);
+            let is_valid_move: bool = ((bitboards_t[Piece::WK] & self.unsafeForWhite(bitboards_t)) == 0 && whites_turn) || ((bitboards_t[Piece::BK] & self.unsafeForBlack(bitboards_t)) == 0 && !whites_turn);
             if is_valid_move {
                 valid_moves += &moves[i..i+4];
             }
         }
         if valid_moves.len() == 0 {
-            if ((bitboards[Piece::WK.idx()] & self.unsafeForWhite(bitboards)) != 0 && whites_turn) || ((bitboards[Piece::BK.idx()] & self.unsafeForBlack(bitboards)) != 0 && !whites_turn) {
+            if ((bitboards[Piece::WK] & self.unsafeForWhite(bitboards)) != 0 && whites_turn) || ((bitboards[Piece::BK] & self.unsafeForBlack(bitboards)) != 0 && !whites_turn) {
                 self.checkmate = true;
             } else {
                 self.stalemate = true;
@@ -184,31 +184,31 @@ impl Moves {
 
 
     pub fn possibleMovesW(&mut self, bitboards: [i64; 13], cwK: bool, cwQ: bool) -> String {
-        self.masks.not_allied_pieces = !(bitboards[Piece::WP.idx()]|bitboards[Piece::WN.idx()]|bitboards[Piece::WB.idx()]|bitboards[Piece::WR.idx()]|bitboards[Piece::WQ.idx()]|bitboards[Piece::WK.idx()]|bitboards[Piece::BK.idx()]); // avoid illegal bK capture
-        self.masks.enemy_pieces = bitboards[Piece::BP.idx()]|bitboards[Piece::BN.idx()]|bitboards[Piece::BB.idx()]|bitboards[Piece::BR.idx()]|bitboards[Piece::BQ.idx()]; // avoid illegal bK capture
-        self.masks.empty = !(bitboards[Piece::WP.idx()]|bitboards[Piece::WN.idx()]|bitboards[Piece::WB.idx()]|bitboards[Piece::WR.idx()]|bitboards[Piece::WQ.idx()]|bitboards[Piece::WK.idx()]|bitboards[Piece::BP.idx()]|bitboards[Piece::BN.idx()]|bitboards[Piece::BB.idx()]|bitboards[Piece::BR.idx()]|bitboards[Piece::BQ.idx()]|bitboards[Piece::BK.idx()]);
+        self.masks.not_allied_pieces = !(bitboards[Piece::WP]|bitboards[Piece::WN]|bitboards[Piece::WB]|bitboards[Piece::WR]|bitboards[Piece::WQ]|bitboards[Piece::WK]|bitboards[Piece::BK]); // avoid illegal bK capture
+        self.masks.enemy_pieces = bitboards[Piece::BP]|bitboards[Piece::BN]|bitboards[Piece::BB]|bitboards[Piece::BR]|bitboards[Piece::BQ]; // avoid illegal bK capture
+        self.masks.empty = !(bitboards[Piece::WP]|bitboards[Piece::WN]|bitboards[Piece::WB]|bitboards[Piece::WR]|bitboards[Piece::WQ]|bitboards[Piece::WK]|bitboards[Piece::BP]|bitboards[Piece::BN]|bitboards[Piece::BB]|bitboards[Piece::BR]|bitboards[Piece::BQ]|bitboards[Piece::BK]);
         self.masks.occupied = !self.masks.empty;
-        self.possibleWP(bitboards[Piece::WP.idx()], bitboards[Piece::BP.idx()], bitboards[Piece::EP.idx()])
-            + &self.possibleB(bitboards[Piece::WB.idx()])
-            + &self.possibleQ(bitboards[Piece::WQ.idx()])
-            + &self.possibleR(bitboards[Piece::WR.idx()])
-            + &self.possibleN(bitboards[Piece::WN.idx()])
-            + &self.possibleK(bitboards[Piece::WK.idx()])
+        self.possibleWP(bitboards[Piece::WP], bitboards[Piece::BP], bitboards[Piece::EP])
+            + &self.possibleB(bitboards[Piece::WB])
+            + &self.possibleQ(bitboards[Piece::WQ])
+            + &self.possibleR(bitboards[Piece::WR])
+            + &self.possibleN(bitboards[Piece::WN])
+            + &self.possibleK(bitboards[Piece::WK])
             + &self.possibleCastleW(bitboards, cwK, cwQ)
     }
 
 
     pub fn possibleMovesB(&mut self, bitboards: [i64; 13], cbK: bool, cbQ: bool) -> String {
-        self.masks.not_allied_pieces = !(bitboards[Piece::BP.idx()]|bitboards[Piece::BN.idx()]|bitboards[Piece::BB.idx()]|bitboards[Piece::BR.idx()]|bitboards[Piece::BQ.idx()]|bitboards[Piece::BK.idx()]|bitboards[Piece::WK.idx()]); // avoid illegal wK capture
-        self.masks.enemy_pieces = bitboards[Piece::WP.idx()]|bitboards[Piece::WN.idx()]|bitboards[Piece::WB.idx()]|bitboards[Piece::WR.idx()]|bitboards[Piece::WQ.idx()]; // avoid illegal wK capture
-        self.masks.empty = !(bitboards[Piece::WP.idx()]|bitboards[Piece::WN.idx()]|bitboards[Piece::WB.idx()]|bitboards[Piece::WR.idx()]|bitboards[Piece::WQ.idx()]|bitboards[Piece::WK.idx()]|bitboards[Piece::BP.idx()]|bitboards[Piece::BN.idx()]|bitboards[Piece::BB.idx()]|bitboards[Piece::BR.idx()]|bitboards[Piece::BQ.idx()]|bitboards[Piece::BK.idx()]);
+        self.masks.not_allied_pieces = !(bitboards[Piece::BP]|bitboards[Piece::BN]|bitboards[Piece::BB]|bitboards[Piece::BR]|bitboards[Piece::BQ]|bitboards[Piece::BK]|bitboards[Piece::WK]); // avoid illegal wK capture
+        self.masks.enemy_pieces = bitboards[Piece::WP]|bitboards[Piece::WN]|bitboards[Piece::WB]|bitboards[Piece::WR]|bitboards[Piece::WQ]; // avoid illegal wK capture
+        self.masks.empty = !(bitboards[Piece::WP]|bitboards[Piece::WN]|bitboards[Piece::WB]|bitboards[Piece::WR]|bitboards[Piece::WQ]|bitboards[Piece::WK]|bitboards[Piece::BP]|bitboards[Piece::BN]|bitboards[Piece::BB]|bitboards[Piece::BR]|bitboards[Piece::BQ]|bitboards[Piece::BK]);
         self.masks.occupied = !self.masks.empty;
-        self.possibleBP(bitboards[Piece::WP.idx()], bitboards[Piece::BP.idx()], bitboards[Piece::EP.idx()])
-            + &self.possibleB(bitboards[Piece::BB.idx()])
-            + &self.possibleQ(bitboards[Piece::BQ.idx()])
-            + &self.possibleR(bitboards[Piece::BR.idx()])
-            + &self.possibleN(bitboards[Piece::BN.idx()])
-            + &self.possibleK(bitboards[Piece::BK.idx()])
+        self.possibleBP(bitboards[Piece::WP], bitboards[Piece::BP], bitboards[Piece::EP])
+            + &self.possibleB(bitboards[Piece::BB])
+            + &self.possibleQ(bitboards[Piece::BQ])
+            + &self.possibleR(bitboards[Piece::BR])
+            + &self.possibleN(bitboards[Piece::BN])
+            + &self.possibleK(bitboards[Piece::BK])
             + &self.possibleCastleB(bitboards, cbK, cbQ)
     }
 
@@ -544,13 +544,13 @@ impl Moves {
     fn possibleCastleW(&mut self, bitboards: [i64; 13], cwK: bool, cwQ: bool) -> String {
         let unsafe_w: i64 = self.unsafeForWhite(bitboards);
         let mut move_list: String = String::new(); // king move r1c1r2c1
-        if unsafe_w & bitboards[Piece::WK.idx()] == 0 {
-            if cwK && (((1 << self.castle_rooks[3]) & bitboards[Piece::WR.idx()]) != 0) {
+        if unsafe_w & bitboards[Piece::WK] == 0 {
+            if cwK && (((1 << self.castle_rooks[3]) & bitboards[Piece::WR]) != 0) {
                 if ((self.masks.occupied | unsafe_w) & ((1 << 1) | (1 << 2))) == 0 {
                     move_list += "7476";
                 }
             }
-            if cwQ && (((1 << self.castle_rooks[2]) & bitboards[Piece::WR.idx()]) != 0) {
+            if cwQ && (((1 << self.castle_rooks[2]) & bitboards[Piece::WR]) != 0) {
                 if ((self.masks.occupied | (unsafe_w & !(1 << 6))) & ((1 << 4) | (1 << 5) | (1 << 6))) == 0 {
                     move_list += "7472";
                 }
@@ -563,13 +563,13 @@ impl Moves {
     fn possibleCastleB(&mut self, bitboards: [i64; 13], cbK: bool, cbQ: bool) -> String {
         let unsafe_b = self.unsafeForBlack(bitboards);
         let mut move_list: String = String::new(); // king move r1c1r2c1
-        if unsafe_b & bitboards[Piece::BK.idx()] == 0 {
-            if cbK && (((1 << self.castle_rooks[1]) & bitboards[Piece::BR.idx()]) != 0) {
+        if unsafe_b & bitboards[Piece::BK] == 0 {
+            if cbK && (((1 << self.castle_rooks[1]) & bitboards[Piece::BR]) != 0) {
                 if ((self.masks.occupied | unsafe_b) & ((1 << 58) | (1 << 57))) == 0 {
                     move_list += "0406";
                 }
             }
-            if cbQ && (((1 << self.castle_rooks[0]) & bitboards[Piece::BR.idx()]) != 0) {
+            if cbQ && (((1 << self.castle_rooks[0]) & bitboards[Piece::BR]) != 0) {
                 if ((self.masks.occupied | (unsafe_b & !(1 << 62))) & ((1 << 62) | (1 << 61) | (1 << 60))) == 0 {
                     move_list += "0402";
                 }
@@ -602,13 +602,13 @@ impl Moves {
 
 
     pub fn unsafeForBlack(&mut self, mut bitboards: [i64; 13]) -> i64 {
-        self.masks.occupied = bitboards[Piece::WP.idx()]|bitboards[Piece::WN.idx()]|bitboards[Piece::WB.idx()]|bitboards[Piece::WR.idx()]|bitboards[Piece::WQ.idx()]|bitboards[Piece::WK.idx()]|bitboards[Piece::BP.idx()]|bitboards[Piece::BN.idx()]|bitboards[Piece::BB.idx()]|bitboards[Piece::BR.idx()]|bitboards[Piece::BQ.idx()]|bitboards[Piece::BK.idx()];
+        self.masks.occupied = bitboards[Piece::WP]|bitboards[Piece::WN]|bitboards[Piece::WB]|bitboards[Piece::WR]|bitboards[Piece::WQ]|bitboards[Piece::WK]|bitboards[Piece::BP]|bitboards[Piece::BN]|bitboards[Piece::BB]|bitboards[Piece::BR]|bitboards[Piece::BQ]|bitboards[Piece::BK];
         // pawn threats
-        let mut unsafe_b: i64 = (bitboards[Piece::WP.idx()] << 7) & !self.masks.file_masks[0]; // pawn right capture
-        unsafe_b |= (bitboards[Piece::WP.idx()] << 9) & !self.masks.file_masks[7]; // pawn left capture
+        let mut unsafe_b: i64 = (bitboards[Piece::WP] << 7) & !self.masks.file_masks[0]; // pawn right capture
+        unsafe_b |= (bitboards[Piece::WP] << 9) & !self.masks.file_masks[7]; // pawn left capture
 
         // knight threat
-        let mut knight: i64 = bitboards[Piece::WN.idx()] & !wrap_op!(bitboards[Piece::WN.idx()], 1, '-');
+        let mut knight: i64 = bitboards[Piece::WN] & !wrap_op!(bitboards[Piece::WN], 1, '-');
         let knight_span_c6_idx: usize = 18;
         while knight != 0 {
             let knight_idx: usize = knight.leading_zeros() as usize;
@@ -626,12 +626,12 @@ impl Moves {
                 moves &= !self.masks.file_ab;
             }
             unsafe_b |= moves;
-            bitboards[Piece::WN.idx()] &= !knight; // remove current knight
-            knight = bitboards[Piece::WN.idx()] & !wrap_op!(bitboards[Piece::WN.idx()], 1, '-');
+            bitboards[Piece::WN] &= !knight; // remove current knight
+            knight = bitboards[Piece::WN] & !wrap_op!(bitboards[Piece::WN], 1, '-');
         }
 
         // bishop / queen threats (diagonals)
-        let mut wQB: i64 = bitboards[Piece::WQ.idx()] | bitboards[Piece::WB.idx()];
+        let mut wQB: i64 = bitboards[Piece::WQ] | bitboards[Piece::WB];
         let mut b_or_q: i64 = wQB & !wrap_op!(wQB, 1, '-');
         while b_or_q != 0 {
             let b_or_q_idx: usize = b_or_q.leading_zeros() as usize;
@@ -642,7 +642,7 @@ impl Moves {
         }
 
         // rook / queen threats (hor and vert)
-        let mut wQR: i64 = bitboards[Piece::WQ.idx()] | bitboards[Piece::WR.idx()];
+        let mut wQR: i64 = bitboards[Piece::WQ] | bitboards[Piece::WR];
         let mut r_or_q: i64 = wQR & !wrap_op!(wQR, 1, '-');
         while r_or_q != 0 {
             let r_or_q_idx: usize = r_or_q.leading_zeros() as usize;
@@ -653,7 +653,7 @@ impl Moves {
         }
 
         // king threats
-        let mut king: i64 = bitboards[Piece::WK.idx()] & !wrap_op!(bitboards[Piece::WK.idx()], 1, '-');
+        let mut king: i64 = bitboards[Piece::WK] & !wrap_op!(bitboards[Piece::WK], 1, '-');
         let king_span_c7_idx: usize = 10;
         while king != 0 {
             let king_idx: usize = king.leading_zeros() as usize;
@@ -671,21 +671,21 @@ impl Moves {
                 moves &= !self.masks.file_ab;
             }
             unsafe_b |= moves;
-            bitboards[Piece::WK.idx()] &= !king; // remove current king
-            king = bitboards[Piece::WK.idx()] & !wrap_op!(bitboards[Piece::WK.idx()], 1, '-');
+            bitboards[Piece::WK] &= !king; // remove current king
+            king = bitboards[Piece::WK] & !wrap_op!(bitboards[Piece::WK], 1, '-');
         }
         unsafe_b
     }
 
 
     pub fn unsafeForWhite(&mut self, mut bitboards: [i64; 13]) -> i64 {
-        self.masks.occupied = bitboards[Piece::WP.idx()]|bitboards[Piece::WN.idx()]|bitboards[Piece::WB.idx()]|bitboards[Piece::WR.idx()]|bitboards[Piece::WQ.idx()]|bitboards[Piece::WK.idx()]|bitboards[Piece::BP.idx()]|bitboards[Piece::BN.idx()]|bitboards[Piece::BB.idx()]|bitboards[Piece::BR.idx()]|bitboards[Piece::BQ.idx()]|bitboards[Piece::BK.idx()];
+        self.masks.occupied = bitboards[Piece::WP]|bitboards[Piece::WN]|bitboards[Piece::WB]|bitboards[Piece::WR]|bitboards[Piece::WQ]|bitboards[Piece::WK]|bitboards[Piece::BP]|bitboards[Piece::BN]|bitboards[Piece::BB]|bitboards[Piece::BR]|bitboards[Piece::BQ]|bitboards[Piece::BK];
         // pawn threats
-        let mut unsafe_w: i64 = usgn_r_shift!(bitboards[Piece::BP.idx()], 7) & !self.masks.file_masks[7]; // pawn right capture
-        unsafe_w |= usgn_r_shift!(bitboards[Piece::BP.idx()], 9) & !self.masks.file_masks[0]; // pawn left capture
+        let mut unsafe_w: i64 = usgn_r_shift!(bitboards[Piece::BP], 7) & !self.masks.file_masks[7]; // pawn right capture
+        unsafe_w |= usgn_r_shift!(bitboards[Piece::BP], 9) & !self.masks.file_masks[0]; // pawn left capture
 
         // knight threat
-        let mut knight: i64 = bitboards[Piece::BN.idx()] & !wrap_op!(bitboards[Piece::BN.idx()], 1, '-');
+        let mut knight: i64 = bitboards[Piece::BN] & !wrap_op!(bitboards[Piece::BN], 1, '-');
         let knight_span_c6_idx: usize = 18;
         while knight != 0 {
             let knight_idx: usize = knight.leading_zeros() as usize;
@@ -703,12 +703,12 @@ impl Moves {
                 moves &= !self.masks.file_ab;
             }
             unsafe_w |= moves;
-            bitboards[Piece::BN.idx()] &= !knight; // remove current knight
-            knight = bitboards[Piece::BN.idx()] & !wrap_op!(bitboards[Piece::BN.idx()], 1, '-');
+            bitboards[Piece::BN] &= !knight; // remove current knight
+            knight = bitboards[Piece::BN] & !wrap_op!(bitboards[Piece::BN], 1, '-');
         }
 
         // bishop / queen threats (diagonals)
-        let mut bQB: i64 = bitboards[Piece::BQ.idx()] | bitboards[Piece::BB.idx()];
+        let mut bQB: i64 = bitboards[Piece::BQ] | bitboards[Piece::BB];
         let mut b_or_q: i64 = bQB & !wrap_op!(bQB, 1, '-');
         while b_or_q != 0 {
             let b_or_q_idx: usize = b_or_q.leading_zeros() as usize;
@@ -719,7 +719,7 @@ impl Moves {
         }
 
         // rook / queen threats (hor and vert)
-        let mut bQR: i64 = bitboards[Piece::BQ.idx()] | bitboards[Piece::BR.idx()];
+        let mut bQR: i64 = bitboards[Piece::BQ] | bitboards[Piece::BR];
         let mut r_or_q: i64 = bQR & !wrap_op!(bQR, 1, '-');
         while r_or_q != 0 {
             let r_or_q_idx: usize = r_or_q.leading_zeros() as usize;
@@ -730,7 +730,7 @@ impl Moves {
         }
 
         // king threats
-        let mut king = bitboards[Piece::BK.idx()] & !wrap_op!(bitboards[Piece::BK.idx()], 1, '-');
+        let mut king = bitboards[Piece::BK] & !wrap_op!(bitboards[Piece::BK], 1, '-');
         let king_span_c7_idx: usize = 10;
         while king != 0 {
             let king_idx: usize = king.leading_zeros() as usize;
@@ -748,8 +748,8 @@ impl Moves {
                 moves &= !self.masks.file_ab;
             }
             unsafe_w |= moves;
-            bitboards[Piece::BK.idx()] &= !king; // remove current king
-            king = bitboards[Piece::BK.idx()] & !wrap_op!(bitboards[Piece::BK.idx()], 1, '-');
+            bitboards[Piece::BK] &= !king; // remove current king
+            king = bitboards[Piece::BK] & !wrap_op!(bitboards[Piece::BK], 1, '-');
         }
         unsafe_w
     }
