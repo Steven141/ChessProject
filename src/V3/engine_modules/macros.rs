@@ -1,3 +1,6 @@
+//! Holds all project macros
+
+
 /// Macro to draw a bitboard
 #[macro_export]
 macro_rules! draw_array {

@@ -2,7 +2,7 @@
 
 
 use pyo3::prelude::*;
-use crate::engine_modules::special_bitboards::SpecialBitBoards;
+use crate::special_bitboards::SpecialBitBoards;
 use crate::piece::Piece;
 use std::str::from_utf8;
 use rand::thread_rng;

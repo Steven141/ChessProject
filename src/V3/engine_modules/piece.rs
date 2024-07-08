@@ -1,6 +1,7 @@
 //! Enumeration of the chess pieces
 
-use core::panic;
+
+#![allow(non_camel_case_types)]
 
 
 pub enum Piece {

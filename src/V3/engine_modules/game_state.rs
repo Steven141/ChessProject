@@ -2,9 +2,9 @@
 
 
 use pyo3::prelude::*;
-use crate::engine_modules::special_bitboards::SpecialBitBoards;
-use crate::engine_modules::moves::Moves;
-use crate::engine_modules::piece::Piece as Piece;
+use crate::special_bitboards::SpecialBitBoards;
+use crate::moves::Moves;
+use crate::piece::Piece;
 
 
 #[pyclass(module = "ChessProject", get_all, set_all)]

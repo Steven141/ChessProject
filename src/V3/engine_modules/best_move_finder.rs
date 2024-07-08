@@ -3,7 +3,7 @@
 
 use pyo3::prelude::*;
 use std::collections::HashMap;
-use crate::engine_modules::moves::Moves;
+use crate::moves::Moves;
 use crate::piece::Piece;
 use std::str::from_utf8;
 use rand::thread_rng;

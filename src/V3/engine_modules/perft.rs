@@ -2,8 +2,8 @@
 
 
 use pyo3::prelude::*;
-use crate::engine_modules::moves::Moves;
-use crate::engine_modules::piece::Piece;
+use crate::moves::Moves;
+use crate::piece::Piece;
 
 
 #[pyclass(module = "ChessProject", get_all, set_all)]
