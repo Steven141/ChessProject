@@ -3,7 +3,6 @@
 
 use pyo3::prelude::*;
 use std::collections::HashMap;
-use crate::castle_rights::CastleRights;
 use crate::moves::Moves;
 use crate::piece::Piece;
 use std::str::from_utf8;
@@ -159,7 +158,11 @@ impl BestMoveFinder {
             let castle_rights_t: [bool; 4] = mm.getNewCastleRights(&moves[i..i+4], castle_rights, bitboards);
 
             let is_valid_move: bool = ((bitboards_t[Piece::WK] & mm.unsafeForWhite(bitboards_t)) == 0 && whites_turn) || ((bitboards_t[Piece::BK] & mm.unsafeForBlack(bitboards_t)) == 0 && !whites_turn);
-            let is_attacking_move: bool = is_valid_move && ((bitboards[Piece::WP]|bitboards[Piece::WN]|bitboards[Piece::WB]|bitboards[Piece::WR]|bitboards[Piece::WQ]).count_ones() != (bitboards_t[Piece::WP]|bitboards_t[Piece::WN]|bitboards_t[Piece::WB]|bitboards_t[Piece::WR]|bitboards_t[Piece::WQ]).count_ones() || (bitboards[Piece::BP]|bitboards[Piece::BN]|bitboards[Piece::BB]|bitboards[Piece::BR]|bitboards[Piece::BQ]).count_ones() != (bitboards_t[Piece::BP]|bitboards_t[Piece::BN]|bitboards_t[Piece::BB]|bitboards_t[Piece::BR]|bitboards_t[Piece::BQ]).count_ones());
+            let is_attacking_move: bool = is_valid_move
+                && (
+                    or_array_elems!([Piece::WP, Piece::WN, Piece::WB, Piece::WR, Piece::WQ], bitboards).count_ones() != or_array_elems!([Piece::WP, Piece::WN, Piece::WB, Piece::WR, Piece::WQ], bitboards_t).count_ones()
+                    || or_array_elems!([Piece::BP, Piece::BN, Piece::BB, Piece::BR, Piece::BQ], bitboards).count_ones() != or_array_elems!([Piece::BP, Piece::BN, Piece::BB, Piece::BR, Piece::BQ], bitboards_t).count_ones()
+                );
             if is_attacking_move {
                 let score: i64 = -self.quiescenceSearch(-beta, -alpha, mm, bitboards_t, castle_rights_t, !whites_turn);
                 if score >= beta {
