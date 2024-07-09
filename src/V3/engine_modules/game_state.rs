@@ -278,11 +278,13 @@ impl GameState {
             self.recent_piece_captured = if self.whites_turn {'p'} else {'P'};
             self.recent_piece_moved = if self.whites_turn {'P'} else {'p'};
         } else if move_str.chars().nth(3).unwrap() == 'P' {
-            self.recent_piece_captured = self.board[if self.whites_turn {0} else {7}][move_str.chars().nth(1).unwrap().to_digit(10).unwrap() as usize];
+            let (_, c2, _, _) = move_to_u32s!(move_str);
+            self.recent_piece_captured = self.board[if self.whites_turn {0} else {7}][c2 as usize];
             self.recent_piece_moved = if self.whites_turn {'P'} else {'p'};
         } else {
-            self.recent_piece_captured = self.board[move_str.chars().nth(2).unwrap().to_digit(10).unwrap() as usize][move_str.chars().nth(3).unwrap().to_digit(10).unwrap() as usize];
-            self.recent_piece_moved = self.board[move_str.chars().nth(0).unwrap().to_digit(10).unwrap() as usize][move_str.chars().nth(1).unwrap().to_digit(10).unwrap() as usize];
+            let (r1, c1, r2, c2) = move_to_u32s!(move_str);
+            self.recent_piece_captured = self.board[r2 as usize][c2 as usize];
+            self.recent_piece_moved = self.board[r1 as usize][c1 as usize];
         }
 
         self.move_log.push_str(&move_str);

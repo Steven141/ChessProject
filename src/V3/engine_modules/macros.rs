@@ -1,6 +1,25 @@
 //! Holds all project macros
 
 
+/// Macro to convert the 4 characters of a move string as u32
+#[macro_export]
+macro_rules! move_to_u32s {
+    ($str:expr) => {{
+        if $str.chars().nth(3).unwrap().is_numeric() { // regular move
+            let r1: u32 = $str.chars().nth(0).unwrap().to_digit(10).unwrap();
+            let c1: u32 = $str.chars().nth(1).unwrap().to_digit(10).unwrap();
+            let r2: u32 = $str.chars().nth(2).unwrap().to_digit(10).unwrap();
+            let c2: u32 = $str.chars().nth(3).unwrap().to_digit(10).unwrap();
+            (r1, c1, r2, c2)
+        } else { // pawn promo or enpassant
+            let c1: u32 = $str.chars().nth(0).unwrap().to_digit(10).unwrap();
+            let c2: u32 = $str.chars().nth(1).unwrap().to_digit(10).unwrap();
+            (c1, c2, 0, 0)
+        }
+    }};
+}
+
+
 /*
 Macro to bitwise or elements of an array where elements
 are selected with an input array of indices
