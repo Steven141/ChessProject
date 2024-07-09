@@ -48,13 +48,12 @@ impl Moves {
         let mut valid_moves: String = String::new();
         for i in (0..moves.len()).step_by(4) {
             let bitboards_t: [i64; 13] = self.getUpdatedBitboards(&moves[i..i+4], bitboards);
-            let is_valid_move: bool = ((bitboards_t[Piece::WK] & self.unsafeForWhite(bitboards_t)) == 0 && whites_turn) || ((bitboards_t[Piece::BK] & self.unsafeForBlack(bitboards_t)) == 0 && !whites_turn);
-            if is_valid_move {
+            if self.isValidMove(bitboards_t, whites_turn) {
                 valid_moves += &moves[i..i+4];
             }
         }
         if valid_moves.len() == 0 {
-            if ((bitboards[Piece::WK] & self.unsafeForWhite(bitboards)) != 0 && whites_turn) || ((bitboards[Piece::BK] & self.unsafeForBlack(bitboards)) != 0 && !whites_turn) {
+            if self.isKingAttacked(bitboards, whites_turn) {
                 self.checkmate = true;
             } else {
                 self.stalemate = true;
@@ -796,5 +795,17 @@ impl Moves {
         bitboards_t[Piece::BR] = self.makeMoveCastle(bitboards_t[Piece::BR], bitboards[Piece::BK], move_str, 'r');
         bitboards_t[Piece::EP] = self.makeMoveEP(or_array_elems!([Piece::WP, Piece::BP], bitboards), move_str);
         bitboards_t
+    }
+
+
+    pub fn isValidMove(&mut self, bitboards: [i64; 13], whites_turn: bool) -> bool {
+        ((bitboards[Piece::WK] & self.unsafeForWhite(bitboards)) == 0 && whites_turn)
+            || ((bitboards[Piece::BK] & self.unsafeForBlack(bitboards)) == 0 && !whites_turn)
+    }
+
+
+    pub fn isKingAttacked(&mut self, bitboards: [i64; 13], whites_turn: bool) -> bool {
+        ((bitboards[Piece::WK] & self.unsafeForWhite(bitboards)) != 0 && whites_turn)
+            || ((bitboards[Piece::BK] & self.unsafeForBlack(bitboards)) != 0 && !whites_turn)
     }
 }

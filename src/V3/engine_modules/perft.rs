@@ -3,7 +3,6 @@
 
 use pyo3::prelude::*;
 use crate::moves::Moves;
-use crate::piece::Piece;
 
 
 #[pyclass(module = "ChessProject", get_all, set_all)]
@@ -38,8 +37,7 @@ impl Perft {
                 let bitboards_t: [i64; 13] = mm.getUpdatedBitboards(&moves[i..i+4], bitboards);
                 let castle_rights_t: [bool; 4] = mm.getUpdatedCastleRights(&moves[i..i+4], castle_rights, bitboards);
 
-                let is_valid_move: bool = ((bitboards_t[Piece::WK] & mm.unsafeForWhite(bitboards_t)) == 0 && whites_turn) || ((bitboards_t[Piece::BK] & mm.unsafeForBlack(bitboards_t)) == 0 && !whites_turn);
-                if is_valid_move {
+                if mm.isValidMove(bitboards_t, whites_turn) {
                     if depth + 1 == self.max_depth { // only count leaf nodes
                         self.move_counter += 1
                     }
@@ -63,8 +61,7 @@ impl Perft {
             let bitboards_t: [i64; 13] = mm.getUpdatedBitboards(&moves[i..i+4], bitboards);
             let castle_rights_t: [bool; 4] = mm.getUpdatedCastleRights(&moves[i..i+4], castle_rights, bitboards);
 
-            let is_valid_move: bool = ((bitboards_t[Piece::WK] & mm.unsafeForWhite(bitboards_t)) == 0 && whites_turn) || ((bitboards_t[Piece::BK] & mm.unsafeForBlack(bitboards_t)) == 0 && !whites_turn);
-            if is_valid_move {
+            if mm.isValidMove(bitboards_t, whites_turn) {
                 self.perft(mm, bitboards_t, castle_rights_t, !whites_turn, depth + 1);
                 println!("{} {}", move_to_algebra!(moves[i..i+4]), self.move_counter);
                 self.total_move_counter += self.move_counter;
