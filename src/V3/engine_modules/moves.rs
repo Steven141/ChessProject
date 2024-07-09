@@ -792,7 +792,8 @@ impl Moves {
         bitboards_t[Piece::BP] = self.makeMove(bitboards[Piece::BP], move_str, 'p'); bitboards_t[Piece::BN] = self.makeMove(bitboards[Piece::BN], move_str, 'n');
         bitboards_t[Piece::BB] = self.makeMove(bitboards[Piece::BB], move_str, 'b'); bitboards_t[Piece::BR] = self.makeMove(bitboards[Piece::BR], move_str, 'r');
         bitboards_t[Piece::BQ] = self.makeMove(bitboards[Piece::BQ], move_str, 'q'); bitboards_t[Piece::BK] = self.makeMove(bitboards[Piece::BK], move_str, 'k');
-        bitboards_t[Piece::WR] = self.makeMoveCastle(bitboards_t[Piece::WR], bitboards[Piece::WK], move_str, 'R'); bitboards_t[Piece::BR] = self.makeMoveCastle(bitboards_t[Piece::BR], bitboards[Piece::BK], move_str, 'r');
+        bitboards_t[Piece::WR] = self.makeMoveCastle(bitboards_t[Piece::WR], bitboards[Piece::WK], move_str, 'R');
+        bitboards_t[Piece::BR] = self.makeMoveCastle(bitboards_t[Piece::BR], bitboards[Piece::BK], move_str, 'r');
         bitboards_t[Piece::EP] = self.makeMoveEP(or_array_elems!([Piece::WP, Piece::BP], bitboards), move_str);
         bitboards_t
     }

@@ -269,7 +269,7 @@ impl GameState {
     }
 
 
-    fn makeMove(&mut self, mm: &mut Moves, move_str: String) {
+    fn makeMove(&mut self, mm: &Moves, move_str: String) {
         if move_str.chars().nth(3).unwrap() == 'E' {
             self.recent_piece_captured = if self.whites_turn {'p'} else {'P'};
             self.recent_piece_moved = if self.whites_turn {'P'} else {'p'};
