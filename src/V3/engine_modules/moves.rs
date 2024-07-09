@@ -809,4 +809,10 @@ impl Moves {
         ((bitboards[Piece::WK] & self.unsafeForWhite(bitboards)) != 0 && whites_turn)
             || ((bitboards[Piece::BK] & self.unsafeForBlack(bitboards)) != 0 && !whites_turn)
     }
+
+
+    /// Alias so conversion can be done in python as well
+    fn moveToAlgebra(&self, move_str: &str) -> String {
+        move_to_algebra!(&move_str)
+    }
 }

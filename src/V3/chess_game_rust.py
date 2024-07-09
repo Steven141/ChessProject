@@ -6,6 +6,7 @@ Handles user input and displays current game state information.
 
 
 import pygame as pg
+import argparse as argp
 import ai_move_finder_rust
 import ChessProject # rust engine library
 
@@ -33,6 +34,14 @@ def loadImages() -> None:
 
 
 def main() -> None:
+    parser = argp.ArgumentParser(description="Debug Mode")
+    parser.add_argument(
+        '-d',
+        action='store_true',
+        help='A boolean flag to activate some feature'
+    )
+    args = parser.parse_args()
+
     pg.init()
     screen = pg.display.set_mode((BOARD_WIDTH + MOVE_LOG_PANEL_WIDTH, BOARD_HEIGHT))
     clk = pg.time.Clock()
@@ -49,8 +58,20 @@ def main() -> None:
     sq_selected: tuple[int] = () # last click of user (row, col)
     player_clicks: list[tuple[int]] = [] # keep track of selected squares
     game_over = False
-    player_one = True # True if human is playing white. False if AI is playing
-    player_two = False # True if human is playing black. False if AI is playing
+    if args.d:
+        player_one = True # True if human is playing white. False if AI is playing
+        player_two = False # True if human is playing black. False if AI is playing
+    else:
+        while True:
+            play_as_white = input("Would you like to play as white?\nEnter y or n: ")
+            if play_as_white == 'y':
+                player_one = True
+                player_two = False
+                break
+            elif play_as_white == 'n':
+                player_one = False
+                player_two = True
+                break
 
     ai_thinking = False
     move_undone = False
@@ -124,7 +145,7 @@ def main() -> None:
             animate = False
             move_undone = False
 
-        drawGameState(screen, gs, valid_moves, sq_selected, move_log_font)
+        drawGameState(screen, gs, valid_moves, sq_selected, move_log_font, m)
 
         if valid_moves == '':
             game_over = True
@@ -137,11 +158,11 @@ def main() -> None:
 """
 Responsible for all the graphics within a current game state
 """
-def drawGameState(screen, game_state, valid_moves, sq_selected, move_log_font) -> None:
+def drawGameState(screen, game_state, valid_moves, sq_selected, move_log_font, m) -> None:
     drawBoard(screen)
     highlightSquares(screen, game_state, valid_moves, sq_selected)
     drawPieces(screen, game_state.board)
-    # drawMoveLog(screen, game_state, move_log_font) TODO
+    drawMoveLog(screen, game_state, move_log_font, m)
 
 
 """
@@ -194,18 +215,17 @@ def drawPieces(screen, board, skip_sq=()) -> None:
 """
 Draw the move log
 """
-def drawMoveLog(screen, game_state, font) -> None:
+def drawMoveLog(screen, game_state, font, m) -> None:
     move_log_rect = pg.Rect(BOARD_WIDTH, 0, MOVE_LOG_PANEL_WIDTH, MOVE_LOG_PANEL_HEIGHT)
     pg.draw.rect(screen, pg.Color('black'), move_log_rect)
     move_log = game_state.move_log
-    move_texts = []
-    for i in range(0, len(move_log), 2):
-        move_str = f'{i//2 + 1}. {move_log[i]} '
-        if i+1 < len(move_log):
-            move_str += str(move_log[i+1]) + ' '
-        move_texts.append(move_str)
+    move_texts = [f"   {m.moveToAlgebra(move_log[i:i+4])}" for i in range(0, len(move_log), 4)]
+    for i in range(0, len(move_texts), 2):
+        move_count = i//2 + 1
+        white_space = "             " if move_count % 2 == 0 else "    "
+        move_texts[i] = f"{white_space}{i//2+1}.{move_texts[i]}"
 
-    moves_per_row = 3
+    moves_per_row = 4
     padding = 5
     line_spacing = 2
     text_y = padding
