@@ -27,12 +27,7 @@ impl Perft {
 
     fn perft(&mut self, mm: &mut Moves, bitboards: [i64; 13], castle_rights: [bool; 4], whites_turn: bool, depth: u32) {
         if depth < self.max_depth {
-            let moves: String;
-            if whites_turn {
-                moves = mm.possibleMovesW(bitboards, castle_rights);
-            } else {
-                moves = mm.possibleMovesB(bitboards, castle_rights);
-            }
+            let moves: String = mm.getPossibleMoves(bitboards, castle_rights, whites_turn);
             for i in (0..moves.len()).step_by(4) {
                 let bitboards_t: [i64; 13] = mm.getUpdatedBitboards(&moves[i..i+4], bitboards);
                 let castle_rights_t: [bool; 4] = mm.getUpdatedCastleRights(&moves[i..i+4], castle_rights, bitboards);
@@ -51,12 +46,7 @@ impl Perft {
 
 
     fn perftRoot(&mut self, mm: &mut Moves, bitboards: [i64; 13], castle_rights: [bool; 4], whites_turn: bool, depth: u32) {
-        let moves: String;
-        if whites_turn {
-            moves = mm.possibleMovesW(bitboards, castle_rights);
-        } else {
-            moves = mm.possibleMovesB(bitboards, castle_rights);
-        }
+        let moves: String = mm.getPossibleMoves(bitboards, castle_rights, whites_turn);
         for i in (0..moves.len()).step_by(4) {
             let bitboards_t: [i64; 13] = mm.getUpdatedBitboards(&moves[i..i+4], bitboards);
             let castle_rights_t: [bool; 4] = mm.getUpdatedCastleRights(&moves[i..i+4], castle_rights, bitboards);

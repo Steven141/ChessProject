@@ -134,12 +134,7 @@ impl BestMoveFinder {
         if eval > alpha {
             alpha = eval;
         }
-        let moves: String;
-        if whites_turn {
-            moves = mm.possibleMovesW(bitboards, castle_rights);
-        } else {
-            moves = mm.possibleMovesB(bitboards, castle_rights);
-        }
+        let moves: String = mm.getPossibleMoves(bitboards, castle_rights, whites_turn);
         for i in (0..moves.len()).step_by(4) {
             let bitboards_t: [i64; 13] = mm.getUpdatedBitboards(&moves[i..i+4], bitboards);
             let castle_rights_t: [bool; 4] = mm.getUpdatedCastleRights(&moves[i..i+4], castle_rights, bitboards);
@@ -175,12 +170,7 @@ impl BestMoveFinder {
         }
         self.move_counter += 1;
         let mut best_score: i64 = -self.mate_score;
-        let mut moves: String;
-        if whites_turn {
-            moves = mm.possibleMovesW(bitboards, castle_rights);
-        } else {
-            moves = mm.possibleMovesB(bitboards, castle_rights);
-        }
+        let mut moves: String = mm.getPossibleMoves(bitboards, castle_rights, whites_turn);
         if depth == 0 {
             // TODO: look to replace shuffling with sorting
             println!("Search Depth: {:?}", self.search_depth);

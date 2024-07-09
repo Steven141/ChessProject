@@ -33,12 +33,7 @@ impl Moves {
 
 
     pub fn getValidMoves(&mut self, bitboards: [i64; 13], castle_rights: [bool; 4], whites_turn: bool, depth: u32) -> String {
-        let mut moves: String;
-        if whites_turn {
-            moves = self.possibleMovesW(bitboards, castle_rights);
-        } else {
-            moves = self.possibleMovesB(bitboards, castle_rights);
-        }
+        let mut moves: String = self.getPossibleMoves(bitboards, castle_rights, whites_turn);
         if depth == 0 {
             // TODO: look to replace shuffling with sorting
             let mut move_groups: Vec<&str> = moves.as_bytes().chunks(4).map(|chunk| from_utf8(chunk).unwrap()).collect();
@@ -167,6 +162,12 @@ impl Moves {
             }
         }
         0
+    }
+
+
+    pub fn getPossibleMoves(&mut self, bitboards: [i64; 13], castle_rights: [bool; 4], whites_turn: bool) -> String {
+        if whites_turn {self.possibleMovesW(bitboards, castle_rights)}
+        else {self.possibleMovesB(bitboards, castle_rights)}
     }
 
 
