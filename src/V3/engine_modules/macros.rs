@@ -1,6 +1,20 @@
 //! Holds all project macros
 
 
+/*
+Macro to bitwise or elements of an array where elements
+are selected with an input array of indices
+*/
+#[macro_export]
+macro_rules! or_array_elems {
+    ($idxs:expr, $array:expr) => {
+        $idxs.iter()
+            .map(|&i| $array[i])
+            .fold(0, |acc, x| acc | x)
+    };
+}
+
+
 /// Macro to draw a bitboard
 #[macro_export]
 macro_rules! draw_array {
