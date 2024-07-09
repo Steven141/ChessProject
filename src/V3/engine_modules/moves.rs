@@ -756,7 +756,7 @@ impl Moves {
     }
 
 
-    pub fn getNewCastleRights(&self, move_str: &str, castle_rights: [bool; 4], bitboards: [i64; 13]) -> [bool; 4] {
+    pub fn getUpdatedCastleRights(&self, move_str: &str, castle_rights: [bool; 4], bitboards: [i64; 13]) -> [bool; 4] {
         let mut castle_rights_t: [bool; 4] = castle_rights;
         if move_str.chars().nth(3).unwrap().is_numeric() {
             let m1: u32 = move_str.chars().nth(0).unwrap().to_digit(10).unwrap();
@@ -797,5 +797,19 @@ impl Moves {
             }
         }
         castle_rights_t
+    }
+
+
+    pub fn getUpdatedBitboards(&self, move_str: &str, bitboards: [i64; 13]) -> [i64; 13] {
+        let mut bitboards_t: [i64; 13] = [0; 13];
+        bitboards_t[Piece::WP] = self.makeMove(bitboards[Piece::WP], move_str.to_string(), 'P'); bitboards_t[Piece::WN] = self.makeMove(bitboards[Piece::WN], move_str.to_string(), 'N');
+        bitboards_t[Piece::WB] = self.makeMove(bitboards[Piece::WB], move_str.to_string(), 'B'); bitboards_t[Piece::WR] = self.makeMove(bitboards[Piece::WR], move_str.to_string(), 'R');
+        bitboards_t[Piece::WQ] = self.makeMove(bitboards[Piece::WQ], move_str.to_string(), 'Q'); bitboards_t[Piece::WK] = self.makeMove(bitboards[Piece::WK], move_str.to_string(), 'K');
+        bitboards_t[Piece::BP] = self.makeMove(bitboards[Piece::BP], move_str.to_string(), 'p'); bitboards_t[Piece::BN] = self.makeMove(bitboards[Piece::BN], move_str.to_string(), 'n');
+        bitboards_t[Piece::BB] = self.makeMove(bitboards[Piece::BB], move_str.to_string(), 'b'); bitboards_t[Piece::BR] = self.makeMove(bitboards[Piece::BR], move_str.to_string(), 'r');
+        bitboards_t[Piece::BQ] = self.makeMove(bitboards[Piece::BQ], move_str.to_string(), 'q'); bitboards_t[Piece::BK] = self.makeMove(bitboards[Piece::BK], move_str.to_string(), 'k');
+        bitboards_t[Piece::WR] = self.makeMoveCastle(bitboards_t[Piece::WR], bitboards[Piece::WK], move_str.to_string(), 'R'); bitboards_t[Piece::BR] = self.makeMoveCastle(bitboards_t[Piece::BR], bitboards[Piece::BK], move_str.to_string(), 'r');
+        bitboards_t[Piece::EP] = self.makeMoveEP(or_array_elems!([Piece::WP, Piece::BP], bitboards), move_str.to_string());
+        bitboards_t
     }
 }

@@ -35,17 +35,8 @@ impl Perft {
                 moves = mm.possibleMovesB(bitboards, castle_rights);
             }
             for i in (0..moves.len()).step_by(4) {
-                let mut bitboards_t: [i64; 13] = [0; 13];
-                bitboards_t[Piece::WP] = mm.makeMove(bitboards[Piece::WP], moves[i..i+4].to_string(), 'P'); bitboards_t[Piece::WN] = mm.makeMove(bitboards[Piece::WN], moves[i..i+4].to_string(), 'N');
-                bitboards_t[Piece::WB] = mm.makeMove(bitboards[Piece::WB], moves[i..i+4].to_string(), 'B'); bitboards_t[Piece::WR] = mm.makeMove(bitboards[Piece::WR], moves[i..i+4].to_string(), 'R');
-                bitboards_t[Piece::WQ] = mm.makeMove(bitboards[Piece::WQ], moves[i..i+4].to_string(), 'Q'); bitboards_t[Piece::WK] = mm.makeMove(bitboards[Piece::WK], moves[i..i+4].to_string(), 'K');
-                bitboards_t[Piece::BP] = mm.makeMove(bitboards[Piece::BP], moves[i..i+4].to_string(), 'p'); bitboards_t[Piece::BN] = mm.makeMove(bitboards[Piece::BN], moves[i..i+4].to_string(), 'n');
-                bitboards_t[Piece::BB] = mm.makeMove(bitboards[Piece::BB], moves[i..i+4].to_string(), 'b'); bitboards_t[Piece::BR] = mm.makeMove(bitboards[Piece::BR], moves[i..i+4].to_string(), 'r');
-                bitboards_t[Piece::BQ] = mm.makeMove(bitboards[Piece::BQ], moves[i..i+4].to_string(), 'q'); bitboards_t[Piece::BK] = mm.makeMove(bitboards[Piece::BK], moves[i..i+4].to_string(), 'k');
-                bitboards_t[Piece::WR] = mm.makeMoveCastle(bitboards_t[Piece::WR], bitboards[Piece::WK], moves[i..i+4].to_string(), 'R'); bitboards_t[Piece::BR] = mm.makeMoveCastle(bitboards_t[Piece::BR], bitboards[Piece::BK], moves[i..i+4].to_string(), 'r');
-                bitboards_t[Piece::EP] = mm.makeMoveEP(or_array_elems!([Piece::WP, Piece::BP], bitboards), moves[i..i+4].to_string());
-
-                let castle_rights_t: [bool; 4] = mm.getNewCastleRights(&moves[i..i+4], castle_rights, bitboards);
+                let bitboards_t: [i64; 13] = mm.getUpdatedBitboards(&moves[i..i+4], bitboards);
+                let castle_rights_t: [bool; 4] = mm.getUpdatedCastleRights(&moves[i..i+4], castle_rights, bitboards);
 
                 if ((bitboards_t[Piece::WK] & mm.unsafeForWhite(bitboards_t)) == 0 && whites_turn) || ((bitboards_t[Piece::BK] & mm.unsafeForBlack(bitboards_t)) == 0 && !whites_turn) {
                     if depth + 1 == self.max_depth { // only count leaf nodes
@@ -69,17 +60,8 @@ impl Perft {
             moves = mm.possibleMovesB(bitboards, castle_rights);
         }
         for i in (0..moves.len()).step_by(4) {
-            let mut bitboards_t: [i64; 13] = [0; 13];
-            bitboards_t[Piece::WP] = mm.makeMove(bitboards[Piece::WP], moves[i..i+4].to_string(), 'P'); bitboards_t[Piece::WN] = mm.makeMove(bitboards[Piece::WN], moves[i..i+4].to_string(), 'N');
-            bitboards_t[Piece::WB] = mm.makeMove(bitboards[Piece::WB], moves[i..i+4].to_string(), 'B'); bitboards_t[Piece::WR] = mm.makeMove(bitboards[Piece::WR], moves[i..i+4].to_string(), 'R');
-            bitboards_t[Piece::WQ] = mm.makeMove(bitboards[Piece::WQ], moves[i..i+4].to_string(), 'Q'); bitboards_t[Piece::WK] = mm.makeMove(bitboards[Piece::WK], moves[i..i+4].to_string(), 'K');
-            bitboards_t[Piece::BP] = mm.makeMove(bitboards[Piece::BP], moves[i..i+4].to_string(), 'p'); bitboards_t[Piece::BN] = mm.makeMove(bitboards[Piece::BN], moves[i..i+4].to_string(), 'n');
-            bitboards_t[Piece::BB] = mm.makeMove(bitboards[Piece::BB], moves[i..i+4].to_string(), 'b'); bitboards_t[Piece::BR] = mm.makeMove(bitboards[Piece::BR], moves[i..i+4].to_string(), 'r');
-            bitboards_t[Piece::BQ] = mm.makeMove(bitboards[Piece::BQ], moves[i..i+4].to_string(), 'q'); bitboards_t[Piece::BK] = mm.makeMove(bitboards[Piece::BK], moves[i..i+4].to_string(), 'k');
-            bitboards_t[Piece::WR] = mm.makeMoveCastle(bitboards_t[Piece::WR], bitboards[Piece::WK], moves[i..i+4].to_string(), 'R'); bitboards_t[Piece::BR] = mm.makeMoveCastle(bitboards_t[Piece::BR], bitboards[Piece::BK], moves[i..i+4].to_string(), 'r');
-            bitboards_t[Piece::EP] = mm.makeMoveEP(or_array_elems!([Piece::WP, Piece::BP], bitboards), moves[i..i+4].to_string());
-
-            let castle_rights_t: [bool; 4] = mm.getNewCastleRights(&moves[i..i+4], castle_rights, bitboards);
+            let bitboards_t: [i64; 13] = mm.getUpdatedBitboards(&moves[i..i+4], bitboards);
+            let castle_rights_t: [bool; 4] = mm.getUpdatedCastleRights(&moves[i..i+4], castle_rights, bitboards);
 
             if ((bitboards_t[Piece::WK] & mm.unsafeForWhite(bitboards_t)) == 0 && whites_turn) || ((bitboards_t[Piece::BK] & mm.unsafeForBlack(bitboards_t)) == 0 && !whites_turn) {
                 self.perft(mm, bitboards_t, castle_rights_t, !whites_turn, depth + 1);

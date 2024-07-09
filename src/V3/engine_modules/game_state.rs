@@ -287,17 +287,8 @@ impl GameState {
 
         self.move_log.push_str(&move_str);
         let bitboards_cached: [i64; 13] = self.bitboards;
-
-        self.bitboards[Piece::WP] = mm.makeMove(self.bitboards[Piece::WP], move_str.clone(), 'P'); self.bitboards[Piece::WN] = mm.makeMove(self.bitboards[Piece::WN], move_str.clone(), 'N');
-        self.bitboards[Piece::WB] = mm.makeMove(self.bitboards[Piece::WB], move_str.clone(), 'B'); self.bitboards[Piece::WR] = mm.makeMove(self.bitboards[Piece::WR], move_str.clone(), 'R');
-        self.bitboards[Piece::WQ] = mm.makeMove(self.bitboards[Piece::WQ], move_str.clone(), 'Q'); self.bitboards[Piece::WK] = mm.makeMove(self.bitboards[Piece::WK], move_str.clone(), 'K');
-        self.bitboards[Piece::BP] = mm.makeMove(self.bitboards[Piece::BP], move_str.clone(), 'p'); self.bitboards[Piece::BN] = mm.makeMove(self.bitboards[Piece::BN], move_str.clone(), 'n');
-        self.bitboards[Piece::BB] = mm.makeMove(self.bitboards[Piece::BB], move_str.clone(), 'b'); self.bitboards[Piece::BR] = mm.makeMove(self.bitboards[Piece::BR], move_str.clone(), 'r');
-        self.bitboards[Piece::BQ] = mm.makeMove(self.bitboards[Piece::BQ], move_str.clone(), 'q'); self.bitboards[Piece::BK] = mm.makeMove(self.bitboards[Piece::BK], move_str.clone(), 'k');
-        self.bitboards[Piece::WR] = mm.makeMoveCastle(self.bitboards[Piece::WR], bitboards_cached[Piece::WK], move_str.clone(), 'R'); self.bitboards[Piece::BR] = mm.makeMoveCastle(self.bitboards[Piece::BR], bitboards_cached[Piece::BK], move_str.clone(), 'r');
-        self.bitboards[Piece::EP] = mm.makeMoveEP(or_array_elems!([Piece::WP, Piece::BP], bitboards_cached), move_str.clone());
-
-        self.castle_rights = mm.getNewCastleRights(&move_str, self.castle_rights, bitboards_cached);
+        self.bitboards = mm.getUpdatedBitboards(&move_str, self.bitboards);
+        self.castle_rights = mm.getUpdatedCastleRights(&move_str, self.castle_rights, bitboards_cached);
 
         self.whites_turn = !self.whites_turn;
         self.updateBoardArray();
