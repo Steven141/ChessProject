@@ -754,4 +754,48 @@ impl Moves {
         }
         unsafe_w
     }
+
+
+    pub fn getNewCastleRights(&self, move_str: &str, castle_rights: [bool; 4], bitboards: [i64; 13]) -> [bool; 4] {
+        let mut castle_rights_t: [bool; 4] = castle_rights;
+        if move_str.chars().nth(3).unwrap().is_numeric() {
+            let m1: u32 = move_str.chars().nth(0).unwrap().to_digit(10).unwrap();
+            let m2: u32 = move_str.chars().nth(1).unwrap().to_digit(10).unwrap();
+            let m3: u32 = move_str.chars().nth(2).unwrap().to_digit(10).unwrap();
+            let m4: u32 = move_str.chars().nth(3).unwrap().to_digit(10).unwrap();
+            let start_shift: u32 = 64 - 1 - (m1 * 8 + m2);
+            let end_shift: u32 = 64 - 1 - (m3 * 8 + m4);
+            if ((1 << start_shift) & bitboards[Piece::WK]) != 0 { // white king move
+                (castle_rights_t[CastleRights::CWK], castle_rights_t[CastleRights::CWQ]) = (false, false);
+            }
+            if ((1 << start_shift) & bitboards[Piece::BK]) != 0 { // black king move
+                (castle_rights_t[CastleRights::CBK], castle_rights_t[CastleRights::CBQ]) = (false, false);
+            }
+            if ((1 << start_shift) & bitboards[Piece::WR] & 1) != 0 { // white king side rook move
+                castle_rights_t[CastleRights::CWK] = false;
+            }
+            if ((1 << start_shift) & bitboards[Piece::WR] & (1 << 7)) != 0 { // white queen side rook move
+                castle_rights_t[CastleRights::CWQ] = false;
+            }
+            if ((1 << start_shift) & bitboards[Piece::BR] & (1 << 56)) != 0 { // black king side rook move
+                castle_rights_t[CastleRights::CBK] = false;
+            }
+            if ((1 << start_shift) & bitboards[Piece::BR] & (1 << 63)) != 0 { // black queen side rook move
+                castle_rights_t[CastleRights::CBQ] = false;
+            }
+            if (((1 as i64) << end_shift) & 1) != 0 { // white king side rook taken
+                castle_rights_t[CastleRights::CWK] = false;
+            }
+            if (((1 as i64) << end_shift) & (1 << 7)) != 0 { // white queen side rook taken
+                castle_rights_t[CastleRights::CWQ] = false;
+            }
+            if ((1 << end_shift) & ((1 as i64) << 56)) != 0 { // black king side rook taken
+                castle_rights_t[CastleRights::CBK] = false;
+            }
+            if ((1 << end_shift) & ((1 as i64) << 63)) != 0 { // black queen side rook taken
+                castle_rights_t[CastleRights::CBQ] = false;
+            }
+        }
+        castle_rights_t
+    }
 }

@@ -284,13 +284,9 @@ impl GameState {
             self.recent_piece_captured = self.board[move_str.chars().nth(2).unwrap().to_digit(10).unwrap() as usize][move_str.chars().nth(3).unwrap().to_digit(10).unwrap() as usize];
             self.recent_piece_moved = self.board[move_str.chars().nth(0).unwrap().to_digit(10).unwrap() as usize][move_str.chars().nth(1).unwrap().to_digit(10).unwrap() as usize];
         }
+
         self.move_log.push_str(&move_str);
-        let wK_cached: i64 = self.bitboards[Piece::WK];
-        let bK_cached: i64 = self.bitboards[Piece::BK];
-        let wR_cached: i64 = self.bitboards[Piece::WR];
-        let bR_cached: i64 = self.bitboards[Piece::BR];
-        let wP_cached: i64 = self.bitboards[Piece::WP];
-        let bP_cached: i64 = self.bitboards[Piece::BP];
+        let bitboards_cached: [i64; 13] = self.bitboards;
 
         self.bitboards[Piece::WP] = mm.makeMove(self.bitboards[Piece::WP], move_str.clone(), 'P'); self.bitboards[Piece::WN] = mm.makeMove(self.bitboards[Piece::WN], move_str.clone(), 'N');
         self.bitboards[Piece::WB] = mm.makeMove(self.bitboards[Piece::WB], move_str.clone(), 'B'); self.bitboards[Piece::WR] = mm.makeMove(self.bitboards[Piece::WR], move_str.clone(), 'R');
@@ -298,47 +294,10 @@ impl GameState {
         self.bitboards[Piece::BP] = mm.makeMove(self.bitboards[Piece::BP], move_str.clone(), 'p'); self.bitboards[Piece::BN] = mm.makeMove(self.bitboards[Piece::BN], move_str.clone(), 'n');
         self.bitboards[Piece::BB] = mm.makeMove(self.bitboards[Piece::BB], move_str.clone(), 'b'); self.bitboards[Piece::BR] = mm.makeMove(self.bitboards[Piece::BR], move_str.clone(), 'r');
         self.bitboards[Piece::BQ] = mm.makeMove(self.bitboards[Piece::BQ], move_str.clone(), 'q'); self.bitboards[Piece::BK] = mm.makeMove(self.bitboards[Piece::BK], move_str.clone(), 'k');
-        self.bitboards[Piece::WR] = mm.makeMoveCastle(self.bitboards[Piece::WR], wK_cached, move_str.clone(), 'R'); self.bitboards[Piece::BR] = mm.makeMoveCastle(self.bitboards[Piece::BR], bK_cached, move_str.clone(), 'r');
-        self.bitboards[Piece::EP] = mm.makeMoveEP(wP_cached|bP_cached, move_str.clone());
+        self.bitboards[Piece::WR] = mm.makeMoveCastle(self.bitboards[Piece::WR], bitboards_cached[Piece::WK], move_str.clone(), 'R'); self.bitboards[Piece::BR] = mm.makeMoveCastle(self.bitboards[Piece::BR], bitboards_cached[Piece::BK], move_str.clone(), 'r');
+        self.bitboards[Piece::EP] = mm.makeMoveEP(or_array_elems!([Piece::WP, Piece::BP], bitboards_cached), move_str.clone());
 
-        if move_str.chars().nth(3).unwrap().is_numeric() {
-            let m1: u32 = move_str.chars().nth(0).unwrap().to_digit(10).unwrap();
-            let m2: u32 = move_str.chars().nth(1).unwrap().to_digit(10).unwrap();
-            let m3: u32 = move_str.chars().nth(2).unwrap().to_digit(10).unwrap();
-            let m4: u32 = move_str.chars().nth(3).unwrap().to_digit(10).unwrap();
-            let start_shift: u32 = 64 - 1 - (m1 * 8 + m2);
-            let end_shift: u32 = 64 - 1 - (m3 * 8 + m4);
-            if ((1 << start_shift) & wK_cached) != 0 { // white king move
-                (self.castle_rights[CastleRights::CWK], self.castle_rights[CastleRights::CWQ]) = (false, false);
-            }
-            if ((1 << start_shift) & bK_cached) != 0 { // black king move
-                (self.castle_rights[CastleRights::CBK], self.castle_rights[CastleRights::CBQ]) = (false, false);
-            }
-            if ((1 << start_shift) & wR_cached & 1) != 0 { // white king side rook move
-                self.castle_rights[CastleRights::CWK] = false;
-            }
-            if ((1 << start_shift) & wR_cached & (1 << 7)) != 0 { // white queen side rook move
-                self.castle_rights[CastleRights::CWQ] = false;
-            }
-            if ((1 << start_shift) & bR_cached & (1 << 56)) != 0 { // black king side rook move
-                self.castle_rights[CastleRights::CBK] = false;
-            }
-            if ((1 << start_shift) & bR_cached & (1 << 63)) != 0 { // black queen side rook move
-                self.castle_rights[CastleRights::CBQ] = false;
-            }
-            if (((1 as i64) << end_shift) & 1) != 0 { // white king side rook taken
-                self.castle_rights[CastleRights::CWK] = false;
-            }
-            if (((1 as i64) << end_shift) & (1 << 7)) != 0 { // white queen side rook taken
-                self.castle_rights[CastleRights::CWQ] = false;
-            }
-            if ((1 << end_shift) & ((1 as i64) << 56)) != 0 { // black king side rook taken
-                self.castle_rights[CastleRights::CBK] = false;
-            }
-            if ((1 << end_shift) & ((1 as i64) << 63)) != 0 { // black queen side rook taken
-                self.castle_rights[CastleRights::CBQ] = false;
-            }
-        }
+        self.castle_rights = mm.getNewCastleRights(&move_str, self.castle_rights, bitboards_cached);
 
         self.whites_turn = !self.whites_turn;
         self.updateBoardArray();

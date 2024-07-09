@@ -2,7 +2,6 @@
 
 
 use pyo3::prelude::*;
-use crate::castle_rights::CastleRights;
 use crate::moves::Moves;
 use crate::piece::Piece;
 
@@ -44,48 +43,9 @@ impl Perft {
                 bitboards_t[Piece::BB] = mm.makeMove(bitboards[Piece::BB], moves[i..i+4].to_string(), 'b'); bitboards_t[Piece::BR] = mm.makeMove(bitboards[Piece::BR], moves[i..i+4].to_string(), 'r');
                 bitboards_t[Piece::BQ] = mm.makeMove(bitboards[Piece::BQ], moves[i..i+4].to_string(), 'q'); bitboards_t[Piece::BK] = mm.makeMove(bitboards[Piece::BK], moves[i..i+4].to_string(), 'k');
                 bitboards_t[Piece::WR] = mm.makeMoveCastle(bitboards_t[Piece::WR], bitboards[Piece::WK], moves[i..i+4].to_string(), 'R'); bitboards_t[Piece::BR] = mm.makeMoveCastle(bitboards_t[Piece::BR], bitboards[Piece::BK], moves[i..i+4].to_string(), 'r');
-                bitboards_t[Piece::EP] = mm.makeMoveEP(bitboards[Piece::WP] | bitboards[Piece::BP], moves[i..i+4].to_string());
+                bitboards_t[Piece::EP] = mm.makeMoveEP(or_array_elems!([Piece::WP, Piece::BP], bitboards), moves[i..i+4].to_string());
 
-                let mut castle_rights_t: [bool; 4] = castle_rights;
-
-                if moves.chars().nth(i + 3).unwrap().is_numeric() {
-                    let m1: u32 = moves.chars().nth(i).unwrap().to_digit(10).unwrap();
-                    let m2: u32 = moves.chars().nth(i + 1).unwrap().to_digit(10).unwrap();
-                    let m3: u32 = moves.chars().nth(i + 2).unwrap().to_digit(10).unwrap();
-                    let m4: u32 = moves.chars().nth(i + 3).unwrap().to_digit(10).unwrap();
-                    let start_shift: u32 = 64 - 1 - (m1 * 8 + m2);
-                    let end_shift: u32 = 64 - 1 - (m3 * 8 + m4);
-                    if ((1 << start_shift) & bitboards[Piece::WK]) != 0 { // white king move
-                        (castle_rights_t[CastleRights::CWK], castle_rights_t[CastleRights::CWQ]) = (false, false);
-                    }
-                    if ((1 << start_shift) & bitboards[Piece::BK]) != 0 { // black king move
-                        (castle_rights_t[CastleRights::CBK], castle_rights_t[CastleRights::CBQ]) = (false, false);
-                    }
-                    if ((1 << start_shift) & bitboards[Piece::WR] & 1) != 0 { // white king side rook move
-                        castle_rights_t[CastleRights::CWK] = false;
-                    }
-                    if ((1 << start_shift) & bitboards[Piece::WR] & (1 << 7)) != 0 { // white queen side rook move
-                        castle_rights_t[CastleRights::CWQ] = false;
-                    }
-                    if ((1 << start_shift) & bitboards[Piece::BR] & (1 << 56)) != 0 { // black king side rook move
-                        castle_rights_t[CastleRights::CBK] = false;
-                    }
-                    if ((1 << start_shift) & bitboards[Piece::BR] & (1 << 63)) != 0 { // black queen side rook move
-                        castle_rights_t[CastleRights::CBQ] = false;
-                    }
-                    if (((1 as i64) << end_shift) & 1) != 0 { // white king side rook taken
-                        castle_rights_t[CastleRights::CWK] = false;
-                    }
-                    if (((1 as i64) << end_shift) & (1 << 7)) != 0 { // white queen side rook taken
-                        castle_rights_t[CastleRights::CWQ] = false;
-                    }
-                    if ((1 << end_shift) & ((1 as i64) << 56)) != 0 { // black king side rook taken
-                        castle_rights_t[CastleRights::CBK] = false;
-                    }
-                    if ((1 << end_shift) & ((1 as i64) << 63)) != 0 { // black queen side rook taken
-                        castle_rights_t[CastleRights::CBQ] = false;
-                    }
-                }
+                let castle_rights_t: [bool; 4] = mm.getNewCastleRights(&moves[i..i+4], castle_rights, bitboards);
 
                 if ((bitboards_t[Piece::WK] & mm.unsafeForWhite(bitboards_t)) == 0 && whites_turn) || ((bitboards_t[Piece::BK] & mm.unsafeForBlack(bitboards_t)) == 0 && !whites_turn) {
                     if depth + 1 == self.max_depth { // only count leaf nodes
@@ -117,48 +77,9 @@ impl Perft {
             bitboards_t[Piece::BB] = mm.makeMove(bitboards[Piece::BB], moves[i..i+4].to_string(), 'b'); bitboards_t[Piece::BR] = mm.makeMove(bitboards[Piece::BR], moves[i..i+4].to_string(), 'r');
             bitboards_t[Piece::BQ] = mm.makeMove(bitboards[Piece::BQ], moves[i..i+4].to_string(), 'q'); bitboards_t[Piece::BK] = mm.makeMove(bitboards[Piece::BK], moves[i..i+4].to_string(), 'k');
             bitboards_t[Piece::WR] = mm.makeMoveCastle(bitboards_t[Piece::WR], bitboards[Piece::WK], moves[i..i+4].to_string(), 'R'); bitboards_t[Piece::BR] = mm.makeMoveCastle(bitboards_t[Piece::BR], bitboards[Piece::BK], moves[i..i+4].to_string(), 'r');
-            bitboards_t[Piece::EP] = mm.makeMoveEP(bitboards[Piece::WP] | bitboards[Piece::BP], moves[i..i+4].to_string());
+            bitboards_t[Piece::EP] = mm.makeMoveEP(or_array_elems!([Piece::WP, Piece::BP], bitboards), moves[i..i+4].to_string());
 
-            let mut castle_rights_t: [bool; 4] = castle_rights;
-
-            if moves.chars().nth(i + 3).unwrap().is_numeric() {
-                let m1: u32 = moves.chars().nth(i).unwrap().to_digit(10).unwrap();
-                let m2: u32 = moves.chars().nth(i + 1).unwrap().to_digit(10).unwrap();
-                let m3: u32 = moves.chars().nth(i + 2).unwrap().to_digit(10).unwrap();
-                let m4: u32 = moves.chars().nth(i + 3).unwrap().to_digit(10).unwrap();
-                let start_shift: u32 = 64 - 1 - (m1 * 8 + m2);
-                let end_shift: u32 = 64 - 1 - (m3 * 8 + m4);
-                if ((1 << start_shift) & bitboards[Piece::WK]) != 0 { // white king move
-                    (castle_rights_t[CastleRights::CWK], castle_rights_t[CastleRights::CWQ]) = (false, false);
-                }
-                if ((1 << start_shift) & bitboards[Piece::BK]) != 0 { // black king move
-                    (castle_rights_t[CastleRights::CBK], castle_rights_t[CastleRights::CBQ]) = (false, false);
-                }
-                if ((1 << start_shift) & bitboards[Piece::WR] & 1) != 0 { // white king side rook move
-                    castle_rights_t[CastleRights::CWK] = false;
-                }
-                if ((1 << start_shift) & bitboards[Piece::WR] & (1 << 7)) != 0 { // white queen side rook move
-                    castle_rights_t[CastleRights::CWQ] = false;
-                }
-                if ((1 << start_shift) & bitboards[Piece::BR] & (1 << 56)) != 0 { // black king side rook move
-                    castle_rights_t[CastleRights::CBK] = false;
-                }
-                if ((1 << start_shift) & bitboards[Piece::BR] & (1 << 63)) != 0 { // black queen side rook move
-                    castle_rights_t[CastleRights::CBQ] = false;
-                }
-                if (((1 as i64) << end_shift) & 1) != 0 { // white king side rook taken
-                    castle_rights_t[CastleRights::CWK] = false;
-                }
-                if (((1 as i64) << end_shift) & (1 << 7)) != 0 { // white queen side rook taken
-                    castle_rights_t[CastleRights::CWQ] = false;
-                }
-                if ((1 << end_shift) & ((1 as i64) << 56)) != 0 { // black king side rook taken
-                    castle_rights_t[CastleRights::CBK] = false;
-                }
-                if ((1 << end_shift) & ((1 as i64) << 63)) != 0 { // black queen side rook taken
-                    castle_rights_t[CastleRights::CBQ] = false;
-                }
-            }
+            let castle_rights_t: [bool; 4] = mm.getNewCastleRights(&moves[i..i+4], castle_rights, bitboards);
 
             if ((bitboards_t[Piece::WK] & mm.unsafeForWhite(bitboards_t)) == 0 && whites_turn) || ((bitboards_t[Piece::BK] & mm.unsafeForBlack(bitboards_t)) == 0 && !whites_turn) {
                 self.perft(mm, bitboards_t, castle_rights_t, !whites_turn, depth + 1);
