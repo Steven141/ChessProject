@@ -62,7 +62,7 @@ impl Perft {
 }
 
 
-/// Tests
+/// Tests (50,657,065 total moves made in these tests)
 
 
 #[cfg(test)]
