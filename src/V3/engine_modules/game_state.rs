@@ -177,12 +177,8 @@ impl GameState {
 
 
     pub fn importFEN(&mut self, fen_str: String) {
-        self.bitboards[Piece::WP] = 0; self.bitboards[Piece::WN] = 0; self.bitboards[Piece::WB] = 0;
-        self.bitboards[Piece::WR] = 0; self.bitboards[Piece::WQ] = 0; self.bitboards[Piece::WK] = 0;
-        self.bitboards[Piece::BP] = 0; self.bitboards[Piece::BN] = 0; self.bitboards[Piece::BB] = 0;
-        self.bitboards[Piece::BR] = 0; self.bitboards[Piece::BQ] = 0; self.bitboards[Piece::BK] = 0;
-        self.castle_rights[CastleRights::CWK] = false; self.castle_rights[CastleRights::CWQ] = false;
-        self.castle_rights[CastleRights::CBK] = false; self.castle_rights[CastleRights::CBQ] = false;
+        self.bitboards = [0; 13];
+        self.castle_rights = [false; 4];
         let mut char_idx: usize = 0;
         let mut board_idx: i64 = 0;
         while fen_str.chars().nth(char_idx).unwrap() != ' ' {

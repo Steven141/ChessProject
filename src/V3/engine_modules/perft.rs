@@ -38,11 +38,11 @@ impl Perft {
                 let bitboards_t: [i64; 13] = mm.getUpdatedBitboards(&moves[i..i+4], bitboards);
                 let castle_rights_t: [bool; 4] = mm.getUpdatedCastleRights(&moves[i..i+4], castle_rights, bitboards);
 
-                if ((bitboards_t[Piece::WK] & mm.unsafeForWhite(bitboards_t)) == 0 && whites_turn) || ((bitboards_t[Piece::BK] & mm.unsafeForBlack(bitboards_t)) == 0 && !whites_turn) {
+                let is_valid_move: bool = ((bitboards_t[Piece::WK] & mm.unsafeForWhite(bitboards_t)) == 0 && whites_turn) || ((bitboards_t[Piece::BK] & mm.unsafeForBlack(bitboards_t)) == 0 && !whites_turn);
+                if is_valid_move {
                     if depth + 1 == self.max_depth { // only count leaf nodes
                         self.move_counter += 1
                     }
-                    // println!("{:?}", self.move_counter);
                     self.perft(mm, bitboards_t, castle_rights_t, !whites_turn, depth + 1)
                 }
             }
@@ -63,7 +63,8 @@ impl Perft {
             let bitboards_t: [i64; 13] = mm.getUpdatedBitboards(&moves[i..i+4], bitboards);
             let castle_rights_t: [bool; 4] = mm.getUpdatedCastleRights(&moves[i..i+4], castle_rights, bitboards);
 
-            if ((bitboards_t[Piece::WK] & mm.unsafeForWhite(bitboards_t)) == 0 && whites_turn) || ((bitboards_t[Piece::BK] & mm.unsafeForBlack(bitboards_t)) == 0 && !whites_turn) {
+            let is_valid_move: bool = ((bitboards_t[Piece::WK] & mm.unsafeForWhite(bitboards_t)) == 0 && whites_turn) || ((bitboards_t[Piece::BK] & mm.unsafeForBlack(bitboards_t)) == 0 && !whites_turn);
+            if is_valid_move {
                 self.perft(mm, bitboards_t, castle_rights_t, !whites_turn, depth + 1);
                 println!("{} {}", move_to_algebra!(moves[i..i+4]), self.move_counter);
                 self.total_move_counter += self.move_counter;
@@ -81,17 +82,6 @@ impl Perft {
 mod tests {
     use super::*;
     use crate::engine_modules::game_state::GameState;
-
-    #[test]
-    fn basic_test() {
-        println!("Basic Test!");
-        // let mut gs = GameState::new();
-        // let mut m: Moves = Moves::new();
-        // let mut p: Perft = Perft::new(3);
-        // let mut bmf: BestMoveFinder = BestMoveFinder::new(3);
-        println!("DONE!");
-        // panic!();
-    }
 
     #[test]
     fn perft_starting_pos() {

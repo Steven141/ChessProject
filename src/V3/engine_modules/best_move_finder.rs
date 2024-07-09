@@ -2,9 +2,9 @@
 
 
 use pyo3::prelude::*;
-use std::collections::HashMap;
 use crate::moves::Moves;
 use crate::piece::Piece;
+use std::collections::HashMap;
 use std::str::from_utf8;
 use rand::thread_rng;
 use rand::seq::SliceRandom;
@@ -16,8 +16,6 @@ pub struct BestMoveFinder {
     mate_score: i64,
     stale_score: i64,
     move_counter: u32,
-    best_move_idx: i64,
-    considered_moves: String,
     next_move: String,
     piece_scores: HashMap<char, i64>,
     piece_position_scores: HashMap<char, [[i64; 8]; 8]>,
@@ -35,8 +33,6 @@ impl BestMoveFinder {
             mate_score: 10000,
             stale_score: 0,
             move_counter: 0,
-            best_move_idx: -1,
-            considered_moves: String::new(),
             next_move: String::new(),
             piece_scores: HashMap::from([
                 ('K', 10000),
@@ -172,6 +168,7 @@ impl BestMoveFinder {
         // Positive = better for current recursive player perspective
         // alpha = minimum score that the maximizing player is assured of
         // beta = maximum score that the minimizing player is assured of
+        // TODO: add depth for quiescenceSearch
         if depth == self.search_depth {
             return self.quiescenceSearch(alpha, beta, mm, bitboards, castle_rights, whites_turn);
             // self.move_counter += 1;
@@ -187,7 +184,7 @@ impl BestMoveFinder {
         }
         if depth == 0 {
             // TODO: look to replace shuffling with sorting
-            println!("Depth: {:?}", self.search_depth);
+            println!("Search Depth: {:?}", self.search_depth);
             let mut move_groups: Vec<&str> = moves.as_bytes().chunks(4).map(|chunk| from_utf8(chunk).unwrap()).collect();
             move_groups.shuffle(&mut thread_rng());
             moves = move_groups.join("");
@@ -208,7 +205,6 @@ impl BestMoveFinder {
                 if score > best_score {
                     best_score = score;
                     if depth == 0 {
-                        self.best_move_idx = i as i64;
                         self.next_move = moves[i..i+4].to_string();
                         println!("Considering {:?} with score: {:?}", move_to_algebra!(moves[i..i+4]), score);
                     }

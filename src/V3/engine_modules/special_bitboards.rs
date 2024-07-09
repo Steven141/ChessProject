@@ -5,8 +5,7 @@ use pyo3::prelude::*;
 
 
 #[pyclass(module = "ChessProject", get_all, set_all)]
-#[derive(Clone)]
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct SpecialBitBoards {
     // specific bitboard masks
     pub file_ab: i64,
