@@ -13,7 +13,7 @@ pub struct GameState {
     board: [[char; 8]; 8],
     pub bitboards: [i64; 13],
     pub castle_rights: [bool; 4],
-    whites_turn: bool,
+    pub whites_turn: bool,
     masks: SpecialBitBoards,
     move_log: String,
     recent_piece_moved: char,

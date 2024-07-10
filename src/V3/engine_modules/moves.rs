@@ -13,7 +13,7 @@ use rand::seq::SliceRandom;
 #[pyclass(module = "ChessProject", get_all, set_all)]
 pub struct Moves {
     castle_rooks: [usize; 4],
-    masks: SpecialBitBoards,
+    pub masks: SpecialBitBoards,
     pub checkmate: bool,
     pub stalemate: bool,
 }

@@ -264,23 +264,89 @@ impl BestMoveFinder {
         }
         score
     }
+
+
+    fn scoreMove(&self, mm: &mut Moves, bitboards: [i64; 13], move_str: &str, whites_turn: bool) -> i64 {
+        let start_shift: u32; let end_shift: u32;
+        let start_bitboard: i64; let end_bitboard: i64;
+        let mut attacker: Piece = Piece::EP; let mut victim: Piece = Piece::EP; // EP used as default value (no attacker / no victim)
+        if move_str.chars().nth(3).unwrap().is_numeric() { // regular move
+            let (r1, c1, r2, c2) = move_to_u32s!(move_str);
+            start_shift = 64 - 1 - (r1 * 8 + c1);
+            end_shift = 64 - 1 - (r2 * 8 + c2);
+        } else if move_str.chars().nth(3).unwrap() == 'P' { // pawn promo
+            let (c1, c2, _, _) = move_to_u32s!(move_str);
+            if move_str.chars().nth(2).unwrap().is_uppercase() { // white promo
+                start_bitboard = mm.masks.file_masks[c1 as usize] & mm.masks.rank_masks[1];
+                start_shift = 64 - 1 - start_bitboard.leading_zeros();
+                end_bitboard = mm.masks.file_masks[c2 as usize] & mm.masks.rank_masks[0];
+                end_shift = 64 - 1 - end_bitboard.leading_zeros();
+            } else { // black promo
+                start_bitboard = mm.masks.file_masks[c1 as usize] & mm.masks.rank_masks[6];
+                start_shift = 64 - 1 - start_bitboard.leading_zeros();
+                end_bitboard = mm.masks.file_masks[c2 as usize] & mm.masks.rank_masks[7];
+                end_shift = 64 - 1 - end_bitboard.leading_zeros();
+            }
+        } else if move_str.chars().nth(3).unwrap() == 'E' { // enpassant
+            let (c1, c2, _, _) = move_to_u32s!(move_str);
+            if move_str.chars().nth(2).unwrap() == 'w' { // white
+                start_bitboard = mm.masks.file_masks[c1 as usize] & mm.masks.rank_masks[3];
+                start_shift = 64 - 1 - start_bitboard.leading_zeros();
+                end_bitboard = mm.masks.file_masks[c2 as usize] & mm.masks.rank_masks[2];
+                end_shift = 64 - 1 - end_bitboard.leading_zeros();
+            } else { // black
+                start_bitboard = mm.masks.file_masks[c1 as usize] & mm.masks.rank_masks[4];
+                start_shift = 64 - 1 - start_bitboard.leading_zeros();
+                end_bitboard = mm.masks.file_masks[c2 as usize] & mm.masks.rank_masks[5];
+                end_shift = 64 - 1 - end_bitboard.leading_zeros();
+            }
+        } else {
+            panic!("INVALID MOVE TYPE");
+        }
+        let possible_attackers: [Piece; 6] = if whites_turn {[Piece::WP, Piece::WN, Piece::WB, Piece::WR, Piece::WQ, Piece::WK]} else {[Piece::BP, Piece::BN, Piece::BB, Piece::BR, Piece::BQ, Piece::BK]};
+        let possible_victims: [Piece; 6] = if !whites_turn {[Piece::WP, Piece::WN, Piece::WB, Piece::WR, Piece::WQ, Piece::WK]} else {[Piece::BP, Piece::BN, Piece::BB, Piece::BR, Piece::BQ, Piece::BK]};
+        for piece in possible_attackers {
+            if usgn_r_shift!(bitboards[piece], start_shift) & 1 == 1 {
+                attacker = piece;
+            }
+        }
+        for piece in possible_victims {
+            if usgn_r_shift!(bitboards[piece], end_shift) & 1 == 1 {
+                victim = piece;
+            }
+        }
+        if victim != Piece::EP { // attacking move
+            return self.mvv_lva[attacker][victim];
+        }
+        0
+    }
 }
+
+
+/// Tests
 
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::engine_modules::game_state::GameState;
-    use crate::engine_modules::moves::Moves;
 
     #[test]
-    fn qu_test() {
-        println!("Basic Test!");
-        let gs = GameState::new();
+    fn score_move_test() {
+        let mut gs = GameState::new();
+        gs.importFEN(String::from("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1 "));
         let mut m: Moves = Moves::new();
-        let mut bmf: BestMoveFinder = BestMoveFinder::new(2);
-        bmf.negaMaxAlphaBeta(-10000, 10000, &mut m, gs.bitboards, gs.castle_rights, true, 0);
-        println!("DONE!");
-        // panic!();
+        let bmf: BestMoveFinder = BestMoveFinder::new(2);
+        let moves: String = m.getPossibleMoves(gs.bitboards, gs.castle_rights, gs.whites_turn);
+        let mut actual_scores: Vec<i64> = vec![105, 105, 303, 101, 201, 104, 104, 104];
+        for i in (0..moves.len()).step_by(4) {
+            let bitboards_t: [i64; 13] = m.getUpdatedBitboards(&moves[i..i+4], gs.bitboards);
+            if m.isValidMove(bitboards_t, gs.whites_turn) {
+                let score = bmf.scoreMove(&mut m, gs.bitboards, &moves[i..i+4], gs.whites_turn);
+                if score != 0 {
+                    assert!(score == actual_scores.remove(0));
+                }
+            }
+        }
     }
 }

@@ -4,7 +4,7 @@
 use std::ops::{Index, IndexMut};
 
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum Piece {
     WP,
     WN,
