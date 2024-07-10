@@ -138,13 +138,7 @@ impl BestMoveFinder {
         for i in (0..moves.len()).step_by(4) {
             let bitboards_t: [i64; 13] = mm.getUpdatedBitboards(&moves[i..i+4], bitboards);
             let castle_rights_t: [bool; 4] = mm.getUpdatedCastleRights(&moves[i..i+4], castle_rights, bitboards);
-
-            let is_attacking_move: bool = mm.isValidMove(bitboards_t, whites_turn)
-                && (
-                    (!whites_turn && or_array_elems!([Piece::WP, Piece::WN, Piece::WB, Piece::WR, Piece::WQ], bitboards).count_ones() != or_array_elems!([Piece::WP, Piece::WN, Piece::WB, Piece::WR, Piece::WQ], bitboards_t).count_ones())
-                    || (whites_turn && or_array_elems!([Piece::BP, Piece::BN, Piece::BB, Piece::BR, Piece::BQ], bitboards).count_ones() != or_array_elems!([Piece::BP, Piece::BN, Piece::BB, Piece::BR, Piece::BQ], bitboards_t).count_ones())
-                );
-            if is_attacking_move {
+            if mm.isAttackingMove(bitboards, bitboards_t, whites_turn) {
                 let score: i64 = -self.quiescenceSearch(-beta, -alpha, mm, bitboards_t, castle_rights_t, !whites_turn);
                 if score >= beta {
                     return beta;
