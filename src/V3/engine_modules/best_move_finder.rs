@@ -141,8 +141,8 @@ impl BestMoveFinder {
 
             let is_attacking_move: bool = mm.isValidMove(bitboards_t, whites_turn)
                 && (
-                    or_array_elems!([Piece::WP, Piece::WN, Piece::WB, Piece::WR, Piece::WQ], bitboards).count_ones() != or_array_elems!([Piece::WP, Piece::WN, Piece::WB, Piece::WR, Piece::WQ], bitboards_t).count_ones()
-                    || or_array_elems!([Piece::BP, Piece::BN, Piece::BB, Piece::BR, Piece::BQ], bitboards).count_ones() != or_array_elems!([Piece::BP, Piece::BN, Piece::BB, Piece::BR, Piece::BQ], bitboards_t).count_ones()
+                    (!whites_turn && or_array_elems!([Piece::WP, Piece::WN, Piece::WB, Piece::WR, Piece::WQ], bitboards).count_ones() != or_array_elems!([Piece::WP, Piece::WN, Piece::WB, Piece::WR, Piece::WQ], bitboards_t).count_ones())
+                    || (whites_turn && or_array_elems!([Piece::BP, Piece::BN, Piece::BB, Piece::BR, Piece::BQ], bitboards).count_ones() != or_array_elems!([Piece::BP, Piece::BN, Piece::BB, Piece::BR, Piece::BQ], bitboards_t).count_ones())
                 );
             if is_attacking_move {
                 let score: i64 = -self.quiescenceSearch(-beta, -alpha, mm, bitboards_t, castle_rights_t, !whites_turn);

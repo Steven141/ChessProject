@@ -800,14 +800,14 @@ impl Moves {
 
 
     pub fn isValidMove(&mut self, bitboards: [i64; 13], whites_turn: bool) -> bool {
-        ((bitboards[Piece::WK] & self.unsafeForWhite(bitboards)) == 0 && whites_turn)
-            || ((bitboards[Piece::BK] & self.unsafeForBlack(bitboards)) == 0 && !whites_turn)
+        (whites_turn && (bitboards[Piece::WK] & self.unsafeForWhite(bitboards)) == 0)
+            || (!whites_turn && (bitboards[Piece::BK] & self.unsafeForBlack(bitboards)) == 0)
     }
 
 
     pub fn isKingAttacked(&mut self, bitboards: [i64; 13], whites_turn: bool) -> bool {
-        ((bitboards[Piece::WK] & self.unsafeForWhite(bitboards)) != 0 && whites_turn)
-            || ((bitboards[Piece::BK] & self.unsafeForBlack(bitboards)) != 0 && !whites_turn)
+        (whites_turn && (bitboards[Piece::WK] & self.unsafeForWhite(bitboards)) != 0)
+            || (!whites_turn && (bitboards[Piece::BK] & self.unsafeForBlack(bitboards)) != 0)
     }
 
 
