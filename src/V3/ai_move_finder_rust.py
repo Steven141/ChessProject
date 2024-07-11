@@ -9,7 +9,7 @@ import ChessProject # rust engine library
 
 
 CHECKMATE = 10000
-DEPTH = 3
+DEPTH = 5
 
 
 """

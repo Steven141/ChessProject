@@ -5,9 +5,6 @@ use pyo3::prelude::*;
 use crate::moves::Moves;
 use crate::piece::Piece;
 use std::collections::HashMap;
-use std::str::from_utf8;
-use rand::thread_rng;
-use rand::seq::SliceRandom;
 
 
 #[pyclass(module = "ChessProject", get_all, set_all)]
@@ -134,7 +131,8 @@ impl BestMoveFinder {
         if eval > alpha {
             alpha = eval;
         }
-        let moves: String = mm.getPossibleMoves(bitboards, castle_rights, whites_turn);
+        let mut moves: String = mm.getPossibleMoves(bitboards, castle_rights, whites_turn);
+        moves = self.sortMoves(mm, &moves, bitboards, whites_turn);
         for i in (0..moves.len()).step_by(4) {
             let bitboards_t: [i64; 13] = mm.getUpdatedBitboards(&moves[i..i+4], bitboards);
             let castle_rights_t: [bool; 4] = mm.getUpdatedCastleRights(&moves[i..i+4], castle_rights, bitboards);
@@ -165,43 +163,35 @@ impl BestMoveFinder {
         self.move_counter += 1;
         let mut best_score: i64 = -self.mate_score;
         let mut moves: String = mm.getPossibleMoves(bitboards, castle_rights, whites_turn);
-        if depth == 0 {
-            // TODO: look to replace shuffling with sorting
-            println!("Search Depth: {:?}", self.search_depth);
-            let mut move_groups: Vec<&str> = moves.as_bytes().chunks(4).map(|chunk| from_utf8(chunk).unwrap()).collect();
-            move_groups.shuffle(&mut thread_rng());
-            moves = move_groups.join("");
-        }
+        moves = self.sortMoves(mm, &moves, bitboards, whites_turn);
         let mut valid_move_found: bool = false;
         for i in (0..moves.len()).step_by(4) {
             let bitboards_t: [i64; 13] = mm.getUpdatedBitboards(&moves[i..i+4], bitboards);
             let castle_rights_t: [bool; 4] = mm.getUpdatedCastleRights(&moves[i..i+4], castle_rights, bitboards);
 
-            if mm.isValidMove(bitboards_t, whites_turn) {
-                valid_move_found = true;
-                let mut score: i64 = -self.negaMaxAlphaBeta(-beta, -alpha, mm, bitboards_t, castle_rights_t, !whites_turn, depth+1);
+            valid_move_found = true;
+            let mut score: i64 = -self.negaMaxAlphaBeta(-beta, -alpha, mm, bitboards_t, castle_rights_t, !whites_turn, depth+1);
 
-                if score == self.mate_score {
-                    score -= depth as i64;
+            if score == self.mate_score {
+                score -= depth as i64;
+            }
+            if score > best_score {
+                best_score = score;
+                if depth == 0 {
+                    self.next_move = moves[i..i+4].to_string();
+                    println!("Considering {:?} with score: {:?}", move_to_algebra!(moves[i..i+4]), score);
                 }
-                if score > best_score {
-                    best_score = score;
-                    if depth == 0 {
-                        self.next_move = moves[i..i+4].to_string();
-                        println!("Considering {:?} with score: {:?}", move_to_algebra!(moves[i..i+4]), score);
-                    }
-                }
+            }
 
-                if best_score > alpha {
-                    alpha = best_score;
-                }
-                if alpha >= beta {
-                    break;
-                }
+            if best_score > alpha {
+                alpha = best_score;
+            }
+            if alpha >= beta {
+                break;
             }
         }
         if !valid_move_found {
-            if ((bitboards[Piece::WK] & mm.unsafeForWhite(bitboards)) != 0 && whites_turn) || ((bitboards[Piece::BK] & mm.unsafeForBlack(bitboards)) != 0 && !whites_turn) {
+            if mm.isKingAttacked(bitboards, whites_turn) {
                 mm.checkmate = true;
             } else {
                 mm.stalemate = true;
@@ -320,6 +310,20 @@ impl BestMoveFinder {
         }
         0
     }
+
+
+    /// Note this function excludes invalid moves
+    fn sortMoves(&self, mm: &mut Moves, moves: &str, bitboards: [i64; 13], whites_turn: bool) -> String {
+        let mut move_scores: Vec<(i64, &str)> = vec![];
+        for i in (0..moves.len()).step_by(4) {
+            let bitboards_t: [i64; 13] = mm.getUpdatedBitboards(&moves[i..i+4], bitboards);
+            if mm.isValidMove(bitboards_t, whites_turn) {
+                move_scores.push((self.scoreMove(mm, bitboards, &moves[i..i+4], whites_turn), &moves[i..i+4]));
+            }
+        }
+        move_scores.sort_by(|a, b| b.0.cmp(&a.0));
+        move_scores.iter().map(|(_, s)| *s).collect::<Vec<&str>>().concat()
+    }
 }
 
 
@@ -348,5 +352,29 @@ mod tests {
                 }
             }
         }
+    }
+
+    #[test]
+    fn sort_moves_test() {
+        let mut gs = GameState::new();
+        gs.importFEN(String::from("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1 "));
+        let mut m: Moves = Moves::new();
+        let bmf: BestMoveFinder = BestMoveFinder::new(2);
+        let moves: String = m.getPossibleMoves(gs.bitboards, gs.castle_rights, gs.whites_turn);
+        let sorted_moves: String = bmf.sortMoves(&mut m, &moves, gs.bitboards, gs.whites_turn);
+        assert!(sorted_moves == String::from(
+            "642055256657332434263415341355576656615160503323664660406475647364536442643163726354634563366327555655545553554655455537553577767775707370727071527352715240523134533446344234227475747374767472"
+        ));
+    }
+
+    #[test]
+    fn basic_test() {
+        let mut gs = GameState::new();
+        gs.importFEN(String::from("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1 "));
+        let mut m: Moves = Moves::new();
+        let mut bmf: BestMoveFinder = BestMoveFinder::new(5);
+        bmf.negaMaxAlphaBeta(-10000, 10000, &mut m, gs.bitboards, gs.castle_rights, gs.whites_turn, 0);
+        println!("Number of moves = {}", bmf.move_counter);
+        // panic!();
     }
 }
