@@ -26,21 +26,18 @@ Helper to make first recursive call
 def findBestMove(game_state, m, valid_moves) -> str:
     global next_move, move_counter
     next_move = None
-    # random.shuffle(valid_moves)
     move_counter = 0
     start_t = time.time()
     findMoveNegaMaxAlphaBeta(game_state, m, DEPTH, -CHECKMATE, CHECKMATE, valid_moves)
-    print(f'Number of moves: {move_counter} in {time.time() - start_t}s')
     return next_move
 
 
 """
 Recursive NegaMax algo with alpha beta pruning
 """
-def findMoveNegaMaxAlphaBeta(gs, m, depth, alpha, beta, valid_moves) -> int:
+def findMoveNegaMaxAlphaBeta(gs, m, depth, alpha, beta, valid_moves) -> None:
     global next_move, move_counter
     bmf = ChessProject.BestMoveFinder(depth)
-    max_score = bmf.negaMaxAlphaBeta(alpha, beta, m, gs.bitboards, gs.castle_rights, gs.whites_turn, 0)
+    bmf.searchPosition(m, gs.bitboards, gs.castle_rights, gs.whites_turn)
     move_counter = bmf.move_counter
-    next_move = bmf.next_move
-    return max_score
+    next_move = bmf.pv_table[0][0]

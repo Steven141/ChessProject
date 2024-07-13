@@ -5,6 +5,7 @@ use pyo3::prelude::*;
 use crate::moves::Moves;
 use crate::piece::Piece;
 use std::collections::HashMap;
+use std::time::Instant;
 
 
 #[pyclass(module = "ChessProject", get_all, set_all)]
@@ -14,7 +15,6 @@ pub struct BestMoveFinder {
     mate_score: i64,
     stale_score: i64,
     move_counter: u32,
-    next_move: String,
     piece_scores: HashMap<char, i64>,
     piece_position_scores: HashMap<char, [[i64; 8]; 8]>,
     mvv_lva: [[i64; 12]; 12], // [attacker][victim]
@@ -34,7 +34,6 @@ impl BestMoveFinder {
             mate_score: 10000,
             stale_score: 0,
             move_counter: 0,
-            next_move: String::new(),
             piece_scores: HashMap::from([
                 ('K', 10000),
                 ('Q', 1000),
@@ -121,17 +120,55 @@ impl BestMoveFinder {
                 [101, 201, 301, 401, 501, 601,  101, 201, 301, 401, 501, 601],
                 [100, 200, 300, 400, 500, 600,  100, 200, 300, 400, 500, 600],
             ],
+            /*
+                ================================
+                    Triangular PV table
+                --------------------------------
+                PV line: e2e4 e7e5 g1f3 b8c6
+                ================================
+
+                    0    1    2    3    4    5
+
+                0    m1   m2   m3   m4   m5   m6
+
+                1    0    m2   m3   m4   m5   m6
+
+                2    0    0    m3   m4   m5   m6
+
+                3    0    0    0    m4   m5   m6
+
+                4    0    0    0    0    m5   m6
+
+                5    0    0    0    0    0    m6
+            */
             pv_length: [0; 64],
             pv_table: vec![vec![String::new(); 64]; 64],
         }
     }
 
 
+    fn searchPosition(&mut self, mm: &mut Moves, bitboards: [i64; 13], castle_rights: [bool; 4], whites_turn: bool) {
+        self.pv_length = [0; 64];
+        self.pv_table = vec![vec![String::new(); 64]; 64];
+
+        // iterative deepening
+        for current_depth in 1..(self.search_depth+1) {
+            self.move_counter = 0;
+            self.max_depth = current_depth;
+            let start_time: Instant = Instant::now();
+            self.negaMaxAlphaBeta(-10000, 10000, mm, bitboards, castle_rights, whites_turn, 0);
+            println!("Total moves analyzed: {}, Duration: {:?}", self.move_counter, start_time.elapsed());
+            print!("Best Move Sequence: ");
+            for depth in 0..(self.pv_length[0]) {
+                print!("{:?} ", move_to_algebra!(self.pv_table[0][depth as usize]));
+            }
+            println!("...\n");
+        }
+    }
+
+
     fn quiescenceSearch(&mut self, mut alpha: i64, beta: i64, mm: &mut Moves, bitboards: [i64; 13], castle_rights: [bool; 4], whites_turn: bool, depth: u32) -> i64 {
         // look deeper for non-quiet moves (attacking)
-        if depth > self.max_depth {
-            self.max_depth = depth;
-        }
         self.move_counter += 1;
         let eval: i64 = (if whites_turn {1} else {-1}) * self.evaluateBoard(mm, bitboards, whites_turn);
         if eval >= beta {
@@ -158,18 +195,23 @@ impl BestMoveFinder {
         alpha
     }
 
-
+    /*
+    Positive = better for current recursive player perspective
+    alpha = minimum score that the maximizing player is assured of
+    beta = maximum score that the minimizing player is assured of
+    depth = how deep current iteration is
+    */
     fn negaMaxAlphaBeta(&mut self, mut alpha: i64, beta: i64, mm: &mut Moves, bitboards: [i64; 13], castle_rights: [bool; 4], whites_turn: bool, depth: u32) -> i64 {
-        // Positive = better for current recursive player perspective
-        // alpha = minimum score that the maximizing player is assured of
-        // beta = maximum score that the minimizing player is assured of
-        // TODO: add depth for quiescenceSearch
-
         self.pv_length[depth as usize] = depth;
-        if depth == self.search_depth {
+        if depth == self.max_depth {
             return self.quiescenceSearch(alpha, beta, mm, bitboards, castle_rights, whites_turn, depth+1);
             // self.move_counter += 1;
             // return (if whites_turn {1} else {-1}) * self.evaluateBoard(mm, bitboards, whites_turn);
+        }
+        if depth >= 64 {
+            // prevent PV table overflow
+            self.move_counter += 1;
+            return (if whites_turn {1} else {-1}) * self.evaluateBoard(mm, bitboards, whites_turn);
         }
         self.move_counter += 1;
         let mut best_score: i64 = -self.mate_score;
@@ -189,8 +231,7 @@ impl BestMoveFinder {
             if score > best_score {
                 best_score = score;
                 if depth == 0 {
-                    self.next_move = moves[i..i+4].to_string();
-                    println!("Depth: {} Move: {} Score: {}", self.max_depth, move_to_algebra!(moves[i..i+4]), score);
+                    println!("Depth: {}, Move: {}, Score: {}", self.max_depth, move_to_algebra!(moves[i..i+4]), score);
                 }
             }
 
@@ -415,14 +456,8 @@ mod tests {
         let mut gs = GameState::new();
         gs.importFEN(String::from("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1 "));
         let mut m: Moves = Moves::new();
-        let mut bmf: BestMoveFinder = BestMoveFinder::new(5);
-        bmf.negaMaxAlphaBeta(-10000, 10000, &mut m, gs.bitboards, gs.castle_rights, gs.whites_turn, 0);
-        println!("Number of moves = {}", bmf.move_counter);
-        println!("Best move = {}", move_to_algebra!(bmf.next_move));
-        for depth in 0..bmf.pv_length[0] {
-            print!("{:?} ", move_to_algebra!(bmf.pv_table[0][depth as usize]));
-        }
-        println!("");
+        let mut bmf: BestMoveFinder = BestMoveFinder::new(6);
+        bmf.searchPosition(&mut m, gs.bitboards, gs.castle_rights, gs.whites_turn);
         panic!();
     }
 }
