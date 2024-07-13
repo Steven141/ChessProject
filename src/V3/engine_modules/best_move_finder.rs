@@ -18,6 +18,8 @@ pub struct BestMoveFinder {
     piece_scores: HashMap<char, i64>,
     piece_position_scores: HashMap<char, [[i64; 8]; 8]>,
     mvv_lva: [[i64; 12]; 12], // [attacker][victim]
+    pv_length: [u32; 64],
+    pv_table: Vec<Vec<String>>,
 }
 
 
@@ -119,6 +121,8 @@ impl BestMoveFinder {
                 [101, 201, 301, 401, 501, 601,  101, 201, 301, 401, 501, 601],
                 [100, 200, 300, 400, 500, 600,  100, 200, 300, 400, 500, 600],
             ],
+            pv_length: [0; 64],
+            pv_table: vec![vec![String::new(); 64]; 64],
         }
     }
 
@@ -160,6 +164,8 @@ impl BestMoveFinder {
         // alpha = minimum score that the maximizing player is assured of
         // beta = maximum score that the minimizing player is assured of
         // TODO: add depth for quiescenceSearch
+
+        self.pv_length[depth as usize] = depth;
         if depth == self.search_depth {
             return self.quiescenceSearch(alpha, beta, mm, bitboards, castle_rights, whites_turn, depth+1);
             // self.move_counter += 1;
@@ -190,6 +196,15 @@ impl BestMoveFinder {
 
             if best_score > alpha {
                 alpha = best_score;
+                // write PV move
+                self.pv_table[depth as usize][depth as usize] = moves[i..i+4].to_string();
+                // loop over the next depth
+                for next_depth in (depth+1)..self.pv_length[(depth+1) as usize] {
+                    // copy move from deeper depth into a current depth's line
+                    self.pv_table[depth as usize][next_depth as usize] = self.pv_table[(depth+1) as usize][next_depth as usize].clone();
+                }
+                // adjust PV length
+                self.pv_length[depth as usize] = self.pv_length[(depth+1) as usize];
             }
             if alpha >= beta {
                 break;
@@ -403,6 +418,11 @@ mod tests {
         let mut bmf: BestMoveFinder = BestMoveFinder::new(5);
         bmf.negaMaxAlphaBeta(-10000, 10000, &mut m, gs.bitboards, gs.castle_rights, gs.whites_turn, 0);
         println!("Number of moves = {}", bmf.move_counter);
-        // panic!();
+        println!("Best move = {}", move_to_algebra!(bmf.next_move));
+        for depth in 0..bmf.pv_length[0] {
+            print!("{:?} ", move_to_algebra!(bmf.pv_table[0][depth as usize]));
+        }
+        println!("");
+        panic!();
     }
 }
