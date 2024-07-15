@@ -142,14 +142,14 @@ impl BestMoveFinder {
                 5    0    0    0    0    0    m6
             */
             pv_length: [0; 64],
-            pv_table: vec![vec![String::new(); 64]; 64],
+            pv_table: vec![vec![String::with_capacity(4); 64]; 64],
         }
     }
 
 
     fn searchPosition(&mut self, mm: &mut Moves, bitboards: [i64; 13], castle_rights: [bool; 4], whites_turn: bool) {
         self.pv_length = [0; 64];
-        self.pv_table = vec![vec![String::new(); 64]; 64];
+        self.pv_table = vec![vec![String::with_capacity(4); 64]; 64];
 
         // iterative deepening
         for current_depth in 1..(self.search_depth+1) {
@@ -202,6 +202,7 @@ impl BestMoveFinder {
     depth = how deep current iteration is
     */
     fn negaMaxAlphaBeta(&mut self, mut alpha: i64, beta: i64, mm: &mut Moves, bitboards: [i64; 13], castle_rights: [bool; 4], whites_turn: bool, depth: u32) -> i64 {
+        // init currents depths PV table entry length
         self.pv_length[depth as usize] = depth;
         if depth == self.max_depth {
             return self.quiescenceSearch(alpha, beta, mm, bitboards, castle_rights, whites_turn, depth+1);
@@ -237,14 +238,14 @@ impl BestMoveFinder {
 
             if best_score > alpha {
                 alpha = best_score;
-                // write PV move
+                // write PV move to table
                 self.pv_table[depth as usize][depth as usize] = moves[i..i+4].to_string();
-                // loop over the next depth
+                // loop over the next depth in table to propagate next moves up a row
                 for next_depth in (depth+1)..self.pv_length[(depth+1) as usize] {
                     // copy move from deeper depth into a current depth's line
                     self.pv_table[depth as usize][next_depth as usize] = self.pv_table[(depth+1) as usize][next_depth as usize].clone();
                 }
-                // adjust PV length
+                // adjust PV table length to account for propagated values in current depth row
                 self.pv_length[depth as usize] = self.pv_length[(depth+1) as usize];
             }
             if alpha >= beta {
