@@ -20,6 +20,8 @@ pub struct BestMoveFinder {
     mvv_lva: [[i64; 12]; 12], // [attacker][victim]
     pv_length: [u32; 64],
     pv_table: Vec<Vec<String>>,
+    follow_pv: bool,
+    score_pv: bool,
 }
 
 
@@ -143,6 +145,8 @@ impl BestMoveFinder {
             */
             pv_length: [0; 64],
             pv_table: vec![vec![String::with_capacity(4); 64]; 64],
+            follow_pv: false,
+            score_pv: false,
         }
     }
 
@@ -150,10 +154,13 @@ impl BestMoveFinder {
     fn searchPosition(&mut self, mm: &mut Moves, bitboards: [i64; 13], castle_rights: [bool; 4], whites_turn: bool) {
         self.pv_length = [0; 64];
         self.pv_table = vec![vec![String::with_capacity(4); 64]; 64];
+        self.follow_pv = false; self.score_pv = false;
 
         // iterative deepening
         for current_depth in 1..(self.search_depth+1) {
-            self.move_counter = 0;
+            // enable PV following
+            self.follow_pv = true;
+
             self.max_depth = current_depth;
             let start_time: Instant = Instant::now();
             self.negaMaxAlphaBeta(-10000, 10000, mm, bitboards, castle_rights, whites_turn, 0);
@@ -178,7 +185,7 @@ impl BestMoveFinder {
             alpha = eval;
         }
         let mut moves: String = mm.getPossibleMoves(bitboards, castle_rights, whites_turn);
-        moves = self.sortMoves(mm, &moves, bitboards, whites_turn);
+        moves = self.sortMoves(mm, &moves, bitboards, whites_turn, depth);
         for i in (0..moves.len()).step_by(4) {
             let bitboards_t: [i64; 13] = mm.getUpdatedBitboards(&moves[i..i+4], bitboards);
             let castle_rights_t: [bool; 4] = mm.getUpdatedCastleRights(&moves[i..i+4], castle_rights, bitboards);
@@ -202,12 +209,11 @@ impl BestMoveFinder {
     depth = how deep current iteration is
     */
     fn negaMaxAlphaBeta(&mut self, mut alpha: i64, beta: i64, mm: &mut Moves, bitboards: [i64; 13], castle_rights: [bool; 4], whites_turn: bool, depth: u32) -> i64 {
-        // init currents depths PV table entry length
+        let mut found_pv: bool = false;
+        // init current depths PV table entry length
         self.pv_length[depth as usize] = depth;
         if depth == self.max_depth {
             return self.quiescenceSearch(alpha, beta, mm, bitboards, castle_rights, whites_turn, depth+1);
-            // self.move_counter += 1;
-            // return (if whites_turn {1} else {-1}) * self.evaluateBoard(mm, bitboards, whites_turn);
         }
         if depth >= 64 {
             // prevent PV table overflow
@@ -217,14 +223,40 @@ impl BestMoveFinder {
         self.move_counter += 1;
         let mut best_score: i64 = -self.mate_score;
         let mut moves: String = mm.getPossibleMoves(bitboards, castle_rights, whites_turn);
-        moves = self.sortMoves(mm, &moves, bitboards, whites_turn);
+        if self.follow_pv {
+            // now following PV line so enable PV move scoring
+            self.enablePVScoring(&moves, depth);
+        }
+        moves = self.sortMoves(mm, &moves, bitboards, whites_turn, depth);
         let mut valid_move_found: bool = false;
         for i in (0..moves.len()).step_by(4) {
             let bitboards_t: [i64; 13] = mm.getUpdatedBitboards(&moves[i..i+4], bitboards);
             let castle_rights_t: [bool; 4] = mm.getUpdatedCastleRights(&moves[i..i+4], castle_rights, bitboards);
-
             valid_move_found = true;
-            let mut score: i64 = -self.negaMaxAlphaBeta(-beta, -alpha, mm, bitboards_t, castle_rights_t, !whites_turn, depth+1);
+
+            // on PV node hit
+            let mut score: i64;
+            if found_pv {
+                /*
+                Once you've found a move with a score that is between alpha and beta,
+                the rest of the moves are searched with the goal of proving that they are all bad.
+                It's possible to do this a bit faster than a search that worries that one
+                of the remaining moves might be good.
+                */
+                score = -self.negaMaxAlphaBeta(-alpha-1, -alpha, mm, bitboards_t, castle_rights_t, !whites_turn, depth+1);
+                /*
+                If the algorithm finds out that it was wrong, and that one of the
+                subsequent moves was better than the first PV move, it has to search again,
+                in the normal alpha-beta manner.  This happens sometimes, and it's a waste of time,
+                but generally not often enough to counteract the savings gained from doing the
+                "bad move proof" search referred to earlier.
+               */
+                if (score > alpha) && (score < beta) {
+                    score = -self.negaMaxAlphaBeta(-beta, -alpha, mm, bitboards_t, castle_rights_t, !whites_turn, depth+1);
+                }
+            } else {
+                score = -self.negaMaxAlphaBeta(-beta, -alpha, mm, bitboards_t, castle_rights_t, !whites_turn, depth+1);
+            }
 
             if score == self.mate_score {
                 score -= depth as i64;
@@ -238,6 +270,7 @@ impl BestMoveFinder {
 
             if best_score > alpha {
                 alpha = best_score;
+                found_pv = true;
                 // write PV move to table
                 self.pv_table[depth as usize][depth as usize] = moves[i..i+4].to_string();
                 // loop over the next depth in table to propagate next moves up a row
@@ -290,7 +323,7 @@ impl BestMoveFinder {
                 score += self.piece_scores[&'R'] + self.piece_position_scores[&'R'][i / 8][i % 8];
             }
             if usgn_r_shift!(bitboards[Piece::WQ], shift) & 1 == 1 {
-                score += self.piece_scores[&'Q']  + self.piece_position_scores[&'Q'][i / 8][i % 8];
+                score += self.piece_scores[&'Q'];// + self.piece_position_scores[&'Q'][i / 8][i % 8];
             }
             if usgn_r_shift!(bitboards[Piece::WK], shift) & 1 == 1 {
                 score += self.piece_scores[&'K'] + self.piece_position_scores[&'K'][i / 8][i % 8];
@@ -308,7 +341,7 @@ impl BestMoveFinder {
                 score -= self.piece_scores[&'R'] + self.piece_position_scores[&'R'][7 - (i / 8)][i % 8];
             }
             if usgn_r_shift!(bitboards[Piece::BQ], shift) & 1 == 1 {
-                score -= self.piece_scores[&'Q'] + self.piece_position_scores[&'Q'][7 - (i / 8)][i % 8];
+                score -= self.piece_scores[&'Q'];// + self.piece_position_scores[&'Q'][7 - (i / 8)][i % 8];
             }
             if usgn_r_shift!(bitboards[Piece::BK], shift) & 1 == 1 {
                 score -= self.piece_scores[&'K'] + self.piece_position_scores[&'K'][7 - (i / 8)][i % 8];
@@ -318,7 +351,30 @@ impl BestMoveFinder {
     }
 
 
-    fn scoreMove(&self, mm: &mut Moves, bitboards: [i64; 13], move_str: &str, whites_turn: bool) -> i64 {
+    fn enablePVScoring(&mut self, moves: &str, depth: u32) {
+        // disable PV following
+        self.follow_pv = false;
+        for i in (0..moves.len()).step_by(4) {
+            // make sure to hit a PV move
+            if self.pv_table[0][depth as usize] == moves[i..i+4] {
+                // enable move scoring
+                self.score_pv = true;
+                // enable further PV following
+                self.follow_pv = true;
+            }
+        }
+    }
+
+
+    fn scoreMove(&mut self, mm: &mut Moves, bitboards: [i64; 13], move_str: &str, whites_turn: bool, depth: u32) -> i64 {
+        if self.score_pv {
+            if self.pv_table[0][depth as usize] == move_str {
+                self.score_pv = false;
+                // println!("Current PV Move: {}, Depth: {}", move_to_algebra!(move_str), depth);
+                // give PV move the highest score to search it first
+                return 20000;
+            }
+        }
         let start_shift: u32; let end_shift: u32;
         let start_bitboard: i64; let end_bitboard: i64;
         let mut attacker: Piece = Piece::EP; let mut victim: Piece = Piece::EP; // EP used as default value (no attacker / no victim)
@@ -355,6 +411,7 @@ impl BestMoveFinder {
         } else {
             panic!("INVALID MOVE TYPE");
         }
+
         let possible_attackers: [Piece; 6] = if whites_turn {[Piece::WP, Piece::WN, Piece::WB, Piece::WR, Piece::WQ, Piece::WK]} else {[Piece::BP, Piece::BN, Piece::BB, Piece::BR, Piece::BQ, Piece::BK]};
         let possible_victims: [Piece; 6] = if !whites_turn {[Piece::WP, Piece::WN, Piece::WB, Piece::WR, Piece::WQ, Piece::WK]} else {[Piece::BP, Piece::BN, Piece::BB, Piece::BR, Piece::BQ, Piece::BK]};
         for piece in possible_attackers {
@@ -368,7 +425,7 @@ impl BestMoveFinder {
             }
         }
         if victim != Piece::EP { // attacking move
-            return self.mvv_lva[attacker][victim];
+            return self.mvv_lva[attacker][victim] + 10000;
         }
         0
     }
@@ -390,13 +447,13 @@ impl BestMoveFinder {
 
     3. Resulted in 1.24 times speedup on average (24% faster) than no pre-allocation or in-place sorting
     */
-    fn sortMoves(&self, mm: &mut Moves, moves: &str, bitboards: [i64; 13], whites_turn: bool) -> String {
+    fn sortMoves(&mut self, mm: &mut Moves, moves: &str, bitboards: [i64; 13], whites_turn: bool, depth: u32) -> String {
         let mut move_scores: Vec<(i64, &str)> = Vec::with_capacity(moves.len() / 4);
         for i in (0..moves.len()).step_by(4) {
             let move_slice: &str = &moves[i..i + 4];
             let bitboards_t: [i64; 13] = mm.getUpdatedBitboards(move_slice, bitboards);
             if mm.isValidMove(bitboards_t, whites_turn) {
-                move_scores.push((self.scoreMove(mm, bitboards, move_slice, whites_turn), move_slice));
+                move_scores.push((self.scoreMove(mm, bitboards, move_slice, whites_turn, depth), move_slice));
             }
         }
         move_scores.sort_unstable_by(|a: &(i64, &str), b: &(i64, &str)| b.0.cmp(&a.0));
@@ -422,13 +479,13 @@ mod tests {
         let mut gs = GameState::new();
         gs.importFEN(String::from("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1 "));
         let mut m: Moves = Moves::new();
-        let bmf: BestMoveFinder = BestMoveFinder::new(2);
+        let mut bmf: BestMoveFinder = BestMoveFinder::new(2);
         let moves: String = m.getPossibleMoves(gs.bitboards, gs.castle_rights, gs.whites_turn);
-        let mut actual_scores: Vec<i64> = vec![105, 105, 303, 101, 201, 104, 104, 104];
+        let mut actual_scores: Vec<i64> = vec![10105, 10105, 10303, 10101, 10201, 10104, 10104, 10104];
         for i in (0..moves.len()).step_by(4) {
             let bitboards_t: [i64; 13] = m.getUpdatedBitboards(&moves[i..i+4], gs.bitboards);
             if m.isValidMove(bitboards_t, gs.whites_turn) {
-                let score = bmf.scoreMove(&mut m, gs.bitboards, &moves[i..i+4], gs.whites_turn);
+                let score = bmf.scoreMove(&mut m, gs.bitboards, &moves[i..i+4], gs.whites_turn, 0);
                 if score != 0 {
                     assert!(score == actual_scores.remove(0));
                 }
@@ -441,12 +498,12 @@ mod tests {
         let mut gs = GameState::new();
         gs.importFEN(String::from("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1 "));
         let mut m: Moves = Moves::new();
-        let bmf: BestMoveFinder = BestMoveFinder::new(2);
+        let mut bmf: BestMoveFinder = BestMoveFinder::new(2);
         let moves: String = m.getPossibleMoves(gs.bitboards, gs.castle_rights, gs.whites_turn);
-        let sorted_moves: String = bmf.sortMoves(&mut m, &moves, gs.bitboards, gs.whites_turn);
+        let sorted_moves: String = bmf.sortMoves(&mut m, &moves, gs.bitboards, gs.whites_turn, 0);
         let mut score: i64 = i64::MAX;
         for i in (0..sorted_moves.len()).step_by(4) {
-            let current_score: i64 = bmf.scoreMove(&mut m, gs.bitboards, &sorted_moves[i..i+4], gs.whites_turn);
+            let current_score: i64 = bmf.scoreMove(&mut m, gs.bitboards, &sorted_moves[i..i+4], gs.whites_turn, 0);
             assert!(current_score <= score);
             score = current_score;
         }
@@ -455,7 +512,8 @@ mod tests {
     #[test]
     fn basic_test() {
         let mut gs = GameState::new();
-        gs.importFEN(String::from("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1 "));
+        // gs.importFEN(String::from("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1 ")); // tricky
+        gs.importFEN(String::from("r2q1rk1/ppp2ppp/2n1bn2/2b1p3/3pP3/3P1NPP/PPP1NPB1/R1BQ1RK1 b - - 0 9 ")); // cmk
         let mut m: Moves = Moves::new();
         let mut bmf: BestMoveFinder = BestMoveFinder::new(6);
         bmf.searchPosition(&mut m, gs.bitboards, gs.castle_rights, gs.whites_turn);
