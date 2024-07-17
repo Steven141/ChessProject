@@ -22,6 +22,8 @@ pub struct BestMoveFinder {
     pv_table: Vec<Vec<String>>,
     follow_pv: bool,
     score_pv: bool,
+    full_depth_moves: u32,
+    reduction_limit: u32,
 }
 
 
@@ -147,6 +149,8 @@ impl BestMoveFinder {
             pv_table: vec![vec![String::with_capacity(4); 64]; 64],
             follow_pv: false,
             score_pv: false,
+            full_depth_moves: 4,
+            reduction_limit: 3,
         }
     }
 
@@ -212,7 +216,7 @@ impl BestMoveFinder {
         let mut found_pv: bool = false;
         // init current depths PV table entry length
         self.pv_length[depth as usize] = depth;
-        if depth == self.max_depth {
+        if depth >= self.max_depth {
             return self.quiescenceSearch(alpha, beta, mm, bitboards, castle_rights, whites_turn, depth+1);
         }
         if depth >= 64 {
@@ -228,6 +232,7 @@ impl BestMoveFinder {
             self.enablePVScoring(&moves, depth);
         }
         moves = self.sortMoves(mm, &moves, bitboards, whites_turn, depth);
+        let mut moves_searched: u32 = 0;
         let mut valid_move_found: bool = false;
         for i in (0..moves.len()).step_by(4) {
             let bitboards_t: [i64; 13] = mm.getUpdatedBitboards(&moves[i..i+4], bitboards);
@@ -255,8 +260,30 @@ impl BestMoveFinder {
                     score = -self.negaMaxAlphaBeta(-beta, -alpha, mm, bitboards_t, castle_rights_t, !whites_turn, depth+1);
                 }
             } else {
-                score = -self.negaMaxAlphaBeta(-beta, -alpha, mm, bitboards_t, castle_rights_t, !whites_turn, depth+1);
+                if moves_searched == 0 {
+                    // normal alpha beta search (full depth)
+                    score = -self.negaMaxAlphaBeta(-beta, -alpha, mm, bitboards_t, castle_rights_t, !whites_turn, depth+1);
+                } else {
+                    // consider Late Move Reduction (LMR)
+                    if moves_searched >= self.full_depth_moves && depth >= self.reduction_limit && !mm.isAttackingMove(bitboards, bitboards_t, whites_turn) && moves[i..i+4].chars().nth(3).unwrap() != 'P' {
+                        // search current move with reduced depth
+                        score = -self.negaMaxAlphaBeta(-alpha-1, -alpha, mm, bitboards_t, castle_rights_t, !whites_turn, depth+2);
+                    } else {
+                        score = alpha + 1;
+                    }
+
+                    if score > alpha {
+                        // found better move during LMR, re-search at normal depth with null window
+                        score = -self.negaMaxAlphaBeta(-alpha-1, -alpha, mm, bitboards_t, castle_rights_t, !whites_turn, depth+1);
+                        if score > alpha && score < beta {
+                            // LMR fails, re-search at full depth and full window
+                            score = -self.negaMaxAlphaBeta(-beta, -alpha, mm, bitboards_t, castle_rights_t, !whites_turn, depth+1);
+                        }
+                    }
+                }
             }
+
+            moves_searched += 1;
 
             if score == self.mate_score {
                 score -= depth as i64;
@@ -512,10 +539,10 @@ mod tests {
     #[test]
     fn basic_test() {
         let mut gs = GameState::new();
-        // gs.importFEN(String::from("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1 ")); // tricky
-        gs.importFEN(String::from("r2q1rk1/ppp2ppp/2n1bn2/2b1p3/3pP3/3P1NPP/PPP1NPB1/R1BQ1RK1 b - - 0 9 ")); // cmk
+        gs.importFEN(String::from("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1 ")); // tricky
+        // gs.importFEN(String::from("r2q1rk1/ppp2ppp/2n1bn2/2b1p3/3pP3/3P1NPP/PPP1NPB1/R1BQ1RK1 b - - 0 9 ")); // cmk
         let mut m: Moves = Moves::new();
-        let mut bmf: BestMoveFinder = BestMoveFinder::new(6);
+        let mut bmf: BestMoveFinder = BestMoveFinder::new(7);
         bmf.searchPosition(&mut m, gs.bitboards, gs.castle_rights, gs.whites_turn);
         panic!();
     }
