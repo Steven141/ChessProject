@@ -24,6 +24,7 @@ pub struct BestMoveFinder {
     score_pv: bool,
     full_depth_moves: u32,
     reduction_limit: u32,
+    reduction_factor: u32,
 }
 
 
@@ -35,7 +36,7 @@ impl BestMoveFinder {
         BestMoveFinder {
             search_depth: search_depth,
             max_depth: 0,
-            mate_score: 10000,
+            mate_score: 49000,
             stale_score: 0,
             move_counter: 0,
             piece_scores: HashMap::from([
@@ -151,6 +152,7 @@ impl BestMoveFinder {
             score_pv: false,
             full_depth_moves: 4,
             reduction_limit: 3,
+            reduction_factor: 2,
         }
     }
 
@@ -159,21 +161,33 @@ impl BestMoveFinder {
         self.pv_length = [0; 64];
         self.pv_table = vec![vec![String::with_capacity(4); 64]; 64];
         self.follow_pv = false; self.score_pv = false;
+        let mut alpha: i64 = -50000; let mut beta: i64 = 50000;
 
         // iterative deepening
-        for current_depth in 1..(self.search_depth+1) {
+        let mut current_depth: u32 = 1;
+        while current_depth <= self.search_depth {
             // enable PV following
             self.follow_pv = true;
 
             self.max_depth = current_depth;
             let start_time: Instant = Instant::now();
-            self.negaMaxAlphaBeta(-10000, 10000, mm, bitboards, castle_rights, whites_turn, 0);
+            let score: i64 = self.negaMaxAlphaBeta(alpha, beta, mm, bitboards, castle_rights, whites_turn, 0);
+            if score <= alpha || score >= beta {
+                // fell outside window so try again with full window search at same depth
+                alpha = -50000;
+                beta = 50000;
+                continue;
+            }
+            alpha = score - 50;
+            beta = score + 50;
+
             println!("Total moves analyzed: {}, Duration: {:?}", self.move_counter, start_time.elapsed());
             print!("Best Move Sequence: ");
             for depth in 0..(self.pv_length[0]) {
                 print!("{:?} ", move_to_algebra!(self.pv_table[0][depth as usize]));
             }
             println!("...\n");
+            current_depth += 1;
         }
     }
 
@@ -206,6 +220,7 @@ impl BestMoveFinder {
         alpha
     }
 
+
     /*
     Positive = better for current recursive player perspective
     alpha = minimum score that the maximizing player is assured of
@@ -213,7 +228,6 @@ impl BestMoveFinder {
     depth = how deep current iteration is
     */
     fn negaMaxAlphaBeta(&mut self, mut alpha: i64, beta: i64, mm: &mut Moves, bitboards: [i64; 13], castle_rights: [bool; 4], whites_turn: bool, depth: u32) -> i64 {
-        let mut found_pv: bool = false;
         // init current depths PV table entry length
         self.pv_length[depth as usize] = depth;
         if depth >= self.max_depth {
@@ -224,8 +238,21 @@ impl BestMoveFinder {
             self.move_counter += 1;
             return (if whites_turn {1} else {-1}) * self.evaluateBoard(mm, bitboards, whites_turn);
         }
+
         self.move_counter += 1;
         let mut best_score: i64 = -self.mate_score;
+
+        // null move pruning
+        if depth <= (self.max_depth - 3) && depth > 0 {
+            // search moves with rediced depth to find beta cutoffs
+            let mut bitboards_t: [i64; 13] = bitboards;
+            bitboards_t[Piece::EP] = 0;
+            let score: i64 = -self.negaMaxAlphaBeta(-beta, -beta+1, mm, bitboards_t, castle_rights, !whites_turn, depth+1+self.reduction_factor);
+            if score >= beta {
+                return beta;
+            }
+        }
+
         let mut moves: String = mm.getPossibleMoves(bitboards, castle_rights, whites_turn);
         if self.follow_pv {
             // now following PV line so enable PV move scoring
@@ -241,44 +268,37 @@ impl BestMoveFinder {
 
             // on PV node hit
             let mut score: i64;
-            if found_pv {
-                /*
-                Once you've found a move with a score that is between alpha and beta,
-                the rest of the moves are searched with the goal of proving that they are all bad.
-                It's possible to do this a bit faster than a search that worries that one
-                of the remaining moves might be good.
-                */
-                score = -self.negaMaxAlphaBeta(-alpha-1, -alpha, mm, bitboards_t, castle_rights_t, !whites_turn, depth+1);
-                /*
-                If the algorithm finds out that it was wrong, and that one of the
-                subsequent moves was better than the first PV move, it has to search again,
-                in the normal alpha-beta manner.  This happens sometimes, and it's a waste of time,
-                but generally not often enough to counteract the savings gained from doing the
-                "bad move proof" search referred to earlier.
-               */
-                if (score > alpha) && (score < beta) {
-                    score = -self.negaMaxAlphaBeta(-beta, -alpha, mm, bitboards_t, castle_rights_t, !whites_turn, depth+1);
-                }
+            if moves_searched == 0 {
+                // normal alpha beta search (full depth)
+                score = -self.negaMaxAlphaBeta(-beta, -alpha, mm, bitboards_t, castle_rights_t, !whites_turn, depth+1);
             } else {
-                if moves_searched == 0 {
-                    // normal alpha beta search (full depth)
-                    score = -self.negaMaxAlphaBeta(-beta, -alpha, mm, bitboards_t, castle_rights_t, !whites_turn, depth+1);
+                // consider Late Move Reduction (LMR)
+                if moves_searched >= self.full_depth_moves && depth >= self.reduction_limit && !mm.isAttackingMove(bitboards, bitboards_t, whites_turn) && moves[i..i+4].chars().nth(3).unwrap() != 'P' {
+                    // search current move with reduced depth
+                    score = -self.negaMaxAlphaBeta(-alpha-1, -alpha, mm, bitboards_t, castle_rights_t, !whites_turn, depth+2);
                 } else {
-                    // consider Late Move Reduction (LMR)
-                    if moves_searched >= self.full_depth_moves && depth >= self.reduction_limit && !mm.isAttackingMove(bitboards, bitboards_t, whites_turn) && moves[i..i+4].chars().nth(3).unwrap() != 'P' {
-                        // search current move with reduced depth
-                        score = -self.negaMaxAlphaBeta(-alpha-1, -alpha, mm, bitboards_t, castle_rights_t, !whites_turn, depth+2);
-                    } else {
-                        score = alpha + 1;
-                    }
+                    score = alpha + 1;
+                }
 
-                    if score > alpha {
-                        // found better move during LMR, re-search at normal depth with null window
-                        score = -self.negaMaxAlphaBeta(-alpha-1, -alpha, mm, bitboards_t, castle_rights_t, !whites_turn, depth+1);
-                        if score > alpha && score < beta {
-                            // LMR fails, re-search at full depth and full window
-                            score = -self.negaMaxAlphaBeta(-beta, -alpha, mm, bitboards_t, castle_rights_t, !whites_turn, depth+1);
-                        }
+                // PV search
+                if score > alpha {
+                    /*
+                    Once you've found a move with a score that is between alpha and beta,
+                    the rest of the moves are searched with the goal of proving that they are all bad.
+                    It's possible to do this a bit faster than a search that worries that one
+                    of the remaining moves might be good.
+                    */
+                    score = -self.negaMaxAlphaBeta(-alpha-1, -alpha, mm, bitboards_t, castle_rights_t, !whites_turn, depth+1);
+                    /*
+                    If the algorithm finds out that it was wrong, and that one of the
+                    subsequent moves was better than the first PV move, it has to search again,
+                    in the normal alpha-beta manner.  This happens sometimes, and it's a waste of time,
+                    but generally not often enough to counteract the savings gained from doing the
+                    "bad move proof" search referred to earlier.
+                    */
+                    if score > alpha && score < beta {
+                        // LMR fails, re-search at full depth and full window
+                        score = -self.negaMaxAlphaBeta(-beta, -alpha, mm, bitboards_t, castle_rights_t, !whites_turn, depth+1);
                     }
                 }
             }
@@ -297,7 +317,6 @@ impl BestMoveFinder {
 
             if best_score > alpha {
                 alpha = best_score;
-                found_pv = true;
                 // write PV move to table
                 self.pv_table[depth as usize][depth as usize] = moves[i..i+4].to_string();
                 // loop over the next depth in table to propagate next moves up a row
