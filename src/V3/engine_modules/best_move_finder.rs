@@ -171,15 +171,15 @@ impl BestMoveFinder {
             let start_time: Instant = Instant::now();
             let score: i64 = self.negaMaxAlphaBeta(alpha, beta, mm, bitboards, castle_rights, whites_turn, 0);
 
-            // search window adjustment
-            if score <= alpha || score >= beta {
-                // fell outside window so try again with full window search at same depth
-                alpha = -50000;
-                beta = 50000;
-                continue;
-            }
-            alpha = score - 50;
-            beta = score + 50;
+            // // search window adjustment
+            // if score <= alpha || score >= beta {
+            //     // fell outside window so try again with full window search at same depth
+            //     alpha = -50000;
+            //     beta = 50000;
+            //     continue;
+            // }
+            // alpha = score - 50;
+            // beta = score + 50;
 
             println!("Total moves analyzed: {}, Duration: {:?}", self.move_counter, start_time.elapsed());
             print!("Best Move Sequence: ");
@@ -193,7 +193,7 @@ impl BestMoveFinder {
 
 
     fn quiescenceSearch(&mut self, mut alpha: i64, beta: i64, mm: &mut Moves, bitboards: [i64; 13], castle_rights: [bool; 4], whites_turn: bool, depth: u32) -> i64 {
-        // look deeper for non-quiet moves (attacking)
+        // look deeper for non-quiet moves (attacking) or when in check
         self.move_counter += 1;
         let eval: i64 = (if whites_turn {1} else {-1}) * self.evaluateBoard(mm, bitboards, whites_turn);
         if eval >= beta {
@@ -245,15 +245,15 @@ impl BestMoveFinder {
         let mut best_score: i64 = -self.mate_score;
 
         // null move pruning
-        if self.max_depth >=3 && depth <= (self.max_depth - 3) && depth > 0 {
-            // search moves with reduced depth to find beta cutoffs
-            let mut bitboards_t: [i64; 13] = bitboards;
-            bitboards_t[Piece::EP] = 0;
-            let score: i64 = -self.negaMaxAlphaBeta(-beta, -beta+1, mm, bitboards_t, castle_rights, !whites_turn, depth+1+self.reduction_factor);
-            if score >= beta {
-                return beta;
-            }
-        }
+        // if self.max_depth >=3 && depth <= (self.max_depth - 3) && depth > 0 {
+        //     // search moves with reduced depth to find beta cutoffs
+        //     let mut bitboards_t: [i64; 13] = bitboards;
+        //     bitboards_t[Piece::EP] = 0;
+        //     let score: i64 = -self.negaMaxAlphaBeta(-beta, -beta+1, mm, bitboards_t, castle_rights, !whites_turn, depth+1+self.reduction_factor);
+        //     if score >= beta {
+        //         return beta;
+        //     }
+        // }
 
         let mut moves: String = mm.getPossibleMoves(bitboards, castle_rights, whites_turn);
 
@@ -564,8 +564,9 @@ mod tests {
     #[test]
     fn basic_test() {
         let mut gs = GameState::new();
-        gs.importFEN(String::from("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1 ")); // tricky
+        // gs.importFEN(String::from("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1 ")); // tricky
         // gs.importFEN(String::from("r2q1rk1/ppp2ppp/2n1bn2/2b1p3/3pP3/3P1NPP/PPP1NPB1/R1BQ1RK1 b - - 0 9 ")); // cmk
+        gs.importFEN(String::from("r3r3/pbppqkQ1/1b5B/3pp2p/1P6/2PB4/P4PPP/R3R1K1 b - - 0 21"));
         let mut m: Moves = Moves::new();
         let mut bmf: BestMoveFinder = BestMoveFinder::new(7);
         bmf.searchPosition(&mut m, gs.bitboards, gs.castle_rights, gs.whites_turn);
