@@ -245,7 +245,7 @@ impl BestMoveFinder {
         let mut best_score: i64 = -self.mate_score;
 
         // null move pruning
-        if depth <= (self.max_depth - 3) && depth > 0 {
+        if self.max_depth >=3 && depth <= (self.max_depth - 3) && depth > 0 {
             // search moves with reduced depth to find beta cutoffs
             let mut bitboards_t: [i64; 13] = bitboards;
             bitboards_t[Piece::EP] = 0;
