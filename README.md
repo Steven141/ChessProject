@@ -1,4 +1,4 @@
-Chess Game and Engine.
+Chess Game and Engine - DOWNLOAD LINK - https://stevenb4.itch.io/chess-game
 
 The objective of this project was to develop a chess game where a player could play against another player or play against a homemade engine. This is still a work in progress but so far three versions have been made. All versions have a similar python frontend but vary with different chess engine architectures for the backend.
 
