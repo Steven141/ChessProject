@@ -158,8 +158,7 @@ impl BestMoveFinder {
 
 
     fn searchPosition(&mut self, mm: &mut Moves, bitboards: [i64; 13], castle_rights: [bool; 4], whites_turn: bool) {
-        self.pv_length = [0; 64];
-        self.pv_table = vec![vec![String::with_capacity(4); 64]; 64];
+        self.pv_length = [0; 64]; self.pv_table = vec![vec![String::with_capacity(4); 64]; 64];
         self.follow_pv = false; self.score_pv = false;
         let mut alpha: i64 = -50000; let mut beta: i64 = 50000;
 
@@ -168,10 +167,11 @@ impl BestMoveFinder {
         while current_depth <= self.search_depth {
             // enable PV following
             self.follow_pv = true;
-
             self.max_depth = current_depth;
             let start_time: Instant = Instant::now();
             let score: i64 = self.negaMaxAlphaBeta(alpha, beta, mm, bitboards, castle_rights, whites_turn, 0);
+
+            // search window adjustment
             if score <= alpha || score >= beta {
                 // fell outside window so try again with full window search at same depth
                 alpha = -50000;
@@ -202,8 +202,10 @@ impl BestMoveFinder {
         if eval > alpha {
             alpha = eval;
         }
+
         let mut moves: String = mm.getPossibleMoves(bitboards, castle_rights, whites_turn);
         moves = self.sortMoves(mm, &moves, bitboards, whites_turn, depth);
+
         for i in (0..moves.len()).step_by(4) {
             let bitboards_t: [i64; 13] = mm.getUpdatedBitboards(&moves[i..i+4], bitboards);
             let castle_rights_t: [bool; 4] = mm.getUpdatedCastleRights(&moves[i..i+4], castle_rights, bitboards);
@@ -244,7 +246,7 @@ impl BestMoveFinder {
 
         // null move pruning
         if depth <= (self.max_depth - 3) && depth > 0 {
-            // search moves with rediced depth to find beta cutoffs
+            // search moves with reduced depth to find beta cutoffs
             let mut bitboards_t: [i64; 13] = bitboards;
             bitboards_t[Piece::EP] = 0;
             let score: i64 = -self.negaMaxAlphaBeta(-beta, -beta+1, mm, bitboards_t, castle_rights, !whites_turn, depth+1+self.reduction_factor);
@@ -254,20 +256,23 @@ impl BestMoveFinder {
         }
 
         let mut moves: String = mm.getPossibleMoves(bitboards, castle_rights, whites_turn);
+
         if self.follow_pv {
             // now following PV line so enable PV move scoring
             self.enablePVScoring(&moves, depth);
         }
+
         moves = self.sortMoves(mm, &moves, bitboards, whites_turn, depth);
+
         let mut moves_searched: u32 = 0;
         let mut valid_move_found: bool = false;
         for i in (0..moves.len()).step_by(4) {
             let bitboards_t: [i64; 13] = mm.getUpdatedBitboards(&moves[i..i+4], bitboards);
             let castle_rights_t: [bool; 4] = mm.getUpdatedCastleRights(&moves[i..i+4], castle_rights, bitboards);
             valid_move_found = true;
+            let mut score: i64;
 
             // on PV node hit
-            let mut score: i64;
             if moves_searched == 0 {
                 // normal alpha beta search (full depth)
                 score = -self.negaMaxAlphaBeta(-beta, -alpha, mm, bitboards_t, castle_rights_t, !whites_turn, depth+1);
@@ -331,6 +336,7 @@ impl BestMoveFinder {
                 break;
             }
         }
+
         if !valid_move_found {
             if mm.isKingAttacked(bitboards, whites_turn) {
                 mm.checkmate = true;
