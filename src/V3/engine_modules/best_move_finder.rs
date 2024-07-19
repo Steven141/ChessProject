@@ -35,7 +35,7 @@ impl BestMoveFinder {
         BestMoveFinder {
             search_depth: search_depth,
             max_depth: 0,
-            mate_score: 10000,
+            mate_score: 49000,
             stale_score: 0,
             move_counter: 0,
             piece_scores: HashMap::from([
@@ -173,7 +173,7 @@ impl BestMoveFinder {
             for depth in 0..(self.pv_length[0]) {
                 print!("{:?} ", move_to_algebra!(self.pv_table[0][depth as usize]));
             }
-            println!("...\n");
+            println!("\n");
         }
     }
 

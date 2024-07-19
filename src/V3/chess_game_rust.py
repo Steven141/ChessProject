@@ -48,6 +48,8 @@ def main() -> None:
     screen.fill(pg.Color('white'))
     move_log_font = pg.font.SysFont('Arial', 14, False, False)
     gs = ChessProject.GameState()
+    # gs.importFEN('r3r1k1/pbppq1p1/1b3pQB/3pP2p/1P6/2PB4/P4PPP/R3R1K1 b - - 1 18') # same as below but ahead
+    # gs.importFEN('r3r1k1/pbppqpp1/1b5B/3pP2p/1P6/2PB2Q1/P4PPP/R3R1K1 b - - 1 17') # same problem as below
     # gs.importFEN('r3kb1r/ppp1p1pp/4b3/1Q2N3/3q4/2N5/PP3PPP/R1B3K1 b kq - 1 15') # TODO does not look deeper for checking moves
     m = ChessProject.Moves()
     valid_moves = m.getValidMoves(gs.bitboards, gs.castle_rights, gs.whites_turn, 0)
