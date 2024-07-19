@@ -5,7 +5,7 @@ use pyo3::prelude::*;
 use crate::moves::Moves;
 use crate::piece::Piece;
 use std::collections::HashMap;
-use std::time::Instant;
+use std::time::{Duration, Instant};
 
 
 #[pyclass(module = "ChessProject", get_all, set_all)]
@@ -159,14 +159,13 @@ impl BestMoveFinder {
         self.pv_length = [0; 64];
         self.pv_table = vec![vec![String::with_capacity(4); 64]; 64];
         self.follow_pv = false; self.score_pv = false;
+        let start_time: Instant = Instant::now();
 
         // iterative deepening
         for current_depth in 1..(self.search_depth+1) {
             // enable PV following
             self.follow_pv = true;
-
             self.max_depth = current_depth;
-            let start_time: Instant = Instant::now();
             self.negaMaxAlphaBeta(-10000, 10000, mm, bitboards, castle_rights, whites_turn, 0);
             println!("Total moves analyzed: {}, Duration: {:?}", self.move_counter, start_time.elapsed());
             print!("Best Move Sequence: ");
@@ -174,6 +173,9 @@ impl BestMoveFinder {
                 print!("{:?} ", move_to_algebra!(self.pv_table[0][depth as usize]));
             }
             println!("\n");
+            if start_time.elapsed() > Duration::from_secs(3) {
+                break
+            }
         }
     }
 
@@ -238,9 +240,9 @@ impl BestMoveFinder {
             let bitboards_t: [i64; 13] = mm.getUpdatedBitboards(&moves[i..i+4], bitboards);
             let castle_rights_t: [bool; 4] = mm.getUpdatedCastleRights(&moves[i..i+4], castle_rights, bitboards);
             valid_move_found = true;
+            let mut score: i64;
 
             // on PV node hit
-            let mut score: i64;
             if found_pv {
                 /*
                 Once you've found a move with a score that is between alpha and beta,
