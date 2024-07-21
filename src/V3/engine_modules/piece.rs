@@ -1,7 +1,10 @@
 //! Module for enumeration of the chess pieces
 
 
-use std::ops::{Index, IndexMut};
+use std::ops::{
+    Index,
+    IndexMut,
+};
 
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]

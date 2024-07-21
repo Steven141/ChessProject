@@ -20,7 +20,8 @@ fn ChessProject(_py: Python, m: &PyModule) -> PyResult<()> {
         game_state::GameState,
         moves::Moves,
         perft::Perft,
-        best_move_finder::BestMoveFinder
+        best_move_finder::BestMoveFinder,
+        zobrist::Zobrist
     );
     Ok(())
 }

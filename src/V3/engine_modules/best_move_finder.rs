@@ -2,11 +2,15 @@
 
 
 use pyo3::prelude::*;
-use crate::castle_rights::CastleRights;
-use crate::moves::Moves;
-use crate::piece::Piece;
 use std::collections::HashMap;
-use std::time::{Duration, Instant};
+use std::time::{
+    Duration,
+    Instant,
+};
+use crate::{
+    moves::Moves,
+    piece::Piece,
+};
 
 
 #[pyclass(module = "ChessProject", get_all, set_all)]
@@ -25,12 +29,6 @@ pub struct BestMoveFinder {
     score_pv: bool,
     full_depth_moves: u32,
     reduction_limit: u32,
-    random_seed: u32,
-    piece_keys: [[u64; 64]; 12],
-    enpassant_keys: [u64; 64],
-    castle_keys: [u64; 16],
-    side_key: u64,
-    hash_key: u64,
 }
 
 
@@ -39,7 +37,7 @@ pub struct BestMoveFinder {
 impl BestMoveFinder {
     #[new]
     fn new(search_depth: u32) -> Self {
-        let mut bmf: BestMoveFinder = BestMoveFinder {
+        BestMoveFinder {
             search_depth: search_depth,
             max_depth: 0,
             mate_score: 49000,
@@ -159,89 +157,7 @@ impl BestMoveFinder {
             // LMR
             full_depth_moves: 4,
             reduction_limit: 3,
-            // Zobrist Hashing
-            random_seed: 1804289383,
-            piece_keys: [[0; 64]; 12],
-            enpassant_keys: [0; 64],
-            castle_keys: [0; 16],
-            side_key: 0,
-            hash_key: 0,
-        };
-        bmf.initRandomKeys();
-        bmf
-    }
-
-
-    fn initRandomKeys(&mut self) {
-        for piece in [Piece::WP, Piece::WN, Piece::WB, Piece::WR, Piece::WQ, Piece::WK, Piece::BP, Piece::BN, Piece::BB, Piece::BR, Piece::BQ, Piece::BK] {
-            for sq in 0..64 {
-                self.piece_keys[piece][sq] = self.getRandomU64();
-            }
         }
-        for sq in 0..64 {
-            self.enpassant_keys[sq] = self.getRandomU64();
-        }
-        for idx in 0..16 {
-            self.castle_keys[idx] = self.getRandomU64();
-        }
-        self.side_key = self.getRandomU64();
-    }
-
-
-    // generate 32-bit pseudo legal numbers
-    fn getRandomU32(&mut self) -> u32 {
-        let mut num: u32 = self.random_seed;
-        num ^= num << 13;
-        num ^= num >> 17;
-        num ^= num << 5;
-        self.random_seed = num;
-        num
-    }
-
-
-    // generate 64-bit pseudo legal numbers
-    fn getRandomU64(&mut self) -> u64 {
-        let n1: u64 = self.getRandomU32() as u64 & 0xFFFF;
-        let n2: u64 = self.getRandomU32() as u64 & 0xFFFF;
-        let n3: u64 = self.getRandomU32() as u64 & 0xFFFF;
-        let n4: u64 = self.getRandomU32() as u64 & 0xFFFF;
-        n1 | (n2 << 16) | (n3 << 32) | (n4 << 48)
-    }
-
-
-    fn setHashKey(&mut self, bitboards: [i64; 13], castle_rights: [bool; 4], whites_turn: bool) {
-        let mut final_key: u64 = 0;
-        for piece in [Piece::WP, Piece::WN, Piece::WB, Piece::WR, Piece::WQ, Piece::WK, Piece::BP, Piece::BN, Piece::BB, Piece::BR, Piece::BQ, Piece::BK] {
-            let mut bitboard: i64 = bitboards[piece];
-            let mut bitboard_ls1b: i64 = bitboard & !wrap_op!(bitboard, 1, '-'); // selects single 1 bit
-            let mut idxs: Vec<u32> = vec![];
-            while bitboard_ls1b != 0 {
-                let idx: u32 = bitboard_ls1b.leading_zeros();
-                idxs.push(idx);
-                bitboard &= !bitboard_ls1b;
-                bitboard_ls1b = bitboard & !wrap_op!(bitboard, 1, '-');
-            }
-            idxs.reverse();
-            idxs.iter().for_each(|&idx| final_key ^= self.piece_keys[piece][idx as usize]);
-        }
-        // encode enpassant column as single square
-        if bitboards[Piece::EP] != 0 {
-            let col: usize = bitboards[Piece::EP].leading_zeros() as usize;
-            let row: usize = if whites_turn {2} else {5};
-            final_key ^= self.enpassant_keys[row * 8 + col];
-        }
-        // encode castle rights as 4bit uint
-        final_key ^= self.castle_keys[
-            ((castle_rights[CastleRights::CBQ] as usize) << 3)
-            | ((castle_rights[CastleRights::CBK] as usize) << 2)
-            | ((castle_rights[CastleRights::CWQ] as usize) << 1)
-            | (castle_rights[CastleRights::CWK] as usize)
-        ];
-        // hash the side only if blacks turn
-        if !whites_turn {
-            final_key ^= self.side_key;
-        }
-        self.hash_key = final_key;
     }
 
 
@@ -591,12 +507,17 @@ impl BestMoveFinder {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::engine_modules::game_state::GameState;
+    use crate::{
+        engine_modules::game_state::GameState,
+        perft::Perft,
+        zobrist::Zobrist,
+    };
 
     #[test]
     fn score_move_test() {
-        let mut gs = GameState::new();
-        gs.importFEN(String::from("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1 "));
+        let mut z: Zobrist = Zobrist::new();
+        let mut gs = GameState::new(&mut z);
+        gs.importFEN(&mut z, String::from("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1 "));
         let mut m: Moves = Moves::new();
         let mut bmf: BestMoveFinder = BestMoveFinder::new(2);
         let moves: String = m.getPossibleMoves(gs.bitboards, gs.castle_rights, gs.whites_turn);
@@ -614,8 +535,9 @@ mod tests {
 
     #[test]
     fn sort_moves_test() {
-        let mut gs = GameState::new();
-        gs.importFEN(String::from("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1 "));
+        let mut z: Zobrist = Zobrist::new();
+        let mut gs = GameState::new(&mut z);
+        gs.importFEN(&mut z, String::from("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1 "));
         let mut m: Moves = Moves::new();
         let mut bmf: BestMoveFinder = BestMoveFinder::new(2);
         let moves: String = m.getPossibleMoves(gs.bitboards, gs.castle_rights, gs.whites_turn);
@@ -630,14 +552,16 @@ mod tests {
 
     #[test]
     fn basic_test() {
-        let mut gs = GameState::new();
-        gs.importFEN(String::from("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1 ")); // tricky
+        let mut z: Zobrist = Zobrist::new();
+        let mut gs = GameState::new(&mut z);
+        gs.importFEN(&mut z, String::from("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1 ")); // tricky
         // gs.importFEN(String::from("r2q1rk1/ppp2ppp/2n1bn2/2b1p3/3pP3/3P1NPP/PPP1NPB1/R1BQ1RK1 b - - 0 9 ")); // cmk
         let mut m: Moves = Moves::new();
-        let mut bmf: BestMoveFinder = BestMoveFinder::new(7);
+        // let mut bmf: BestMoveFinder = BestMoveFinder::new(7);
         // bmf.searchPosition(&mut m, gs.bitboards, gs.castle_rights, gs.whites_turn);
-        bmf.setHashKey(gs.bitboards, gs.castle_rights, gs.whites_turn);
-        println!("hash key: {:x}", bmf.hash_key);
+        println!("starting hash key: {:x}", gs.hash_key);
+        let mut p: Perft = Perft::new(2);
+        p.perftRoot(&mut m, &mut z, gs.bitboards, gs.castle_rights, gs.hash_key, gs.whites_turn, 0);
         panic!();
     }
 }

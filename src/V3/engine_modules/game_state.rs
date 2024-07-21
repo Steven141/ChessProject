@@ -2,10 +2,13 @@
 
 
 use pyo3::prelude::*;
-use crate::castle_rights::CastleRights;
-use crate::special_bitboards::SpecialBitBoards;
-use crate::moves::Moves;
-use crate::piece::Piece;
+use crate::{
+    castle_rights::CastleRights,
+    special_bitboards::SpecialBitBoards,
+    moves::Moves,
+    piece::Piece,
+    zobrist::Zobrist,
+};
 
 
 #[pyclass(module = "ChessProject", get_all, set_all)]
@@ -18,13 +21,14 @@ pub struct GameState {
     move_log: String,
     recent_piece_moved: char,
     recent_piece_captured: char,
+    pub hash_key: u64,
 }
 
 
 #[pymethods]
 impl GameState {
     #[new]
-    pub fn new() -> Self {
+    pub fn new(z: &Zobrist) -> Self {
         let mut gs: GameState = GameState {
             board: [
                 ['r', 'n', 'b', 'q', 'k', 'b', 'n', 'r'],
@@ -43,8 +47,10 @@ impl GameState {
             move_log: String::new(),
             recent_piece_moved: ' ',
             recent_piece_captured: ' ',
+            hash_key: 0,
         };
         gs.arrayToI64();
+        gs.hash_key = z.generateHashKey(gs.bitboards, gs.castle_rights, gs.whites_turn);
         return gs;
     }
 
@@ -176,7 +182,7 @@ impl GameState {
     }
 
 
-    pub fn importFEN(&mut self, fen_str: String) {
+    pub fn importFEN(&mut self, z: &Zobrist, fen_str: String) {
         self.bitboards = [0; 13];
         self.castle_rights = [false; 4];
         let mut char_idx: usize = 0;
@@ -264,7 +270,8 @@ impl GameState {
         if fen_str.chars().nth(char_idx).unwrap() != '-' {
             self.bitboards[Piece::EP] = self.masks.file_masks[fen_str.chars().nth(char_idx).unwrap() as usize - 'a' as usize];
         }
-        self.updateBoardArray()
+        self.updateBoardArray();
+        self.hash_key = z.generateHashKey(self.bitboards, self.castle_rights, self.whites_turn);
         // Rest of FEN not used
     }
 

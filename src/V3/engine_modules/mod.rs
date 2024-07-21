@@ -7,3 +7,4 @@ pub mod perft;
 pub mod best_move_finder;
 pub mod piece;
 pub mod castle_rights;
+pub mod zobrist;

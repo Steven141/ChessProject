@@ -1,7 +1,10 @@
 //! Module for enumeration of the castle rights
 
 
-use std::ops::{Index, IndexMut};
+use std::ops::{
+    Index,
+    IndexMut,
+};
 
 
 pub enum CastleRights {

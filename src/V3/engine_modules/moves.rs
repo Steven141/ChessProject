@@ -2,17 +2,19 @@
 
 
 use pyo3::prelude::*;
-use crate::castle_rights::CastleRights;
-use crate::special_bitboards::SpecialBitBoards;
-use crate::piece::Piece;
 use std::str::from_utf8;
 use rand::thread_rng;
 use rand::seq::SliceRandom;
+use crate::{
+    castle_rights::CastleRights,
+    special_bitboards::SpecialBitBoards,
+    piece::Piece,
+};
 
 
 #[pyclass(module = "ChessProject", get_all, set_all)]
 pub struct Moves {
-    castle_rooks: [usize; 4],
+    pub castle_rooks: [usize; 4],
     pub masks: SpecialBitBoards,
     pub checkmate: bool,
     pub stalemate: bool,
