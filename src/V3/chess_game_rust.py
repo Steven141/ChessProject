@@ -53,7 +53,7 @@ def main() -> None:
     # gs.importFEN('r3r1k1/pbppqpp1/1b5B/3pP2p/1P6/2PB2Q1/P4PPP/R3R1K1 b - - 1 17') # same problem as below
     # gs.importFEN('r3kb1r/ppp1p1pp/4b3/1Q2N3/3q4/2N5/PP3PPP/R1B3K1 b kq - 1 15') # TODO does not look deeper for checking moves
     m = ChessProject.Moves()
-    valid_moves = m.getValidMoves(gs.bitboards, gs.castle_rights, gs.whites_turn, 0)
+    valid_moves = m.getValidMoves(z, gs.bitboards, gs.castle_rights, gs.hash_key, gs.whites_turn, 0)
     move_made = False # flag for when move is made
     animate = False
 
@@ -104,14 +104,14 @@ def main() -> None:
                         print(move)
                         for i in range(0, len(valid_moves), 4):
                             if move == valid_moves[i:i+4]:
-                                gs.makeMove(m, valid_moves[i:i+4])
+                                gs.makeMove(m, z, valid_moves[i:i+4])
                                 move_made = True
                                 animate = True
                                 sq_selected = ()
                                 player_clicks = []
                                 break
                             if move_ep == valid_moves[i:i+4]:
-                                gs.makeMove(m, valid_moves[i:i+4])
+                                gs.makeMove(m, z, valid_moves[i:i+4])
                                 move_made = True
                                 animate = True
                                 sq_selected = ()
@@ -132,11 +132,11 @@ def main() -> None:
             if not ai_thinking:
                 ai_thinking = True
                 print('Thinking...')
-                ai_move = ai_move_finder_rust.findBestMove(gs, m, valid_moves)
+                ai_move = ai_move_finder_rust.findBestMove(gs, m, z, valid_moves)
                 print('Done thinking')
                 if ai_move == '':
                     ai_move = ai_move_finder_rust.findRandomMove(valid_moves)
-                gs.makeMove(m, ai_move)
+                gs.makeMove(m, z, ai_move)
                 move_made = True
                 animate = True
                 ai_thinking = False
@@ -144,7 +144,7 @@ def main() -> None:
         if move_made:
             if animate:
                 animateMove(gs.move_log[-4:], screen, gs, clk)
-            valid_moves = m.getValidMoves(gs.bitboards, gs.castle_rights, gs.whites_turn, 0)
+            valid_moves = m.getValidMoves(z, gs.bitboards, gs.castle_rights, gs.hash_key, gs.whites_turn, 0)
             move_made = False
             animate = False
             move_undone = False

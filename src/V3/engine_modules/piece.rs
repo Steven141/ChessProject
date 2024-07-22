@@ -1,12 +1,14 @@
 //! Module for enumeration of the chess pieces
 
 
+use pyo3::prelude::*;
 use std::ops::{
     Index,
     IndexMut,
 };
 
 
+#[pyclass(module = "ChessProject", get_all, set_all)]
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum Piece {
     WP,
@@ -78,6 +80,27 @@ impl<T> IndexMut<Piece> for [T] {
             Piece::BQ => &mut self[10],
             Piece::BK => &mut self[11],
             Piece::EP => &mut self[12],
+        }
+    }
+}
+
+
+impl PartialEq<char> for Piece {
+    fn eq(&self, other: &char) -> bool {
+        match self {
+            Piece::WP => *other == 'P',
+            Piece::WN => *other == 'N',
+            Piece::WB => *other == 'B',
+            Piece::WR => *other == 'R',
+            Piece::WQ => *other == 'Q',
+            Piece::WK => *other == 'K',
+            Piece::BP => *other == 'p',
+            Piece::BN => *other == 'n',
+            Piece::BB => *other == 'b',
+            Piece::BR => *other == 'r',
+            Piece::BQ => *other == 'q',
+            Piece::BK => *other == 'k',
+            _ => panic!("CANNOT EQUATE THIS VALUE"),
         }
     }
 }

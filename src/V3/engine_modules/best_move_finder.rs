@@ -10,6 +10,7 @@ use std::time::{
 use crate::{
     moves::Moves,
     piece::Piece,
+    zobrist::Zobrist
 };
 
 
@@ -161,7 +162,7 @@ impl BestMoveFinder {
     }
 
 
-    fn searchPosition(&mut self, mm: &mut Moves, bitboards: [i64; 13], castle_rights: [bool; 4], whites_turn: bool) {
+    fn searchPosition(&mut self, mm: &mut Moves, z: &mut Zobrist, bitboards: [i64; 13], castle_rights: [bool; 4], hash_key: u64, whites_turn: bool) {
         self.pv_length = [0; 64];
         self.pv_table = vec![vec![String::with_capacity(4); 64]; 64];
         self.follow_pv = false; self.score_pv = false;
@@ -172,7 +173,7 @@ impl BestMoveFinder {
             // enable PV following
             self.follow_pv = true;
             self.max_depth = current_depth;
-            self.negaMaxAlphaBeta(-10000, 10000, mm, bitboards, castle_rights, whites_turn, 0);
+            self.negaMaxAlphaBeta(-10000, 10000, mm, z, bitboards, castle_rights, hash_key, whites_turn, 0);
             println!("Total moves analyzed: {}, Duration: {:?}", self.move_counter, start_time.elapsed());
             print!("Best Move Sequence: ");
             for depth in 0..(self.pv_length[0]) {
@@ -186,7 +187,7 @@ impl BestMoveFinder {
     }
 
 
-    fn quiescenceSearch(&mut self, mut alpha: i64, beta: i64, mm: &mut Moves, bitboards: [i64; 13], castle_rights: [bool; 4], whites_turn: bool, depth: u32) -> i64 {
+    fn quiescenceSearch(&mut self, mut alpha: i64, beta: i64, mm: &mut Moves, z: &mut Zobrist, bitboards: [i64; 13], castle_rights: [bool; 4], hash_key: u64, whites_turn: bool, depth: u32) -> i64 {
         // look deeper for non-quiet moves (attacking)
         self.move_counter += 1;
         let eval: i64 = (if whites_turn {1} else {-1}) * self.evaluateBoard(mm, bitboards, whites_turn);
@@ -197,12 +198,12 @@ impl BestMoveFinder {
             alpha = eval;
         }
         let mut moves: String = mm.getPossibleMoves(bitboards, castle_rights, whites_turn);
-        moves = self.sortMoves(mm, &moves, bitboards, whites_turn, depth);
+        moves = self.sortMoves(mm, z, &moves, bitboards, hash_key, whites_turn, depth);
         for i in (0..moves.len()).step_by(4) {
-            let bitboards_t: [i64; 13] = mm.getUpdatedBitboards(&moves[i..i+4], bitboards);
-            let castle_rights_t: [bool; 4] = mm.getUpdatedCastleRights(&moves[i..i+4], castle_rights, bitboards);
+            let (bitboards_t, hash_key_t) = mm.getUpdatedBitboards(z, &moves[i..i+4], bitboards, hash_key, whites_turn);
+            let (castle_rights_t, hash_key_t) = mm.getUpdatedCastleRights(z, &moves[i..i+4], castle_rights, bitboards, hash_key_t);
             if mm.isAttackingMove(bitboards, bitboards_t, whites_turn) {
-                let score: i64 = -self.quiescenceSearch(-beta, -alpha, mm, bitboards_t, castle_rights_t, !whites_turn, depth+1);
+                let score: i64 = -self.quiescenceSearch(-beta, -alpha, mm, z, bitboards_t, castle_rights_t, hash_key_t, !whites_turn, depth+1);
                 if score >= beta {
                     return beta;
                 }
@@ -220,12 +221,12 @@ impl BestMoveFinder {
     beta = maximum score that the minimizing player is assured of
     depth = how deep current iteration is
     */
-    fn negaMaxAlphaBeta(&mut self, mut alpha: i64, beta: i64, mm: &mut Moves, bitboards: [i64; 13], castle_rights: [bool; 4], whites_turn: bool, depth: u32) -> i64 {
+    fn negaMaxAlphaBeta(&mut self, mut alpha: i64, beta: i64, mm: &mut Moves, z: &mut Zobrist, bitboards: [i64; 13], castle_rights: [bool; 4], hash_key: u64, whites_turn: bool, depth: u32) -> i64 {
         let mut found_pv: bool = false;
         // init current depths PV table entry length
         self.pv_length[depth as usize] = depth;
         if depth >= self.max_depth {
-            return self.quiescenceSearch(alpha, beta, mm, bitboards, castle_rights, whites_turn, depth+1);
+            return self.quiescenceSearch(alpha, beta, mm, z, bitboards, castle_rights, hash_key, whites_turn, depth+1);
         }
         if depth >= 64 {
             // prevent PV table overflow
@@ -239,12 +240,12 @@ impl BestMoveFinder {
             // now following PV line so enable PV move scoring
             self.enablePVScoring(&moves, depth);
         }
-        moves = self.sortMoves(mm, &moves, bitboards, whites_turn, depth);
+        moves = self.sortMoves(mm, z, &moves, bitboards, hash_key, whites_turn, depth);
         let mut moves_searched: u32 = 0;
         let mut valid_move_found: bool = false;
         for i in (0..moves.len()).step_by(4) {
-            let bitboards_t: [i64; 13] = mm.getUpdatedBitboards(&moves[i..i+4], bitboards);
-            let castle_rights_t: [bool; 4] = mm.getUpdatedCastleRights(&moves[i..i+4], castle_rights, bitboards);
+            let (bitboards_t, hash_key_t) = mm.getUpdatedBitboards(z, &moves[i..i+4], bitboards, hash_key, whites_turn);
+            let (castle_rights_t, hash_key_t) = mm.getUpdatedCastleRights(z, &moves[i..i+4], castle_rights, bitboards, hash_key_t);
             valid_move_found = true;
             let mut score: i64;
 
@@ -256,7 +257,7 @@ impl BestMoveFinder {
                 It's possible to do this a bit faster than a search that worries that one
                 of the remaining moves might be good.
                 */
-                score = -self.negaMaxAlphaBeta(-alpha-1, -alpha, mm, bitboards_t, castle_rights_t, !whites_turn, depth+1);
+                score = -self.negaMaxAlphaBeta(-alpha-1, -alpha, mm, z, bitboards_t, castle_rights_t, hash_key_t, !whites_turn, depth+1);
                 /*
                 If the algorithm finds out that it was wrong, and that one of the
                 subsequent moves was better than the first PV move, it has to search again,
@@ -265,27 +266,27 @@ impl BestMoveFinder {
                 "bad move proof" search referred to earlier.
                */
                 if (score > alpha) && (score < beta) {
-                    score = -self.negaMaxAlphaBeta(-beta, -alpha, mm, bitboards_t, castle_rights_t, !whites_turn, depth+1);
+                    score = -self.negaMaxAlphaBeta(-beta, -alpha, mm, z, bitboards_t, castle_rights_t, hash_key_t, !whites_turn, depth+1);
                 }
             } else {
                 if moves_searched == 0 {
                     // normal alpha beta search (full depth)
-                    score = -self.negaMaxAlphaBeta(-beta, -alpha, mm, bitboards_t, castle_rights_t, !whites_turn, depth+1);
+                    score = -self.negaMaxAlphaBeta(-beta, -alpha, mm, z, bitboards_t, castle_rights_t, hash_key_t, !whites_turn, depth+1);
                 } else {
                     // consider Late Move Reduction (LMR)
                     if moves_searched >= self.full_depth_moves && depth >= self.reduction_limit && !mm.isAttackingMove(bitboards, bitboards_t, whites_turn) && moves[i..i+4].chars().nth(3).unwrap() != 'P' {
                         // search current move with reduced depth
-                        score = -self.negaMaxAlphaBeta(-alpha-1, -alpha, mm, bitboards_t, castle_rights_t, !whites_turn, depth+2);
+                        score = -self.negaMaxAlphaBeta(-alpha-1, -alpha, mm, z, bitboards_t, castle_rights_t, hash_key_t, !whites_turn, depth+2);
                     } else {
                         score = alpha + 1;
                     }
 
                     if score > alpha {
                         // found better move during LMR, re-search at normal depth with null window
-                        score = -self.negaMaxAlphaBeta(-alpha-1, -alpha, mm, bitboards_t, castle_rights_t, !whites_turn, depth+1);
+                        score = -self.negaMaxAlphaBeta(-alpha-1, -alpha, mm, z, bitboards_t, castle_rights_t, hash_key_t, !whites_turn, depth+1);
                         if score > alpha && score < beta {
                             // LMR fails, re-search at full depth and full window
-                            score = -self.negaMaxAlphaBeta(-beta, -alpha, mm, bitboards_t, castle_rights_t, !whites_turn, depth+1);
+                            score = -self.negaMaxAlphaBeta(-beta, -alpha, mm, z, bitboards_t, castle_rights_t, hash_key_t, !whites_turn, depth+1);
                         }
                     }
                 }
@@ -482,11 +483,11 @@ impl BestMoveFinder {
 
     3. Resulted in 1.24 times speedup on average (24% faster) than no pre-allocation or in-place sorting
     */
-    fn sortMoves(&mut self, mm: &mut Moves, moves: &str, bitboards: [i64; 13], whites_turn: bool, depth: u32) -> String {
+    fn sortMoves(&mut self, mm: &mut Moves, z: &mut Zobrist, moves: &str, bitboards: [i64; 13], hash_key: u64, whites_turn: bool, depth: u32) -> String {
         let mut move_scores: Vec<(i64, &str)> = Vec::with_capacity(moves.len() / 4);
         for i in (0..moves.len()).step_by(4) {
             let move_slice: &str = &moves[i..i + 4];
-            let bitboards_t: [i64; 13] = mm.getUpdatedBitboards(move_slice, bitboards);
+            let (bitboards_t, _) = mm.getUpdatedBitboards(z, move_slice, bitboards, hash_key, whites_turn);
             if mm.isValidMove(bitboards_t, whites_turn) {
                 move_scores.push((self.scoreMove(mm, bitboards, move_slice, whites_turn, depth), move_slice));
             }
@@ -523,7 +524,7 @@ mod tests {
         let moves: String = m.getPossibleMoves(gs.bitboards, gs.castle_rights, gs.whites_turn);
         let mut actual_scores: Vec<i64> = vec![10105, 10105, 10303, 10101, 10201, 10104, 10104, 10104];
         for i in (0..moves.len()).step_by(4) {
-            let bitboards_t: [i64; 13] = m.getUpdatedBitboards(&moves[i..i+4], gs.bitboards);
+            let (bitboards_t, _) = m.getUpdatedBitboards(&mut z, &moves[i..i+4], gs.bitboards, gs.hash_key, gs.whites_turn);
             if m.isValidMove(bitboards_t, gs.whites_turn) {
                 let score = bmf.scoreMove(&mut m, gs.bitboards, &moves[i..i+4], gs.whites_turn, 0);
                 if score != 0 {
@@ -541,7 +542,7 @@ mod tests {
         let mut m: Moves = Moves::new();
         let mut bmf: BestMoveFinder = BestMoveFinder::new(2);
         let moves: String = m.getPossibleMoves(gs.bitboards, gs.castle_rights, gs.whites_turn);
-        let sorted_moves: String = bmf.sortMoves(&mut m, &moves, gs.bitboards, gs.whites_turn, 0);
+        let sorted_moves: String = bmf.sortMoves(&mut m, &mut z, &moves, gs.bitboards, gs.hash_key, gs.whites_turn, 0);
         let mut score: i64 = i64::MAX;
         for i in (0..sorted_moves.len()).step_by(4) {
             let current_score: i64 = bmf.scoreMove(&mut m, gs.bitboards, &sorted_moves[i..i+4], gs.whites_turn, 0);

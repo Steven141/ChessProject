@@ -276,7 +276,7 @@ impl GameState {
     }
 
 
-    fn makeMove(&mut self, mm: &Moves, move_str: String) {
+    fn makeMove(&mut self, mm: &Moves, z: &mut Zobrist, move_str: String) {
         if move_str.chars().nth(3).unwrap() == 'E' {
             self.recent_piece_captured = if self.whites_turn {'p'} else {'P'};
             self.recent_piece_moved = if self.whites_turn {'P'} else {'p'};
@@ -292,8 +292,8 @@ impl GameState {
 
         self.move_log.push_str(&move_str);
         let bitboards_cached: [i64; 13] = self.bitboards;
-        self.bitboards = mm.getUpdatedBitboards(&move_str, self.bitboards);
-        self.castle_rights = mm.getUpdatedCastleRights(&move_str, self.castle_rights, bitboards_cached);
+        (self.bitboards, self.hash_key) = mm.getUpdatedBitboards(z, &move_str, self.bitboards, self.hash_key, self.whites_turn);
+        (self.castle_rights, self.hash_key) = mm.getUpdatedCastleRights(z, &move_str, self.castle_rights, bitboards_cached, self.hash_key);
 
         self.whites_turn = !self.whites_turn;
         self.updateBoardArray();
