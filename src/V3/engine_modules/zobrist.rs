@@ -76,15 +76,12 @@ impl Zobrist {
         for piece in [Piece::WP, Piece::WN, Piece::WB, Piece::WR, Piece::WQ, Piece::WK, Piece::BP, Piece::BN, Piece::BB, Piece::BR, Piece::BQ, Piece::BK] {
             let mut bitboard: i64 = bitboards[piece];
             let mut bitboard_ls1b: i64 = bitboard & !wrap_op!(bitboard, 1, '-'); // selects single 1 bit
-            let mut idxs: Vec<u32> = vec![];
             while bitboard_ls1b != 0 {
                 let idx: u32 = bitboard_ls1b.leading_zeros();
-                idxs.push(idx);
+                final_key ^= self.piece_keys[piece][idx as usize];
                 bitboard &= !bitboard_ls1b;
                 bitboard_ls1b = bitboard & !wrap_op!(bitboard, 1, '-');
             }
-            idxs.reverse();
-            idxs.iter().for_each(|&idx| final_key ^= self.piece_keys[piece][idx as usize]);
         }
         // encode enpassant column as single square
         if bitboards[Piece::EP] != 0 {

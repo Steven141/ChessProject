@@ -560,8 +560,9 @@ mod tests {
         // let mut bmf: BestMoveFinder = BestMoveFinder::new(7);
         // bmf.searchPosition(&mut m, gs.bitboards, gs.castle_rights, gs.whites_turn);
         println!("starting hash key: {:x}", gs.hash_key);
-        let mut p: Perft = Perft::new(2);
+        let mut p: Perft = Perft::new(4);
         p.perftRoot(&mut m, &mut z, gs.bitboards, gs.castle_rights, gs.hash_key, gs.whites_turn, 0);
+        println!("moves total: {}", p.total_move_counter);
         panic!();
     }
 }

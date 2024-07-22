@@ -14,7 +14,7 @@ use crate::{
 pub struct Perft {
     max_depth: u32,
     move_counter: u32,
-    total_move_counter: u32,
+    pub total_move_counter: u32,
 }
 
 
@@ -63,6 +63,20 @@ impl Perft {
                     }
                 } else if moves[i..i+4].chars().nth(3).unwrap() == 'P' { // pawn promo
                     let (c1, c2, _, _) = move_to_u32s!(moves[i..i+4]);
+                    let (r1, r2) = if whites_turn {(1, 0)} else {(6, 7)};
+                    let piece: Piece = if whites_turn {Piece::WP} else {Piece::BP};
+                    let promo_piece: Piece;
+                    match moves[i..i+4].chars().nth(2).unwrap() {
+                        'Q' => promo_piece = Piece::WQ,
+                        'R' => promo_piece = Piece::WR,
+                        'B' => promo_piece = Piece::WB,
+                        'N' => promo_piece = Piece::WN,
+                        'q' => promo_piece = Piece::BQ,
+                        'r' => promo_piece = Piece::BR,
+                        'b' => promo_piece = Piece::BB,
+                        'n' => promo_piece = Piece::BN,
+                        _ => panic!("INVALID PROMO TYPE"),
+                    }
                     if moves[i..i+4].chars().nth(2).unwrap().is_uppercase() { // white promo
                         start_bitboard = mm.masks.file_masks[c1 as usize] & mm.masks.rank_masks[1];
                         start_shift = 64 - 1 - start_bitboard.leading_zeros();
@@ -73,6 +87,13 @@ impl Perft {
                         start_shift = 64 - 1 - start_bitboard.leading_zeros();
                         end_bitboard = mm.masks.file_masks[c2 as usize] & mm.masks.rank_masks[7];
                         end_shift = 64 - 1 - end_bitboard.leading_zeros();
+                    }
+                    hash_key_t ^= z.piece_keys[piece][(r1 * 8 + c1) as usize]; // remove source piece from hash
+                    hash_key_t ^= z.piece_keys[promo_piece][(r2 * 8 + c2) as usize]; // add promoted piece to hash
+                    for piece in [Piece::WP, Piece::WN, Piece::WB, Piece::WR, Piece::WQ, Piece::WK, Piece::BP, Piece::BN, Piece::BB, Piece::BR, Piece::BQ, Piece::BK] {
+                        if usgn_r_shift!(bitboards[piece], end_shift) & 1 == 1 {
+                            hash_key_t ^= z.piece_keys[piece][(r2 * 8 + c2) as usize] // remove taken piece from hash
+                        }
                     }
                 } else if moves[i..i+4].chars().nth(3).unwrap() == 'E' { // enpassant
                     let (c1, c2, _, _) = move_to_u32s!(moves[i..i+4]);
@@ -160,7 +181,7 @@ impl Perft {
                     println!("move: {}", move_to_algebra!(moves[i..i+4]));
                     println!("hash key should be: {:x}", scratch_hash);
                     println!("iterative hash key: {:x}", hash_key_t);
-                    // break
+                    break
                 }
 
 
@@ -210,6 +231,20 @@ impl Perft {
                 }
             } else if moves[i..i+4].chars().nth(3).unwrap() == 'P' { // pawn promo
                 let (c1, c2, _, _) = move_to_u32s!(moves[i..i+4]);
+                let (r1, r2) = if whites_turn {(1, 0)} else {(6, 7)};
+                let piece: Piece = if whites_turn {Piece::WP} else {Piece::BP};
+                let promo_piece: Piece;
+                match moves[i..i+4].chars().nth(2).unwrap() {
+                    'Q' => promo_piece = Piece::WQ,
+                    'R' => promo_piece = Piece::WR,
+                    'B' => promo_piece = Piece::WB,
+                    'N' => promo_piece = Piece::WN,
+                    'q' => promo_piece = Piece::BQ,
+                    'r' => promo_piece = Piece::BR,
+                    'b' => promo_piece = Piece::BB,
+                    'n' => promo_piece = Piece::BN,
+                    _ => panic!("INVALID PROMO TYPE"),
+                }
                 if moves[i..i+4].chars().nth(2).unwrap().is_uppercase() { // white promo
                     start_bitboard = mm.masks.file_masks[c1 as usize] & mm.masks.rank_masks[1];
                     start_shift = 64 - 1 - start_bitboard.leading_zeros();
@@ -220,6 +255,13 @@ impl Perft {
                     start_shift = 64 - 1 - start_bitboard.leading_zeros();
                     end_bitboard = mm.masks.file_masks[c2 as usize] & mm.masks.rank_masks[7];
                     end_shift = 64 - 1 - end_bitboard.leading_zeros();
+                }
+                hash_key_t ^= z.piece_keys[piece][(r1 * 8 + c1) as usize]; // remove source piece from hash
+                hash_key_t ^= z.piece_keys[promo_piece][(r2 * 8 + c2) as usize]; // add promoted piece to hash
+                for piece in [Piece::WP, Piece::WN, Piece::WB, Piece::WR, Piece::WQ, Piece::WK, Piece::BP, Piece::BN, Piece::BB, Piece::BR, Piece::BQ, Piece::BK] {
+                    if usgn_r_shift!(bitboards[piece], end_shift) & 1 == 1 {
+                        hash_key_t ^= z.piece_keys[piece][(r2 * 8 + c2) as usize] // remove taken piece from hash
+                    }
                 }
             } else if moves[i..i+4].chars().nth(3).unwrap() == 'E' { // enpassant
                 let (c1, c2, _, _) = move_to_u32s!(moves[i..i+4]);
@@ -307,7 +349,7 @@ impl Perft {
                 println!("move: {}", move_to_algebra!(moves[i..i+4]));
                 println!("hash key should be: {:x}", scratch_hash);
                 println!("iterative hash key: {:x}", hash_key_t);
-                // break
+                break
             }
 
 
