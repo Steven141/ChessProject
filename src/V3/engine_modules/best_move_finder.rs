@@ -509,9 +509,7 @@ impl BestMoveFinder {
 mod tests {
     use super::*;
     use crate::{
-        engine_modules::game_state::GameState,
-        perft::Perft,
-        zobrist::Zobrist,
+        engine_modules::game_state::GameState, perft::Perft, trans_table::*, zobrist::Zobrist
     };
 
     #[test]
@@ -555,15 +553,20 @@ mod tests {
     fn basic_test() {
         let mut z: Zobrist = Zobrist::new();
         let mut gs = GameState::new(&mut z);
-        gs.importFEN(&mut z, String::from("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1 ")); // tricky
+        // gs.importFEN(&mut z, String::from("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1 ")); // tricky
         // gs.importFEN(String::from("r2q1rk1/ppp2ppp/2n1bn2/2b1p3/3pP3/3P1NPP/PPP1NPB1/R1BQ1RK1 b - - 0 9 ")); // cmk
         let mut m: Moves = Moves::new();
         // let mut bmf: BestMoveFinder = BestMoveFinder::new(7);
         // bmf.searchPosition(&mut m, gs.bitboards, gs.castle_rights, gs.whites_turn);
         println!("starting hash key: {:x}", gs.hash_key);
-        let mut p: Perft = Perft::new(4);
-        p.perftRoot(&mut m, &mut z, gs.bitboards, gs.castle_rights, gs.hash_key, gs.whites_turn, 0);
-        println!("moves total: {}", p.total_move_counter);
+        let mut p: Perft = Perft::new(3);
+        // p.perftRoot(&mut m, &mut z, gs.bitboards, gs.castle_rights, gs.hash_key, gs.whites_turn, 0);
+        let mut tt: TransTable = TransTable::new();
+        tt.clearTable();
+        tt.writeEntry(45, gs.hash_key, 1, HashFlag::Beta as i64);
+        let score = tt.readEntry(20, 30, gs.hash_key, 1);
+        // println!("moves total: {}", p.total_move_counter);
+        println!("{:?}", score);
         panic!();
     }
 }
