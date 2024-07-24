@@ -10,7 +10,8 @@ use std::time::{
 use crate::{
     moves::Moves,
     piece::Piece,
-    zobrist::Zobrist
+    zobrist::Zobrist,
+    trans_table::*,
 };
 
 
@@ -162,25 +163,26 @@ impl BestMoveFinder {
     }
 
 
-    fn searchPosition(&mut self, mm: &mut Moves, z: &mut Zobrist, bitboards: [i64; 13], castle_rights: [bool; 4], hash_key: u64, whites_turn: bool) {
+    fn searchPosition(&mut self, mm: &mut Moves, z: &mut Zobrist, tt: &mut TransTable, bitboards: [i64; 13], castle_rights: [bool; 4], hash_key: u64, whites_turn: bool) {
         self.pv_length = [0; 64];
         self.pv_table = vec![vec![String::with_capacity(4); 64]; 64];
         self.follow_pv = false; self.score_pv = false;
         let start_time: Instant = Instant::now();
+        tt.clearTable();
 
         // iterative deepening
         for current_depth in 1..(self.search_depth+1) {
             // enable PV following
             self.follow_pv = true;
             self.max_depth = current_depth;
-            self.negaMaxAlphaBeta(-10000, 10000, mm, z, bitboards, castle_rights, hash_key, whites_turn, 0);
+            self.negaMaxAlphaBeta(-10000, 10000, mm, z, tt, bitboards, castle_rights, hash_key, whites_turn, 0);
             println!("Total moves analyzed: {}, Duration: {:?}", self.move_counter, start_time.elapsed());
             print!("Best Move Sequence: ");
             for depth in 0..(self.pv_length[0]) {
                 print!("{:?} ", move_to_algebra!(self.pv_table[0][depth as usize]));
             }
             println!("\n");
-            if start_time.elapsed() > Duration::from_secs(3) {
+            if start_time.elapsed() > Duration::from_secs(10) {
                 break
             }
         }
@@ -221,7 +223,12 @@ impl BestMoveFinder {
     beta = maximum score that the minimizing player is assured of
     depth = how deep current iteration is
     */
-    fn negaMaxAlphaBeta(&mut self, mut alpha: i64, beta: i64, mm: &mut Moves, z: &mut Zobrist, bitboards: [i64; 13], castle_rights: [bool; 4], hash_key: u64, whites_turn: bool, depth: u32) -> i64 {
+    fn negaMaxAlphaBeta(&mut self, mut alpha: i64, beta: i64, mm: &mut Moves, z: &mut Zobrist, tt: &mut TransTable, bitboards: [i64; 13], castle_rights: [bool; 4], hash_key: u64, whites_turn: bool, depth: u32) -> i64 {
+        let table_score: i64 = tt.readEntry(alpha, beta, hash_key, self.max_depth - depth);
+        if table_score != TransTable::NO_HASH_ENTRY {
+            return table_score; // board state searched before, return hash table score
+        }
+        let mut hash_flag: HashFlag = HashFlag::Alpha;
         let mut found_pv: bool = false;
         // init current depths PV table entry length
         self.pv_length[depth as usize] = depth;
@@ -257,7 +264,7 @@ impl BestMoveFinder {
                 It's possible to do this a bit faster than a search that worries that one
                 of the remaining moves might be good.
                 */
-                score = -self.negaMaxAlphaBeta(-alpha-1, -alpha, mm, z, bitboards_t, castle_rights_t, hash_key_t, !whites_turn, depth+1);
+                score = -self.negaMaxAlphaBeta(-alpha-1, -alpha, mm, z, tt, bitboards_t, castle_rights_t, hash_key_t, !whites_turn, depth+1);
                 /*
                 If the algorithm finds out that it was wrong, and that one of the
                 subsequent moves was better than the first PV move, it has to search again,
@@ -266,27 +273,27 @@ impl BestMoveFinder {
                 "bad move proof" search referred to earlier.
                */
                 if (score > alpha) && (score < beta) {
-                    score = -self.negaMaxAlphaBeta(-beta, -alpha, mm, z, bitboards_t, castle_rights_t, hash_key_t, !whites_turn, depth+1);
+                    score = -self.negaMaxAlphaBeta(-beta, -alpha, mm, z, tt, bitboards_t, castle_rights_t, hash_key_t, !whites_turn, depth+1);
                 }
             } else {
                 if moves_searched == 0 {
                     // normal alpha beta search (full depth)
-                    score = -self.negaMaxAlphaBeta(-beta, -alpha, mm, z, bitboards_t, castle_rights_t, hash_key_t, !whites_turn, depth+1);
+                    score = -self.negaMaxAlphaBeta(-beta, -alpha, mm, z, tt, bitboards_t, castle_rights_t, hash_key_t, !whites_turn, depth+1);
                 } else {
                     // consider Late Move Reduction (LMR)
                     if moves_searched >= self.full_depth_moves && depth >= self.reduction_limit && !mm.isAttackingMove(bitboards, bitboards_t, whites_turn) && moves[i..i+4].chars().nth(3).unwrap() != 'P' {
                         // search current move with reduced depth
-                        score = -self.negaMaxAlphaBeta(-alpha-1, -alpha, mm, z, bitboards_t, castle_rights_t, hash_key_t, !whites_turn, depth+2);
+                        score = -self.negaMaxAlphaBeta(-alpha-1, -alpha, mm, z, tt, bitboards_t, castle_rights_t, hash_key_t, !whites_turn, depth+2);
                     } else {
                         score = alpha + 1;
                     }
 
                     if score > alpha {
                         // found better move during LMR, re-search at normal depth with null window
-                        score = -self.negaMaxAlphaBeta(-alpha-1, -alpha, mm, z, bitboards_t, castle_rights_t, hash_key_t, !whites_turn, depth+1);
+                        score = -self.negaMaxAlphaBeta(-alpha-1, -alpha, mm, z, tt, bitboards_t, castle_rights_t, hash_key_t, !whites_turn, depth+1);
                         if score > alpha && score < beta {
                             // LMR fails, re-search at full depth and full window
-                            score = -self.negaMaxAlphaBeta(-beta, -alpha, mm, z, bitboards_t, castle_rights_t, hash_key_t, !whites_turn, depth+1);
+                            score = -self.negaMaxAlphaBeta(-beta, -alpha, mm, z, tt, bitboards_t, castle_rights_t, hash_key_t, !whites_turn, depth+1);
                         }
                     }
                 }
@@ -305,6 +312,7 @@ impl BestMoveFinder {
             }
 
             if best_score > alpha {
+                hash_flag = HashFlag::Exact;
                 alpha = best_score;
                 found_pv = true;
                 // write PV move to table
@@ -318,7 +326,8 @@ impl BestMoveFinder {
                 self.pv_length[depth as usize] = self.pv_length[(depth+1) as usize];
             }
             if alpha >= beta {
-                break;
+                tt.writeEntry(beta, hash_key, self.max_depth - depth, HashFlag::Beta as i64);
+                return beta;
             }
         }
         if !valid_move_found {
@@ -332,7 +341,8 @@ impl BestMoveFinder {
             mm.checkmate = false;
             mm.stalemate = false;
         }
-        best_score
+        tt.writeEntry(alpha, hash_key, self.max_depth - depth, hash_flag as i64);
+        alpha
     }
 
 
@@ -556,17 +566,18 @@ mod tests {
         // gs.importFEN(&mut z, String::from("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1 ")); // tricky
         // gs.importFEN(String::from("r2q1rk1/ppp2ppp/2n1bn2/2b1p3/3pP3/3P1NPP/PPP1NPB1/R1BQ1RK1 b - - 0 9 ")); // cmk
         let mut m: Moves = Moves::new();
-        // let mut bmf: BestMoveFinder = BestMoveFinder::new(7);
-        // bmf.searchPosition(&mut m, gs.bitboards, gs.castle_rights, gs.whites_turn);
-        println!("starting hash key: {:x}", gs.hash_key);
-        let mut p: Perft = Perft::new(3);
-        // p.perftRoot(&mut m, &mut z, gs.bitboards, gs.castle_rights, gs.hash_key, gs.whites_turn, 0);
+        let mut bmf: BestMoveFinder = BestMoveFinder::new(7);
         let mut tt: TransTable = TransTable::new();
-        tt.clearTable();
-        tt.writeEntry(45, gs.hash_key, 1, HashFlag::Beta as i64);
-        let score = tt.readEntry(20, 30, gs.hash_key, 1);
+        println!("starting hash key: {:x}", gs.hash_key);
+        bmf.searchPosition(&mut m, &mut z, &mut tt, gs.bitboards, gs.castle_rights, gs.hash_key, gs.whites_turn);
+        // let mut p: Perft = Perft::new(3);
+        // p.perftRoot(&mut m, &mut z, gs.bitboards, gs.castle_rights, gs.hash_key, gs.whites_turn, 0);
+        // let mut tt: TransTable = TransTable::new();
+        // tt.clearTable();
+        // tt.writeEntry(45, gs.hash_key, 1, HashFlag::Beta as i64);
+        // let score = tt.readEntry(20, 30, gs.hash_key, 1);
         // println!("moves total: {}", p.total_move_counter);
-        println!("{:?}", score);
+        // println!("{:?}", score);
         panic!();
     }
 }
