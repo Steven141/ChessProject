@@ -21,7 +21,8 @@ fn ChessProject(_py: Python, m: &PyModule) -> PyResult<()> {
         moves::Moves,
         perft::Perft,
         best_move_finder::BestMoveFinder,
-        zobrist::Zobrist
+        zobrist::Zobrist,
+        trans_table::TransTable
     );
     Ok(())
 }

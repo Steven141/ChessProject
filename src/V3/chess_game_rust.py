@@ -49,10 +49,15 @@ def main() -> None:
     move_log_font = pg.font.SysFont('Arial', 14, False, False)
     z = ChessProject.Zobrist()
     gs = ChessProject.GameState(z)
-    # gs.importFEN('r3r1k1/pbppq1p1/1b3pQB/3pP2p/1P6/2PB4/P4PPP/R3R1K1 b - - 1 18') # same as below but ahead
-    # gs.importFEN('r3r1k1/pbppqpp1/1b5B/3pP2p/1P6/2PB2Q1/P4PPP/R3R1K1 b - - 1 17') # same problem as below
-    # gs.importFEN('r3kb1r/ppp1p1pp/4b3/1Q2N3/3q4/2N5/PP3PPP/R1B3K1 b kq - 1 15') # TODO does not look deeper for checking moves
+    # gs.importFEN(z, 'r3r1k1/pbppq1p1/1b4QB/3pp2p/1P6/2PB4/P4PPP/R3R1K1 w - - 1 18') # same as below but ahead
+    # gs.importFEN(z, 'r3r1k1/pbppq1p1/1b3pQB/3pP2p/1P6/2PB4/P4PPP/R3R1K1 b - - 1 18') # same as below but ahead
+    # gs.importFEN(z, 'r3r1k1/pbppqpp1/1b5B/3pP2p/1P6/2PB2Q1/P4PPP/R3R1K1 b - - 1 17') # same problem as below
+    # gs.importFEN(z, 'r3kb1r/ppp1p1pp/4b3/1Q2N3/3q4/2N5/PP3PPP/R1B3K1 b kq - 1 15') # TODO does not look deeper for checking moves
+    # gs.importFEN(z, 'r7/8/6K1/2k5/8/8/8/8 w - - 0 1') # rook winning
+    # gs.importFEN(z, '8/8/8/8/8/8/PK5k/8 w - - 0 1')
+    # gs.importFEN(z, '8/5Q2/k7/2K5/8/8/8/8 b - - 0 1')
     m = ChessProject.Moves()
+    tt = ChessProject.TransTable()
     valid_moves = m.getValidMoves(z, gs.bitboards, gs.castle_rights, gs.hash_key, gs.whites_turn, 0)
     move_made = False # flag for when move is made
     animate = False
@@ -118,7 +123,7 @@ def main() -> None:
                                 player_clicks = []
                                 break
                             if move_promo == valid_moves[i:i+4] and ((player_clicks[0][0] == 1 and player_clicks[1][0] == 0) if gs.whites_turn else (player_clicks[0][0] == 6 and player_clicks[1][0] == 7)):
-                                gs.makeMove(m, valid_moves[i:i+4])
+                                gs.makeMove(m, z, valid_moves[i:i+4])
                                 move_made = True
                                 animate = True
                                 sq_selected = ()
@@ -132,7 +137,7 @@ def main() -> None:
             if not ai_thinking:
                 ai_thinking = True
                 print('Thinking...')
-                ai_move = ai_move_finder_rust.findBestMove(gs, m, z, valid_moves)
+                ai_move = ai_move_finder_rust.findBestMove(gs, m, z, tt, valid_moves)
                 print('Done thinking')
                 if ai_move == '':
                     ai_move = ai_move_finder_rust.findRandomMove(valid_moves)

@@ -87,7 +87,7 @@ impl GameState {
     }
 
 
-    fn drawGameArray(&self) {
+    pub fn drawGameArray(&self) {
         let mut new_board: [[char; 8]; 8] = [[' '; 8]; 8];
         for i in 0..64 {
             let shift = 64 - 1 - i;
