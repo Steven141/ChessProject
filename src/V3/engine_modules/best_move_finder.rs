@@ -174,7 +174,14 @@ impl BestMoveFinder {
             // enable PV following
             self.follow_pv = true;
             self.max_depth = current_depth;
-            self.negaMaxAlphaBeta(-50000, 50000, mm, z, tt, bitboards, castle_rights, hash_key, whites_turn, 0);
+            let score: i64 = self.negaMaxAlphaBeta(-50000, 50000, mm, z, tt, bitboards, castle_rights, hash_key, whites_turn, 0);
+            if score >= -49000 && score < -48000 {
+                println!("Depth: {}, Move: {}, Score: {}, Mate in {}", self.max_depth, move_to_algebra!(self.pv_table[0][0]), score, (score + 49000) / 2 + 1);
+            } else if score <= 49000 && score > 48000 {
+                println!("Depth: {}, Move: {}, Score: {}, Mate in {}", self.max_depth, move_to_algebra!(self.pv_table[0][0]), score, (49000 - score) / 2 + 1);
+            } else {
+                println!("Depth: {}, Move: {}, Score: {}", self.max_depth, move_to_algebra!(self.pv_table[0][0]), score);
+            }
             println!("Total moves analyzed: {}, Duration: {:?}", self.move_counter, start_time.elapsed());
             print!("Best Move Sequence: ");
             for depth in 0..(self.pv_length[0]) {
@@ -225,7 +232,7 @@ impl BestMoveFinder {
     fn negaMaxAlphaBeta(&mut self, mut alpha: i64, beta: i64, mm: &mut Moves, z: &mut Zobrist, tt: &mut TransTable, bitboards: [i64; 13], castle_rights: [bool; 4], hash_key: u64, whites_turn: bool, depth: u32) -> i64 {
         let table_score: i64 = tt.readEntry(alpha, beta, hash_key, self.max_depth as i32 - depth as i32, depth);
         let is_pv_node: bool = beta - alpha > 1;
-        if table_score != TransTable::NO_HASH_ENTRY && !is_pv_node { // TODO: is_pv_node fix ?
+        if table_score != TransTable::NO_HASH_ENTRY && !is_pv_node {
             return table_score; // board state searched before
         }
         let mut hash_flag: HashFlag = HashFlag::Alpha;
@@ -303,9 +310,6 @@ impl BestMoveFinder {
 
             if score > best_score {
                 best_score = score;
-                if depth == 0 {
-                    println!("Depth: {}, Move: {}, Score: {}", self.max_depth, move_to_algebra!(moves[i..i+4]), score);
-                }
             }
 
             if best_score > alpha {
