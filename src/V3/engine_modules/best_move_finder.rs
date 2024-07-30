@@ -31,6 +31,8 @@ pub struct BestMoveFinder {
     score_pv: bool,
     full_depth_moves: u32,
     reduction_limit: u32,
+    repetition_table: [u64; 1000],
+    repetition_idx: usize,
 }
 
 
@@ -159,7 +161,20 @@ impl BestMoveFinder {
             // LMR
             full_depth_moves: 4,
             reduction_limit: 3,
+            // Repetition Detection
+            repetition_table: [0; 1000],
+            repetition_idx: 0,
         }
+    }
+
+
+    fn isRepetition(&self, hash_key: u64) -> bool {
+        for i in 0..self.repetition_idx {
+            if self.repetition_table[i] == hash_key {
+                return true;
+            }
+        }
+        false
     }
 
 
@@ -168,6 +183,8 @@ impl BestMoveFinder {
         self.pv_table = vec![vec![String::with_capacity(4); 64]; 64];
         self.follow_pv = false; self.score_pv = false;
         let start_time: Instant = Instant::now();
+        self.repetition_idx += 1;
+        self.move_counter = 0;
 
         // iterative deepening
         for current_depth in 1..(self.search_depth+1) {
@@ -211,7 +228,10 @@ impl BestMoveFinder {
             let (bitboards_t, hash_key_t) = mm.getUpdatedBitboards(z, &moves[i..i+4], bitboards, hash_key, whites_turn);
             let (castle_rights_t, hash_key_t) = mm.getUpdatedCastleRights(z, &moves[i..i+4], castle_rights, bitboards, hash_key_t);
             if mm.isAttackingMove(bitboards, bitboards_t, whites_turn) {
+                self.repetition_idx += 1;
+                self.repetition_table[self.repetition_idx] = hash_key;
                 let score: i64 = -self.quiescenceSearch(-beta, -alpha, mm, z, bitboards_t, castle_rights_t, hash_key_t, !whites_turn, depth+1);
+                self.repetition_idx -= 1;
                 if score >= beta {
                     return beta;
                 }
@@ -230,6 +250,9 @@ impl BestMoveFinder {
     depth = how deep current iteration is
     */
     fn negaMaxAlphaBeta(&mut self, mut alpha: i64, beta: i64, mm: &mut Moves, z: &mut Zobrist, tt: &mut TransTable, bitboards: [i64; 13], castle_rights: [bool; 4], hash_key: u64, whites_turn: bool, depth: u32) -> i64 {
+        if depth > 0 && self.isRepetition(hash_key) {
+            return 0; // draw score
+        }
         let table_score: i64 = tt.readEntry(alpha, beta, hash_key, self.max_depth as i32 - depth as i32, depth);
         let is_pv_node: bool = beta - alpha > 1;
         if table_score != TransTable::NO_HASH_ENTRY && !is_pv_node {
@@ -260,6 +283,8 @@ impl BestMoveFinder {
         for i in (0..moves.len()).step_by(4) {
             let (bitboards_t, hash_key_t) = mm.getUpdatedBitboards(z, &moves[i..i+4], bitboards, hash_key, whites_turn);
             let (castle_rights_t, hash_key_t) = mm.getUpdatedCastleRights(z, &moves[i..i+4], castle_rights, bitboards, hash_key_t);
+            self.repetition_idx += 1;
+            self.repetition_table[self.repetition_idx] = hash_key;
             valid_move_found = true;
             let mut score: i64;
 
@@ -306,6 +331,7 @@ impl BestMoveFinder {
                 }
             }
 
+            self.repetition_idx -= 1;
             moves_searched += 1;
 
             if score > best_score {
@@ -564,9 +590,10 @@ mod tests {
         // gs.importFEN(&mut z, String::from("6k1/2p3b1/2p2p2/p1Pp4/3P4/P4NPK/1r6/8 b - - 0 1")); // best move seq bug for search depth 8
         // gs.importFEN(&mut z, String::from("8/8/8/8/8/8/PK5k/8 w - - 0 1")); // winning position
         // gs.importFEN(&mut z, String::from("4k3/Q7/8/4K3/8/8/8/8 w - - ")); // checking mate
+        gs.importFEN(&mut z, String::from("2r3k1/R7/8/1R6/8/8/P4KPP/8 w - - 0 1"));
         gs.drawGameArray();
         let mut m: Moves = Moves::new();
-        let mut bmf: BestMoveFinder = BestMoveFinder::new(7);
+        let mut bmf: BestMoveFinder = BestMoveFinder::new(6);
         let mut tt: TransTable = TransTable::new();
         println!("starting hash key: {:x}", gs.hash_key);
         bmf.searchPosition(&mut m, &mut z, &mut tt, gs.bitboards, gs.castle_rights, gs.hash_key, gs.whites_turn);

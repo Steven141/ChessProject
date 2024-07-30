@@ -19,6 +19,7 @@ SQ_SIZE = BOARD_WIDTH // BOARD_DIM
 FPS = 15
 IMAGES = {}
 PIECE_NAMES = ['bR', 'bN', 'bB', 'bQ', 'bK', 'bP', 'wR', 'wN', 'wB', 'wQ', 'wK', 'wP']
+DEPTH = 40
 
 
 def loadImages() -> None:
@@ -49,6 +50,7 @@ def main() -> None:
     move_log_font = pg.font.SysFont('Arial', 14, False, False)
     z = ChessProject.Zobrist()
     gs = ChessProject.GameState(z)
+    bmf = ChessProject.BestMoveFinder(DEPTH)
     # gs.importFEN(z, 'r3r1k1/pbppq1p1/1b4QB/3pp2p/1P6/2PB4/P4PPP/R3R1K1 w - - 1 18') # same as below but ahead
     # gs.importFEN(z, 'r3r1k1/pbppq1p1/1b3pQB/3pP2p/1P6/2PB4/P4PPP/R3R1K1 b - - 1 18') # same as below but ahead
     # gs.importFEN(z, 'r3r1k1/pbppqpp1/1b5B/3pP2p/1P6/2PB2Q1/P4PPP/R3R1K1 b - - 1 17') # same problem as below
@@ -56,6 +58,7 @@ def main() -> None:
     # gs.importFEN(z, 'r7/8/6K1/2k5/8/8/8/8 w - - 0 1') # rook winning
     # gs.importFEN(z, '8/8/8/8/8/8/PK5k/8 w - - 0 1')
     # gs.importFEN(z, '8/5Q2/k7/2K5/8/8/8/8 b - - 0 1')
+    # gs.importFEN(z, '2r3k1/R7/8/1R6/8/8/P4KPP/8 w - - 0 1') # draw, use depth 3
     m = ChessProject.Moves()
     tt = ChessProject.TransTable()
     valid_moves = m.getValidMoves(z, gs.bitboards, gs.castle_rights, gs.hash_key, gs.whites_turn, 0)
@@ -137,7 +140,7 @@ def main() -> None:
             if not ai_thinking:
                 ai_thinking = True
                 print('Thinking...')
-                ai_move = ai_move_finder_rust.findBestMove(gs, m, z, tt, valid_moves)
+                ai_move = ai_move_finder_rust.findBestMove(gs, m, z, tt, bmf)
                 print('Done thinking')
                 if ai_move == '':
                     ai_move = ai_move_finder_rust.findRandomMove(valid_moves)
