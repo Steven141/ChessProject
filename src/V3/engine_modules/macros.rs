@@ -117,6 +117,25 @@ macro_rules! move_to_algebra {
 }
 
 
+/// Macro to convert move string to algebra notation (non-E/P moves)
+#[macro_export]
+macro_rules! algebra_to_move {
+    ($move:expr) => {{
+        let mut move_str: String = String::new();
+        let idx_to_file_ascii_shift: u8 = 49;
+        let move_chars: Vec<char> = $move.chars().collect();
+        if move_chars[3] == 'E' || move_chars[3] == 'P' {
+            panic!("Cannot Convert for E and P Moves");
+        }
+        move_str.push((('8' as u8 - move_chars[1] as u8) + '0' as u8) as char);
+        move_str.push((move_chars[0] as u8 - idx_to_file_ascii_shift) as char);
+        move_str.push((('8' as u8 - move_chars[3] as u8) + '0' as u8) as char);
+        move_str.push((move_chars[2] as u8 - idx_to_file_ascii_shift) as char);
+        move_str
+    }};
+}
+
+
 /// Macro to add classes to PyModule
 #[macro_export]
 macro_rules! add_classes {

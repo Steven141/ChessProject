@@ -22,6 +22,7 @@ pub struct GameState {
     recent_piece_moved: char,
     recent_piece_captured: char,
     pub hash_key: u64,
+    pub in_book_opening: bool,
 }
 
 
@@ -48,6 +49,7 @@ impl GameState {
             recent_piece_moved: ' ',
             recent_piece_captured: ' ',
             hash_key: 0,
+            in_book_opening: true,
         };
         gs.arrayToI64();
         gs.hash_key = z.generateHashKey(gs.bitboards, gs.castle_rights, gs.whites_turn);
@@ -272,6 +274,7 @@ impl GameState {
         }
         self.updateBoardArray();
         self.hash_key = z.generateHashKey(self.bitboards, self.castle_rights, self.whites_turn);
+        self.in_book_opening = false;
         // Rest of FEN not used
     }
 

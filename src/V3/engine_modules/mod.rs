@@ -9,3 +9,4 @@ pub mod piece;
 pub mod castle_rights;
 pub mod zobrist;
 pub mod trans_table;
+pub mod opening_book;

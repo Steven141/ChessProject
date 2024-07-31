@@ -5,6 +5,7 @@ Handles user input and displays current game state information.
 """
 
 
+import random
 import pygame as pg
 import argparse as argp
 import ai_move_finder_rust
@@ -61,9 +62,11 @@ def main() -> None:
     # gs.importFEN(z, '2r3k1/R7/8/1R6/8/8/P4KPP/8 w - - 0 1') # draw, use depth 3
     m = ChessProject.Moves()
     tt = ChessProject.TransTable()
+    ob = ChessProject.OpeningBook()
     valid_moves = m.getValidMoves(z, gs.bitboards, gs.castle_rights, gs.hash_key, gs.whites_turn, 0)
     move_made = False # flag for when move is made
     animate = False
+    opening_node = ob.trie.root # keep track where we are in opeing book
 
     loadImages()
     running = True
@@ -139,8 +142,34 @@ def main() -> None:
         if not game_over and not is_human_turn and not move_undone:
             if not ai_thinking:
                 ai_thinking = True
-                print('Thinking...')
-                ai_move = ai_move_finder_rust.findBestMove(gs, m, z, tt, bmf)
+                ai_move = ''
+                print('Thinking...\n')
+                if gs.in_book_opening:
+                    if len(gs.move_log) == 0: # ai makes first move
+                        move, opening_node = random.choice(list(opening_node.children.items()))
+                        ai_move = m.algebraToMove(move)
+                        print(f"In Book Opening, Move: {move}\n")
+                    else: # moves already made
+                        if player_one or player_two: # human vs ai
+                            last_move = m.moveToAlgebra(gs.move_log[-4:])
+                            if last_move in opening_node.children and not opening_node.children[last_move].terminal: # prev move in opening book
+                                opening_node = opening_node.children[last_move]
+                                move, opening_node = random.choice(list(opening_node.children.items()))
+                                ai_move = m.algebraToMove(move)
+                                print(f"In Book Opening, Move: {move}\n")
+                            else: # out of opeing book
+                                gs.in_book_opening = False
+                                ai_move = ai_move_finder_rust.findBestMove(gs, m, z, tt, bmf)
+                        else: # ai vs ai
+                            if not opening_node.terminal:
+                                move, opening_node = random.choice(list(opening_node.children.items()))
+                                ai_move = m.algebraToMove(move)
+                                print(f"In Book Opening, Move: {move}\n")
+                            else:
+                                gs.in_book_opening = False
+                                ai_move = ai_move_finder_rust.findBestMove(gs, m, z, tt, bmf)
+                else:
+                    ai_move = ai_move_finder_rust.findBestMove(gs, m, z, tt, bmf)
                 print('Done thinking')
                 if ai_move == '':
                     ai_move = ai_move_finder_rust.findRandomMove(valid_moves)

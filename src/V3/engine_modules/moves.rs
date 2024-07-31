@@ -890,4 +890,10 @@ impl Moves {
     fn moveToAlgebra(&self, move_str: &str) -> String {
         move_to_algebra!(&move_str)
     }
+
+
+    /// Alias so conversion can be done in python as well
+    fn algebraToMove(&self, alg_str: &str) -> String {
+        algebra_to_move!(&alg_str)
+    }
 }
