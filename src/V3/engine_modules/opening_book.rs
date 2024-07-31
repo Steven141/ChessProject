@@ -37,18 +37,6 @@ impl Trie {
         }
         curr_node.terminal = true;
     }
-
-
-    pub fn contains(&self, moves: &str) -> bool {
-        let mut curr_node: &TrieNode = &self.root;
-        for i in (0..moves.len()).step_by(4) {
-            match curr_node.children.get(&moves[i..i+4]) {
-                Some(node) => curr_node = node,
-                None => return false,
-            }
-        }
-        curr_node.terminal
-    }
 }
 
 
@@ -66,39 +54,10 @@ impl OpeningBook {
         let mut book: OpeningBook = OpeningBook {
             trie: Trie::new(),
         };
-        let openings: &str = include_str!("../opening_book.txt");
+        let openings: &str = include_str!("../opening_book.txt"); // provided path interpreted at compile time
         for opening in openings.lines() {
             book.trie.insert(opening);
         }
         book
-    }
-}
-
-
-/// Tests
-
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-
-    #[test]
-    fn trie_test() {
-        // let mut t: Trie = Trie::new();
-        // t.insert("g1f3g8f6c2c4");
-        // t.insert("g1f3g8f6d2d4");
-        // let mut tn: &TrieNode = &t.root;
-        // println!("{:?}", tn.children.contains_key("g1f3"));
-        // tn = tn.children.get("g1f3").unwrap();
-        // println!("{:?}", tn);
-        // tn = tn.children.get("g8f6").unwrap();
-        // println!("{:?}, {}", tn, tn.terminal);
-        // tn = tn.children.get("c2c4").unwrap();
-        // println!("{:?}, {}", tn, tn.terminal);
-        let ob: OpeningBook = OpeningBook::new();
-        println!("{}", ob.trie.root.children.contains_key("g1f3"));
-        println!("{}", algebra_to_move!("c2c4"));
-        panic!();
     }
 }
