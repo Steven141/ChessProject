@@ -19,12 +19,12 @@ use crate::{
 pub struct BestMoveFinder {
     search_depth: u32,
     max_depth: u32,
-    mate_score: i64,
-    stale_score: i64,
+    mate_score: i32,
+    stale_score: i32,
     move_counter: u32,
-    piece_scores: HashMap<char, i64>,
-    piece_position_scores: HashMap<char, [[i64; 8]; 8]>,
-    mvv_lva: [[i64; 12]; 12], // [attacker][victim]
+    piece_scores: HashMap<char, i32>,
+    piece_position_scores: HashMap<char, [[i32; 8]; 8]>,
+    mvv_lva: [[i32; 12]; 12], // [attacker][victim]
     pv_length: [u32; 64],
     pv_table: Vec<Vec<String>>,
     follow_pv: bool,
@@ -191,7 +191,7 @@ impl BestMoveFinder {
             // enable PV following
             self.follow_pv = true;
             self.max_depth = current_depth;
-            let score: i64 = self.negaMaxAlphaBeta(-50000, 50000, mm, z, tt, bitboards, castle_rights, hash_key, whites_turn, 0);
+            let score: i32 = self.negaMaxAlphaBeta(-50000, 50000, mm, z, tt, bitboards, castle_rights, hash_key, whites_turn, 0);
             if score >= -49000 && score < -48000 {
                 println!("Depth: {}, Move: {}, Score: {}, Mate in {}", self.max_depth, move_to_algebra!(self.pv_table[0][0]), score, (score + 49000) / 2 + 1);
             } else if score <= 49000 && score > 48000 {
@@ -212,10 +212,10 @@ impl BestMoveFinder {
     }
 
 
-    fn quiescenceSearch(&mut self, mut alpha: i64, beta: i64, mm: &mut Moves, z: &mut Zobrist, bitboards: [i64; 13], castle_rights: [bool; 4], hash_key: u64, whites_turn: bool, depth: u32) -> i64 {
+    fn quiescenceSearch(&mut self, mut alpha: i32, beta: i32, mm: &mut Moves, z: &mut Zobrist, bitboards: [i64; 13], castle_rights: [bool; 4], hash_key: u64, whites_turn: bool, depth: u32) -> i32 {
         // look deeper for non-quiet moves (attacking)
         self.move_counter += 1;
-        let eval: i64 = (if whites_turn {1} else {-1}) * self.evaluateBoard(bitboards);
+        let eval: i32 = (if whites_turn {1} else {-1}) * self.evaluateBoard(bitboards);
         if eval >= beta {
             return beta;
         }
@@ -230,7 +230,7 @@ impl BestMoveFinder {
             if mm.isAttackingMove(bitboards, bitboards_t, whites_turn) {
                 self.repetition_idx += 1;
                 self.repetition_table[self.repetition_idx] = hash_key;
-                let score: i64 = -self.quiescenceSearch(-beta, -alpha, mm, z, bitboards_t, castle_rights_t, hash_key_t, !whites_turn, depth+1);
+                let score: i32 = -self.quiescenceSearch(-beta, -alpha, mm, z, bitboards_t, castle_rights_t, hash_key_t, !whites_turn, depth+1);
                 self.repetition_idx -= 1;
                 if score >= beta {
                     return beta;
@@ -249,11 +249,11 @@ impl BestMoveFinder {
     beta = maximum score that the minimizing player is assured of
     depth = how deep current iteration is
     */
-    fn negaMaxAlphaBeta(&mut self, mut alpha: i64, beta: i64, mm: &mut Moves, z: &mut Zobrist, tt: &mut TransTable, bitboards: [i64; 13], castle_rights: [bool; 4], hash_key: u64, whites_turn: bool, depth: u32) -> i64 {
+    fn negaMaxAlphaBeta(&mut self, mut alpha: i32, beta: i32, mm: &mut Moves, z: &mut Zobrist, tt: &mut TransTable, bitboards: [i64; 13], castle_rights: [bool; 4], hash_key: u64, whites_turn: bool, depth: u32) -> i32 {
         if depth > 0 && self.isRepetition(hash_key) {
             return 0; // draw score
         }
-        let table_score: i64 = tt.readEntry(alpha, beta, hash_key, self.max_depth as i32 - depth as i32, depth);
+        let table_score: i32 = tt.readEntry(alpha, beta, hash_key, self.max_depth as i32 - depth as i32, depth);
         let is_pv_node: bool = beta - alpha > 1;
         if table_score != TransTable::NO_HASH_ENTRY && !is_pv_node {
             return table_score; // board state searched before
@@ -271,7 +271,7 @@ impl BestMoveFinder {
             return (if whites_turn {1} else {-1}) * self.evaluateBoard(bitboards);
         }
         self.move_counter += 1;
-        let mut best_score: i64 = -self.mate_score;
+        let mut best_score: i32 = -self.mate_score;
         let mut moves: String = mm.getPossibleMoves(bitboards, castle_rights, whites_turn);
         if self.follow_pv {
             // now following PV line so enable PV move scoring
@@ -286,7 +286,7 @@ impl BestMoveFinder {
             self.repetition_idx += 1;
             self.repetition_table[self.repetition_idx] = hash_key;
             valid_move_found = true;
-            let mut score: i64;
+            let mut score: i32;
 
             // on PV node hit
             if found_pv {
@@ -353,14 +353,14 @@ impl BestMoveFinder {
                 self.pv_length[depth as usize] = self.pv_length[(depth+1) as usize];
             }
             if alpha >= beta {
-                tt.writeEntry(beta, hash_key, self.max_depth - depth, depth, HashFlag::Beta as i64);
+                tt.writeEntry(beta, hash_key, self.max_depth - depth, depth, HashFlag::Beta as i32);
                 return beta;
             }
         }
         if !valid_move_found {
             if mm.isKingAttacked(bitboards, whites_turn) {
                 mm.checkmate = true;
-                return -self.mate_score + depth as i64;
+                return -self.mate_score + depth as i32;
             } else {
                 mm.stalemate = true;
                 return self.stale_score;
@@ -369,13 +369,13 @@ impl BestMoveFinder {
             mm.checkmate = false;
             mm.stalemate = false;
         }
-        tt.writeEntry(alpha, hash_key, self.max_depth - depth, depth, hash_flag as i64);
+        tt.writeEntry(alpha, hash_key, self.max_depth - depth, depth, hash_flag as i32);
         alpha
     }
 
 
-    fn evaluateBoard(&self, bitboards: [i64; 13]) -> i64 {
-        let mut score: i64 = 0;
+    fn evaluateBoard(&self, bitboards: [i64; 13]) -> i32 {
+        let mut score: i32 = 0;
         for i in 0..64 {
             let shift = 64 - 1 - i;
             if usgn_r_shift!(bitboards[Piece::WP], shift) & 1 == 1 {
@@ -434,7 +434,7 @@ impl BestMoveFinder {
     }
 
 
-    fn scoreMove(&mut self, mm: &mut Moves, bitboards: [i64; 13], move_str: &str, whites_turn: bool, depth: u32) -> i64 {
+    fn scoreMove(&mut self, mm: &mut Moves, bitboards: [i64; 13], move_str: &str, whites_turn: bool, depth: u32) -> i32 {
         if self.score_pv {
             if self.pv_table[0][depth as usize] == move_str {
                 self.score_pv = false;
@@ -516,7 +516,7 @@ impl BestMoveFinder {
     3. Resulted in 1.24 times speedup on average (24% faster) than no pre-allocation or in-place sorting
     */
     fn sortMoves(&mut self, mm: &mut Moves, z: &mut Zobrist, moves: &str, bitboards: [i64; 13], hash_key: u64, whites_turn: bool, depth: u32) -> String {
-        let mut move_scores: Vec<(i64, &str)> = Vec::with_capacity(moves.len() / 4);
+        let mut move_scores: Vec<(i32, &str)> = Vec::with_capacity(moves.len() / 4);
         for i in (0..moves.len()).step_by(4) {
             let move_slice: &str = &moves[i..i + 4];
             let (bitboards_t, _) = mm.getUpdatedBitboards(z, move_slice, bitboards, hash_key, whites_turn);
@@ -524,7 +524,7 @@ impl BestMoveFinder {
                 move_scores.push((self.scoreMove(mm, bitboards, move_slice, whites_turn, depth), move_slice));
             }
         }
-        move_scores.sort_unstable_by(|a: &(i64, &str), b: &(i64, &str)| b.0.cmp(&a.0));
+        move_scores.sort_unstable_by(|a: &(i32, &str), b: &(i32, &str)| b.0.cmp(&a.0));
         let mut sorted_moves: String = String::with_capacity(moves.len());
         for (_, m) in move_scores {
             sorted_moves.push_str(m);
@@ -552,7 +552,7 @@ mod tests {
         let mut m: Moves = Moves::new();
         let mut bmf: BestMoveFinder = BestMoveFinder::new(2);
         let moves: String = m.getPossibleMoves(gs.bitboards, gs.castle_rights, gs.whites_turn);
-        let mut actual_scores: Vec<i64> = vec![10105, 10105, 10303, 10101, 10201, 10104, 10104, 10104];
+        let mut actual_scores: Vec<i32> = vec![10105, 10105, 10303, 10101, 10201, 10104, 10104, 10104];
         for i in (0..moves.len()).step_by(4) {
             let (bitboards_t, _) = m.getUpdatedBitboards(&mut z, &moves[i..i+4], gs.bitboards, gs.hash_key, gs.whites_turn);
             if m.isValidMove(bitboards_t, gs.whites_turn) {
@@ -573,9 +573,9 @@ mod tests {
         let mut bmf: BestMoveFinder = BestMoveFinder::new(2);
         let moves: String = m.getPossibleMoves(gs.bitboards, gs.castle_rights, gs.whites_turn);
         let sorted_moves: String = bmf.sortMoves(&mut m, &mut z, &moves, gs.bitboards, gs.hash_key, gs.whites_turn, 0);
-        let mut score: i64 = i64::MAX;
+        let mut score: i32 = i32::MAX;
         for i in (0..sorted_moves.len()).step_by(4) {
-            let current_score: i64 = bmf.scoreMove(&mut m, gs.bitboards, &sorted_moves[i..i+4], gs.whites_turn, 0);
+            let current_score: i32 = bmf.scoreMove(&mut m, gs.bitboards, &sorted_moves[i..i+4], gs.whites_turn, 0);
             assert!(current_score <= score);
             score = current_score;
         }
