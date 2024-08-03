@@ -28,7 +28,7 @@ impl Perft {
     }
 
 
-    fn perft(&mut self, mm: &mut Moves, z: &mut Zobrist, bitboards: [i64; 13], castle_rights: [bool; 4], hash_key: u64, whites_turn: bool, depth: u32) {
+    fn perft(&mut self, mm: &mut Moves, z: &mut Zobrist, bitboards: [u64; 13], castle_rights: [bool; 4], hash_key: u64, whites_turn: bool, depth: u32) {
         if depth < self.max_depth {
             let moves: String = mm.getPossibleMoves(bitboards, castle_rights, whites_turn);
             for i in (0..moves.len()).step_by(4) {
@@ -47,7 +47,7 @@ impl Perft {
     }
 
 
-    pub fn perftRoot(&mut self, mm: &mut Moves, z: &mut Zobrist, bitboards: [i64; 13], castle_rights: [bool; 4], hash_key: u64, whites_turn: bool, depth: u32) {
+    pub fn perftRoot(&mut self, mm: &mut Moves, z: &mut Zobrist, bitboards: [u64; 13], castle_rights: [bool; 4], hash_key: u64, whites_turn: bool, depth: u32) {
         let moves: String = mm.getPossibleMoves(bitboards, castle_rights, whites_turn);
         for i in (0..moves.len()).step_by(4) {
             let (bitboards_t, hash_key_t) = mm.getUpdatedBitboards(z, &moves[i..i+4], bitboards, hash_key, whites_turn);

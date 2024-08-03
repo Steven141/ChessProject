@@ -14,7 +14,7 @@ use crate::{
 #[pyclass(module = "ChessProject", get_all, set_all)]
 pub struct GameState {
     board: [[char; 8]; 8],
-    pub bitboards: [i64; 13],
+    pub bitboards: [u64; 13],
     pub castle_rights: [bool; 4],
     pub whites_turn: bool,
     masks: SpecialBitBoards,
@@ -62,30 +62,21 @@ impl GameState {
             let mut bin_str: String = String::from("0000000000000000000000000000000000000000000000000000000000000000");
             bin_str.replace_range(i..i+1, "1");
             match self.board[i / 8][i % 8] {
-                'P' => self.bitboards[Piece::WP] += self.binToI64(&bin_str),
-                'N' => self.bitboards[Piece::WN] += self.binToI64(&bin_str),
-                'B' => self.bitboards[Piece::WB] += self.binToI64(&bin_str),
-                'R' => self.bitboards[Piece::WR] += self.binToI64(&bin_str),
-                'Q' => self.bitboards[Piece::WQ] += self.binToI64(&bin_str),
-                'K' => self.bitboards[Piece::WK] += self.binToI64(&bin_str),
-                'p' => self.bitboards[Piece::BP] += self.binToI64(&bin_str),
-                'n' => self.bitboards[Piece::BN] += self.binToI64(&bin_str),
-                'b' => self.bitboards[Piece::BB] += self.binToI64(&bin_str),
-                'r' => self.bitboards[Piece::BR] += self.binToI64(&bin_str),
-                'q' => self.bitboards[Piece::BQ] += self.binToI64(&bin_str),
-                'k' => self.bitboards[Piece::BK] += self.binToI64(&bin_str),
+                'P' => self.bitboards[Piece::WP] += u64::from_str_radix(&bin_str, 2).unwrap(),
+                'N' => self.bitboards[Piece::WN] += u64::from_str_radix(&bin_str, 2).unwrap(),
+                'B' => self.bitboards[Piece::WB] += u64::from_str_radix(&bin_str, 2).unwrap(),
+                'R' => self.bitboards[Piece::WR] += u64::from_str_radix(&bin_str, 2).unwrap(),
+                'Q' => self.bitboards[Piece::WQ] += u64::from_str_radix(&bin_str, 2).unwrap(),
+                'K' => self.bitboards[Piece::WK] += u64::from_str_radix(&bin_str, 2).unwrap(),
+                'p' => self.bitboards[Piece::BP] += u64::from_str_radix(&bin_str, 2).unwrap(),
+                'n' => self.bitboards[Piece::BN] += u64::from_str_radix(&bin_str, 2).unwrap(),
+                'b' => self.bitboards[Piece::BB] += u64::from_str_radix(&bin_str, 2).unwrap(),
+                'r' => self.bitboards[Piece::BR] += u64::from_str_radix(&bin_str, 2).unwrap(),
+                'q' => self.bitboards[Piece::BQ] += u64::from_str_radix(&bin_str, 2).unwrap(),
+                'k' => self.bitboards[Piece::BK] += u64::from_str_radix(&bin_str, 2).unwrap(),
                 _ => (),
             }
         }
-    }
-
-
-    fn binToI64(&self, bin_str: &str) -> i64 {
-        let mut usgn_value: u64 = u64::from_str_radix(&bin_str, 2).unwrap();
-        if bin_str.chars().next() == Some('1') {
-            usgn_value -= (1 << 63) - (1 << 63); // Two's Compliment
-        }
-        usgn_value as i64
     }
 
 
@@ -93,40 +84,40 @@ impl GameState {
         let mut new_board: [[char; 8]; 8] = [[' '; 8]; 8];
         for i in 0..64 {
             let shift = 64 - 1 - i;
-            if usgn_r_shift!(self.bitboards[Piece::WP], shift) & 1 == 1 {
+            if (self.bitboards[Piece::WP] >> shift) & 1 == 1 {
                 new_board[i / 8][i % 8] = 'P';
             }
-            if usgn_r_shift!(self.bitboards[Piece::WN], shift) & 1 == 1 {
+            if (self.bitboards[Piece::WN] >> shift) & 1 == 1 {
                 new_board[i / 8][i % 8] = 'N';
             }
-            if usgn_r_shift!(self.bitboards[Piece::WB], shift) & 1 == 1 {
+            if (self.bitboards[Piece::WB] >> shift) & 1 == 1 {
                 new_board[i / 8][i % 8] = 'B';
             }
-            if usgn_r_shift!(self.bitboards[Piece::WR], shift) & 1 == 1 {
+            if (self.bitboards[Piece::WR] >> shift) & 1 == 1 {
                 new_board[i / 8][i % 8] = 'R';
             }
-            if usgn_r_shift!(self.bitboards[Piece::WQ], shift) & 1 == 1 {
+            if (self.bitboards[Piece::WQ] >> shift) & 1 == 1 {
                 new_board[i / 8][i % 8] = 'Q';
             }
-            if usgn_r_shift!(self.bitboards[Piece::WK], shift) & 1 == 1 {
+            if (self.bitboards[Piece::WK] >> shift) & 1 == 1 {
                 new_board[i / 8][i % 8] = 'K';
             }
-            if usgn_r_shift!(self.bitboards[Piece::BP], shift) & 1 == 1 {
+            if (self.bitboards[Piece::BP] >> shift) & 1 == 1 {
                 new_board[i / 8][i % 8] = 'p';
             }
-            if usgn_r_shift!(self.bitboards[Piece::BN], shift) & 1 == 1 {
+            if (self.bitboards[Piece::BN] >> shift) & 1 == 1 {
                 new_board[i / 8][i % 8] = 'n';
             }
-            if usgn_r_shift!(self.bitboards[Piece::BB], shift) & 1 == 1 {
+            if (self.bitboards[Piece::BB] >> shift) & 1 == 1 {
                 new_board[i / 8][i % 8] = 'b';
             }
-            if usgn_r_shift!(self.bitboards[Piece::BR], shift) & 1 == 1 {
+            if (self.bitboards[Piece::BR] >> shift) & 1 == 1 {
                 new_board[i / 8][i % 8] = 'r';
             }
-            if usgn_r_shift!(self.bitboards[Piece::BQ], shift) & 1 == 1 {
+            if (self.bitboards[Piece::BQ] >> shift) & 1 == 1 {
                 new_board[i / 8][i % 8] = 'q';
             }
-            if usgn_r_shift!(self.bitboards[Piece::BK], shift) & 1 == 1 {
+            if (self.bitboards[Piece::BK] >> shift) & 1 == 1 {
                 new_board[i / 8][i % 8] = 'k';
             }
         }
@@ -144,40 +135,40 @@ impl GameState {
         self.board = [[' '; 8]; 8];
         for i in 0..64 {
             let shift = 64 - 1 - i;
-            if usgn_r_shift!(self.bitboards[Piece::WP], shift) & 1 == 1 {
+            if (self.bitboards[Piece::WP] >> shift) & 1 == 1 {
                 self.board[i / 8][i % 8] = 'P';
             }
-            if usgn_r_shift!(self.bitboards[Piece::WN], shift) & 1 == 1 {
+            if (self.bitboards[Piece::WN] >> shift) & 1 == 1 {
                 self.board[i / 8][i % 8] = 'N';
             }
-            if usgn_r_shift!(self.bitboards[Piece::WB], shift) & 1 == 1 {
+            if (self.bitboards[Piece::WB] >> shift) & 1 == 1 {
                 self.board[i / 8][i % 8] = 'B';
             }
-            if usgn_r_shift!(self.bitboards[Piece::WR], shift) & 1 == 1 {
+            if (self.bitboards[Piece::WR] >> shift) & 1 == 1 {
                 self.board[i / 8][i % 8] = 'R';
             }
-            if usgn_r_shift!(self.bitboards[Piece::WQ], shift) & 1 == 1 {
+            if (self.bitboards[Piece::WQ] >> shift) & 1 == 1 {
                 self.board[i / 8][i % 8] = 'Q';
             }
-            if usgn_r_shift!(self.bitboards[Piece::WK], shift) & 1 == 1 {
+            if (self.bitboards[Piece::WK] >> shift) & 1 == 1 {
                 self.board[i / 8][i % 8] = 'K';
             }
-            if usgn_r_shift!(self.bitboards[Piece::BP], shift) & 1 == 1 {
+            if (self.bitboards[Piece::BP] >> shift) & 1 == 1 {
                 self.board[i / 8][i % 8] = 'p';
             }
-            if usgn_r_shift!(self.bitboards[Piece::BN], shift) & 1 == 1 {
+            if (self.bitboards[Piece::BN] >> shift) & 1 == 1 {
                 self.board[i / 8][i % 8] = 'n';
             }
-            if usgn_r_shift!(self.bitboards[Piece::BB], shift) & 1 == 1 {
+            if (self.bitboards[Piece::BB] >> shift) & 1 == 1 {
                 self.board[i / 8][i % 8] = 'b';
             }
-            if usgn_r_shift!(self.bitboards[Piece::BR], shift) & 1 == 1 {
+            if (self.bitboards[Piece::BR] >> shift) & 1 == 1 {
                 self.board[i / 8][i % 8] = 'r';
             }
-            if usgn_r_shift!(self.bitboards[Piece::BQ], shift) & 1 == 1 {
+            if (self.bitboards[Piece::BQ] >> shift) & 1 == 1 {
                 self.board[i / 8][i % 8] = 'q';
             }
-            if usgn_r_shift!(self.bitboards[Piece::BK], shift) & 1 == 1 {
+            if (self.bitboards[Piece::BK] >> shift) & 1 == 1 {
                 self.board[i / 8][i % 8] = 'k';
             }
         }
@@ -294,7 +285,7 @@ impl GameState {
         }
 
         self.move_log.push_str(&move_str);
-        let bitboards_cached: [i64; 13] = self.bitboards;
+        let bitboards_cached: [u64; 13] = self.bitboards;
         (self.bitboards, self.hash_key) = mm.getUpdatedBitboards(z, &move_str, self.bitboards, self.hash_key, self.whites_turn);
         (self.castle_rights, self.hash_key) = mm.getUpdatedCastleRights(z, &move_str, self.castle_rights, bitboards_cached, self.hash_key);
 

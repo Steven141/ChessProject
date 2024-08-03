@@ -71,11 +71,11 @@ impl Zobrist {
     }
 
 
-    pub fn generateHashKey(&self, bitboards: [i64; 13], castle_rights: [bool; 4], whites_turn: bool) -> u64 {
+    pub fn generateHashKey(&self, bitboards: [u64; 13], castle_rights: [bool; 4], whites_turn: bool) -> u64 {
         let mut final_key: u64 = 0;
         for piece in [Piece::WP, Piece::WN, Piece::WB, Piece::WR, Piece::WQ, Piece::WK, Piece::BP, Piece::BN, Piece::BB, Piece::BR, Piece::BQ, Piece::BK] {
-            let mut bitboard: i64 = bitboards[piece];
-            let mut bitboard_ls1b: i64 = bitboard & !wrap_op!(bitboard, 1, '-'); // selects single 1 bit
+            let mut bitboard: u64 = bitboards[piece];
+            let mut bitboard_ls1b: u64 = bitboard & !wrap_op!(bitboard, 1, '-'); // selects single 1 bit
             while bitboard_ls1b != 0 {
                 let idx: u32 = bitboard_ls1b.leading_zeros();
                 final_key ^= self.piece_keys[piece][idx as usize];

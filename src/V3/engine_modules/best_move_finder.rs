@@ -178,7 +178,7 @@ impl BestMoveFinder {
     }
 
 
-    fn searchPosition(&mut self, mm: &mut Moves, z: &mut Zobrist, tt: &mut TransTable, bitboards: [i64; 13], castle_rights: [bool; 4], hash_key: u64, whites_turn: bool) {
+    fn searchPosition(&mut self, mm: &mut Moves, z: &mut Zobrist, tt: &mut TransTable, bitboards: [u64; 13], castle_rights: [bool; 4], hash_key: u64, whites_turn: bool) {
         self.pv_length = [0; 64];
         self.pv_table = vec![vec![String::with_capacity(4); 64]; 64];
         self.follow_pv = false; self.score_pv = false;
@@ -212,7 +212,7 @@ impl BestMoveFinder {
     }
 
 
-    fn quiescenceSearch(&mut self, mut alpha: i32, beta: i32, mm: &mut Moves, z: &mut Zobrist, bitboards: [i64; 13], castle_rights: [bool; 4], hash_key: u64, whites_turn: bool, depth: u32) -> i32 {
+    fn quiescenceSearch(&mut self, mut alpha: i32, beta: i32, mm: &mut Moves, z: &mut Zobrist, bitboards: [u64; 13], castle_rights: [bool; 4], hash_key: u64, whites_turn: bool, depth: u32) -> i32 {
         // look deeper for non-quiet moves (attacking)
         self.move_counter += 1;
         let eval: i32 = (if whites_turn {1} else {-1}) * self.evaluateBoard(bitboards);
@@ -249,7 +249,7 @@ impl BestMoveFinder {
     beta = maximum score that the minimizing player is assured of
     depth = how deep current iteration is
     */
-    fn negaMaxAlphaBeta(&mut self, mut alpha: i32, beta: i32, mm: &mut Moves, z: &mut Zobrist, tt: &mut TransTable, bitboards: [i64; 13], castle_rights: [bool; 4], hash_key: u64, whites_turn: bool, depth: u32) -> i32 {
+    fn negaMaxAlphaBeta(&mut self, mut alpha: i32, beta: i32, mm: &mut Moves, z: &mut Zobrist, tt: &mut TransTable, bitboards: [u64; 13], castle_rights: [bool; 4], hash_key: u64, whites_turn: bool, depth: u32) -> i32 {
         if depth > 0 && self.isRepetition(hash_key) {
             return 0; // draw score
         }
@@ -374,44 +374,44 @@ impl BestMoveFinder {
     }
 
 
-    fn evaluateBoard(&self, bitboards: [i64; 13]) -> i32 {
+    fn evaluateBoard(&self, bitboards: [u64; 13]) -> i32 {
         let mut score: i32 = 0;
         for i in 0..64 {
             let shift = 64 - 1 - i;
-            if usgn_r_shift!(bitboards[Piece::WP], shift) & 1 == 1 {
+            if (bitboards[Piece::WP] >> shift) & 1 == 1 {
                 score += self.piece_scores[&'P'] + self.piece_position_scores[&'P'][i / 8][i % 8];
             }
-            if usgn_r_shift!(bitboards[Piece::WN], shift) & 1 == 1 {
+            if (bitboards[Piece::WN] >> shift) & 1 == 1 {
                 score += self.piece_scores[&'N'] + self.piece_position_scores[&'N'][i / 8][i % 8];
             }
-            if usgn_r_shift!(bitboards[Piece::WB], shift) & 1 == 1 {
+            if (bitboards[Piece::WB] >> shift) & 1 == 1 {
                 score += self.piece_scores[&'B'] + self.piece_position_scores[&'B'][i / 8][i % 8];
             }
-            if usgn_r_shift!(bitboards[Piece::WR], shift) & 1 == 1 {
+            if (bitboards[Piece::WR] >> shift) & 1 == 1 {
                 score += self.piece_scores[&'R'] + self.piece_position_scores[&'R'][i / 8][i % 8];
             }
-            if usgn_r_shift!(bitboards[Piece::WQ], shift) & 1 == 1 {
+            if (bitboards[Piece::WQ] >> shift) & 1 == 1 {
                 score += self.piece_scores[&'Q'];// + self.piece_position_scores[&'Q'][i / 8][i % 8];
             }
-            if usgn_r_shift!(bitboards[Piece::WK], shift) & 1 == 1 {
+            if (bitboards[Piece::WK] >> shift) & 1 == 1 {
                 score += self.piece_scores[&'K'] + self.piece_position_scores[&'K'][i / 8][i % 8];
             }
-            if usgn_r_shift!(bitboards[Piece::BP], shift) & 1 == 1 {
+            if (bitboards[Piece::BP] >> shift) & 1 == 1 {
                 score -= self.piece_scores[&'P'] + self.piece_position_scores[&'P'][7 - (i / 8)][i % 8];
             }
-            if usgn_r_shift!(bitboards[Piece::BN], shift) & 1 == 1 {
+            if (bitboards[Piece::BN] >> shift) & 1 == 1 {
                 score -= self.piece_scores[&'N'] + self.piece_position_scores[&'N'][7 - (i / 8)][i % 8];
             }
-            if usgn_r_shift!(bitboards[Piece::BB], shift) & 1 == 1 {
+            if (bitboards[Piece::BB] >> shift) & 1 == 1 {
                 score -= self.piece_scores[&'B'] + self.piece_position_scores[&'B'][7 - (i / 8)][i % 8];
             }
-            if usgn_r_shift!(bitboards[Piece::BR], shift) & 1 == 1 {
+            if (bitboards[Piece::BR] >> shift) & 1 == 1 {
                 score -= self.piece_scores[&'R'] + self.piece_position_scores[&'R'][7 - (i / 8)][i % 8];
             }
-            if usgn_r_shift!(bitboards[Piece::BQ], shift) & 1 == 1 {
+            if (bitboards[Piece::BQ] >> shift) & 1 == 1 {
                 score -= self.piece_scores[&'Q'];// + self.piece_position_scores[&'Q'][7 - (i / 8)][i % 8];
             }
-            if usgn_r_shift!(bitboards[Piece::BK], shift) & 1 == 1 {
+            if (bitboards[Piece::BK] >> shift) & 1 == 1 {
                 score -= self.piece_scores[&'K'] + self.piece_position_scores[&'K'][7 - (i / 8)][i % 8];
             }
         }
@@ -434,7 +434,7 @@ impl BestMoveFinder {
     }
 
 
-    fn scoreMove(&mut self, mm: &mut Moves, bitboards: [i64; 13], move_str: &str, whites_turn: bool, depth: u32) -> i32 {
+    fn scoreMove(&mut self, mm: &mut Moves, bitboards: [u64; 13], move_str: &str, whites_turn: bool, depth: u32) -> i32 {
         if self.score_pv {
             if self.pv_table[0][depth as usize] == move_str {
                 self.score_pv = false;
@@ -444,7 +444,7 @@ impl BestMoveFinder {
             }
         }
         let start_shift: u32; let end_shift: u32;
-        let start_bitboard: i64; let end_bitboard: i64;
+        let start_bitboard: u64; let end_bitboard: u64;
         let mut attacker: Piece = Piece::EP; let mut victim: Piece = Piece::EP; // EP used as default value (no attacker / no victim)
         if move_str.chars().nth(3).unwrap().is_numeric() { // regular move
             let (r1, c1, r2, c2) = move_to_u32s!(move_str);
@@ -483,12 +483,12 @@ impl BestMoveFinder {
         let possible_attackers: [Piece; 6] = if whites_turn {[Piece::WP, Piece::WN, Piece::WB, Piece::WR, Piece::WQ, Piece::WK]} else {[Piece::BP, Piece::BN, Piece::BB, Piece::BR, Piece::BQ, Piece::BK]};
         let possible_victims: [Piece; 6] = if !whites_turn {[Piece::WP, Piece::WN, Piece::WB, Piece::WR, Piece::WQ, Piece::WK]} else {[Piece::BP, Piece::BN, Piece::BB, Piece::BR, Piece::BQ, Piece::BK]};
         for piece in possible_attackers {
-            if usgn_r_shift!(bitboards[piece], start_shift) & 1 == 1 {
+            if (bitboards[piece] >> start_shift) & 1 == 1 {
                 attacker = piece;
             }
         }
         for piece in possible_victims {
-            if usgn_r_shift!(bitboards[piece], end_shift) & 1 == 1 {
+            if (bitboards[piece] >> end_shift) & 1 == 1 {
                 victim = piece;
             }
         }
@@ -515,7 +515,7 @@ impl BestMoveFinder {
 
     3. Resulted in 1.24 times speedup on average (24% faster) than no pre-allocation or in-place sorting
     */
-    fn sortMoves(&mut self, mm: &mut Moves, z: &mut Zobrist, moves: &str, bitboards: [i64; 13], hash_key: u64, whites_turn: bool, depth: u32) -> String {
+    fn sortMoves(&mut self, mm: &mut Moves, z: &mut Zobrist, moves: &str, bitboards: [u64; 13], hash_key: u64, whites_turn: bool, depth: u32) -> String {
         let mut move_scores: Vec<(i32, &str)> = Vec::with_capacity(moves.len() / 4);
         for i in (0..moves.len()).step_by(4) {
             let move_slice: &str = &moves[i..i + 4];
@@ -601,7 +601,7 @@ mod tests {
         // p.perftRoot(&mut m, &mut z, gs.bitboards, gs.castle_rights, gs.hash_key, gs.whites_turn, 0);
         // let mut tt: TransTable = TransTable::new();
         // tt.clearTable();
-        // tt.writeEntry(45, gs.hash_key, 1, HashFlag::Beta as i64);
+        // tt.writeEntry(45, gs.hash_key, 1, HashFlag::Beta as u64);
         // let score = tt.readEntry(20, 30, gs.hash_key, 1);
         // println!("moves total: {}", p.total_move_counter);
         // println!("{:?}", score);

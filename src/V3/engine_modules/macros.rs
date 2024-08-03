@@ -41,7 +41,7 @@ macro_rules! draw_array {
         let mut new_board: [[char; 8]; 8] = [['0'; 8]; 8];
         for i in 0..64 {
             let shift = 64 - 1 - i;
-            if usgn_r_shift!($bitboard, shift) & 1 == 1 {
+            if ($bitboard >> shift) & 1 == 1 {
                 new_board[i / 8][i % 8] = '1';
             }
         }
@@ -56,15 +56,6 @@ macro_rules! draw_array {
 }
 
 
-/// Macro to perform 64 bit unsigned right shift
-#[macro_export]
-macro_rules! usgn_r_shift {
-    ($lv:expr, $rv:expr) => {
-        (($lv as u64) >> $rv) as i64
-    };
-}
-
-
 /// Macro to convert i64 to binary string with 0 padding
 #[macro_export]
 macro_rules! as_bin_str {
@@ -74,7 +65,10 @@ macro_rules! as_bin_str {
 }
 
 
-/// Macro to perform wrapping operations
+/*
+Macro to perform wrapping operations. Used because bits
+in overflow positions are not cared about in bitboard context.
+*/
 #[macro_export]
 macro_rules! wrap_op {
     ($lv:expr, $rv:expr, $op:expr) => {
