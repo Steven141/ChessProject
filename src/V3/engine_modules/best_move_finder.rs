@@ -495,16 +495,14 @@ impl BestMoveFinder {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{
-        engine_modules::game_state::GameState, perft::Perft, trans_table::*, zobrist::Zobrist
-    };
+    use crate::engine_modules::game_state::GameState;
 
     #[test]
     fn score_move_test() {
         let mut z: Zobrist = Zobrist::new();
         let mut gs = GameState::new(&mut z);
-        gs.importFEN(&mut z, String::from("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1 "));
         let mut m: Moves = Moves::new();
+        gs.importFEN(&m.masks, &mut z, String::from("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1 "));
         let mut bmf: BestMoveFinder = BestMoveFinder::new(2);
         let moves: String = m.getPossibleMoves(gs.bitboards, gs.castle_rights, gs.whites_turn);
         let mut actual_scores: Vec<i32> = vec![10105, 10105, 10303, 10101, 10201, 10104, 10104, 10104];
@@ -523,8 +521,8 @@ mod tests {
     fn sort_moves_test() {
         let mut z: Zobrist = Zobrist::new();
         let mut gs = GameState::new(&mut z);
-        gs.importFEN(&mut z, String::from("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1 "));
         let mut m: Moves = Moves::new();
+        gs.importFEN(&m.masks, &mut z, String::from("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1 "));
         let mut bmf: BestMoveFinder = BestMoveFinder::new(2);
         let moves: String = m.getPossibleMoves(gs.bitboards, gs.castle_rights, gs.whites_turn);
         let sorted_moves: String = bmf.sortMoves(&mut m, &mut z, &moves, gs.bitboards, gs.hash_key, gs.whites_turn, 0);
@@ -539,27 +537,19 @@ mod tests {
     #[test]
     fn basic_test() {
         let mut z: Zobrist = Zobrist::new();
-        let mut gs = GameState::new(&mut z);
-        gs.importFEN(&mut z, String::from("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1 ")); // tricky
-        // gs.importFEN(String::from("r2q1rk1/ppp2ppp/2n1bn2/2b1p3/3pP3/3P1NPP/PPP1NPB1/R1BQ1RK1 b - - 0 9 ")); // cmk
-        // gs.importFEN(&mut z, String::from("6k1/2p3b1/2p2p2/p1Pp4/3P4/P4NPK/1r6/8 b - - 0 1")); // best move seq bug for search depth 8
-        // gs.importFEN(&mut z, String::from("8/8/8/8/8/8/PK5k/8 w - - 0 1")); // winning position
-        // gs.importFEN(&mut z, String::from("4k3/Q7/8/4K3/8/8/8/8 w - - ")); // checking mate
-        // gs.importFEN(&mut z, String::from("2r3k1/R7/8/1R6/8/8/P4KPP/8 w - - 0 1"));
-        gs.drawGameArray();
+        let mut gs: GameState = GameState::new(&mut z);
         let mut m: Moves = Moves::new();
+        gs.importFEN(&m.masks, &mut z, String::from("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1 ")); // tricky
+        // gs.importFEN(&m.masks, &mut z, String::from("r2q1rk1/ppp2ppp/2n1bn2/2b1p3/3pP3/3P1NPP/PPP1NPB1/R1BQ1RK1 b - - 0 9 ")); // cmk
+        // gs.importFEN(&m.masks, &mut z, String::from("6k1/2p3b1/2p2p2/p1Pp4/3P4/P4NPK/1r6/8 b - - 0 1")); // best move seq bug for search depth 8
+        // gs.importFEN(&m.masks, &mut z, String::from("8/8/8/8/8/8/PK5k/8 w - - 0 1")); // winning position
+        // gs.importFEN(&m.masks, &mut z, String::from("4k3/Q7/8/4K3/8/8/8/8 w - - ")); // checking mate
+        // gs.importFEN(&m.masks, &mut z, String::from("2r3k1/R7/8/1R6/8/8/P4KPP/8 w - - 0 1"));
+        gs.drawGameArray();
         let mut bmf: BestMoveFinder = BestMoveFinder::new(4);
         let mut tt: TransTable = TransTable::new();
         println!("starting hash key: {:x}", gs.hash_key);
         bmf.searchPosition(&mut m, &mut z, &mut tt, gs.bitboards, gs.castle_rights, gs.hash_key, gs.whites_turn);
-        // let mut p: Perft = Perft::new(3);
-        // p.perftRoot(&mut m, &mut z, gs.bitboards, gs.castle_rights, gs.hash_key, gs.whites_turn, 0);
-        // let mut tt: TransTable = TransTable::new();
-        // tt.clearTable();
-        // tt.writeEntry(45, gs.hash_key, 1, HashFlag::Beta as u64);
-        // let score = tt.readEntry(20, 30, gs.hash_key, 1);
-        // println!("moves total: {}", p.total_move_counter);
-        // println!("{:?}", score);
         panic!();
     }
 }

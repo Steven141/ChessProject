@@ -17,7 +17,6 @@ pub struct GameState {
     pub bitboards: [u64; 13],
     pub castle_rights: [bool; 4],
     pub whites_turn: bool,
-    masks: SpecialBitBoards,
     move_log: String,
     recent_piece_moved: char,
     recent_piece_captured: char,
@@ -44,7 +43,6 @@ impl GameState {
             bitboards: [0; 13],
             castle_rights: [true; 4],
             whites_turn: true,
-            masks: SpecialBitBoards::new(),
             move_log: String::new(),
             recent_piece_moved: ' ',
             recent_piece_captured: ' ',
@@ -173,7 +171,7 @@ impl GameState {
     }
 
 
-    pub fn importFEN(&mut self, z: &Zobrist, fen_str: String) {
+    pub fn importFEN(&mut self, sb: &SpecialBitBoards, z: &Zobrist, fen_str: String) {
         self.bitboards = [0; 13];
         self.castle_rights = [false; 4];
         let mut char_idx: usize = 0;
@@ -258,7 +256,7 @@ impl GameState {
 
         char_idx += 1;
         if fen_str.chars().nth(char_idx).unwrap() != '-' {
-            self.bitboards[Piece::EP] = self.masks.file_masks[fen_str.chars().nth(char_idx).unwrap() as usize - 'a' as usize];
+            self.bitboards[Piece::EP] = sb.file_masks[fen_str.chars().nth(char_idx).unwrap() as usize - 'a' as usize];
         }
         self.updateBoardArray();
         self.hash_key = z.generateHashKey(self.bitboards, self.castle_rights, self.whites_turn);
