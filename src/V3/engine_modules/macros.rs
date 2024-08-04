@@ -125,6 +125,33 @@ macro_rules! wrap_op {
 }
 
 
+/*
+Macro to get the pieces moved in a move.
+Starting square piece is always returned.
+If no piece captured then Piece::EP returned.
+*/
+#[macro_export]
+macro_rules! get_move_pieces {
+    ($bitboards:expr, $move:expr) => {{
+        let (r1, c1, r2, c2) = move_to_u32s!($move);
+        let start_sq: u32 = r1 * 8 + c1;
+        let end_sq: u32 = r2 * 8 + c2;
+        let pieces: [Piece; 12] = [Piece::WP, Piece::WN, Piece::WB, Piece::WR, Piece::WQ, Piece::WK, Piece::BP, Piece::BN, Piece::BB, Piece::BR, Piece::BQ, Piece::BK];
+        let mut start_piece: Piece = Piece::EP; // default for no piece captured
+        let mut end_piece: Piece = Piece::EP; // default for no piece captured
+        for piece in pieces {
+            if get_bit!($bitboards[piece], start_sq) == 1 {
+                start_piece = piece;
+            }
+            if get_bit!($bitboards[piece], end_sq) == 1 {
+                end_piece = piece;
+            }
+        }
+        (start_piece, end_piece)
+    }};
+}
+
+
 /// Macro to convert the 4 characters of a move string as u32
 #[macro_export]
 macro_rules! move_to_u32s {

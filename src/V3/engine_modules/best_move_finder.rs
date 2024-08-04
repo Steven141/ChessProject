@@ -25,6 +25,8 @@ pub struct BestMoveFinder {
     piece_scores: HashMap<char, i32>,
     piece_position_scores: HashMap<char, [[i32; 8]; 8]>,
     mvv_lva: [[i32; 12]; 12], // [attacker][victim]
+    killer_moves: Vec<Vec<String>>, // [id][ply]
+    history_moves: [[i32; 64]; 12], // [piece][square]
     pv_length: [u32; 64],
     pv_table: Vec<Vec<String>>,
     follow_pv: bool,
@@ -122,6 +124,9 @@ impl BestMoveFinder {
                 [101, 201, 301, 401, 501, 601,  101, 201, 301, 401, 501, 601],
                 [100, 200, 300, 400, 500, 600,  100, 200, 300, 400, 500, 600],
             ],
+            // killer & history moves
+            killer_moves: vec![vec![String::with_capacity(4); 64]; 2],
+            history_moves: [[0; 64]; 12],
             /*
                 ================================
                     Triangular PV table
@@ -329,6 +334,14 @@ impl BestMoveFinder {
 
             if best_score > alpha {
                 hash_flag = HashFlag::Exact;
+
+                // write history move if quiet move
+                let (attacker, victim) = get_move_pieces!(bitboards, moves[i..i+4]);
+                if victim == Piece::EP {
+                    let (_, _, r2, c2) = move_to_u32s!(moves[i..i+4]);
+                    self.history_moves[attacker][(r2 * 8 + c2) as usize] += (self.max_depth - depth) as i32;
+                }
+
                 alpha = best_score;
                 found_pv = true;
                 // write PV move to table
@@ -343,6 +356,13 @@ impl BestMoveFinder {
             }
             if alpha >= beta {
                 tt.writeEntry(beta, hash_key, self.max_depth - depth, depth, HashFlag::Beta as i32);
+
+                // write killer moves if quiet move
+                if get_move_pieces!(bitboards, moves[i..i+4]).1 == Piece::EP {
+                    self.killer_moves[1][depth as usize] = self.killer_moves[0][depth as usize].clone();
+                    self.killer_moves[0][depth as usize] = moves[i..i+4].to_string();
+                }
+
                 return beta;
             }
         }
@@ -422,34 +442,26 @@ impl BestMoveFinder {
     }
 
 
-    fn scoreMove(&mut self, bitboards: [u64; 13], move_str: &str, whites_turn: bool, depth: u32) -> i32 {
+    fn scoreMove(&mut self, bitboards: [u64; 13], move_str: &str, depth: u32) -> i32 {
         if self.score_pv {
             if self.pv_table[0][depth as usize] == move_str {
                 self.score_pv = false;
                 return 20000; // give PV move the highest score to search it first
             }
         }
-        let (r1, c1, r2, c2) = move_to_u32s!(move_str);
-        let start_sq: u32 = r1 * 8 + c1;
-        let end_sq: u32 = r2 * 8 + c2;
-
-        let mut attacker: Piece = Piece::EP; let mut victim: Piece = Piece::EP; // EP used as default value (no attacker / no victim)
-        let possible_attackers: [Piece; 6] = if whites_turn {[Piece::WP, Piece::WN, Piece::WB, Piece::WR, Piece::WQ, Piece::WK]} else {[Piece::BP, Piece::BN, Piece::BB, Piece::BR, Piece::BQ, Piece::BK]};
-        let possible_victims: [Piece; 6] = if !whites_turn {[Piece::WP, Piece::WN, Piece::WB, Piece::WR, Piece::WQ, Piece::WK]} else {[Piece::BP, Piece::BN, Piece::BB, Piece::BR, Piece::BQ, Piece::BK]};
-        for piece in possible_attackers {
-            if get_bit!(bitboards[piece], start_sq) == 1 {
-                attacker = piece;
-            }
-        }
-        for piece in possible_victims {
-            if get_bit!(bitboards[piece], end_sq) == 1 {
-                victim = piece;
-            }
-        }
+        let (_, _, r2, c2) = move_to_u32s!(move_str);
+        let (attacker, victim) = get_move_pieces!(bitboards, move_str);
         if victim != Piece::EP { // attacking move
             return self.mvv_lva[attacker][victim] + 10000;
+        } else { // quiet move
+            if self.killer_moves[0][depth as usize] == move_str {
+                return 9000;
+            } else if self.killer_moves[1][depth as usize] == move_str {
+                return 8000;
+            } else {
+                return self.history_moves[attacker][(r2 * 8 + c2) as usize];
+            }
         }
-        0
     }
 
 
@@ -475,7 +487,7 @@ impl BestMoveFinder {
             let move_slice: &str = &moves[i..i + 4];
             let (bitboards_t, _) = mm.getUpdatedBitboards(z, move_slice, bitboards, hash_key, whites_turn);
             if mm.isValidMove(bitboards_t, whites_turn) {
-                move_scores.push((self.scoreMove(bitboards, move_slice, whites_turn, depth), move_slice));
+                move_scores.push((self.scoreMove(bitboards, move_slice, depth), move_slice));
             }
         }
         move_scores.sort_unstable_by(|a: &(i32, &str), b: &(i32, &str)| b.0.cmp(&a.0));
@@ -508,7 +520,7 @@ mod tests {
         for i in (0..moves.len()).step_by(4) {
             let (bitboards_t, _) = m.getUpdatedBitboards(&mut z, &moves[i..i+4], gs.bitboards, gs.hash_key, gs.whites_turn);
             if m.isValidMove(bitboards_t, gs.whites_turn) {
-                let score = bmf.scoreMove(gs.bitboards, &moves[i..i+4], gs.whites_turn, 0);
+                let score = bmf.scoreMove(gs.bitboards, &moves[i..i+4], 0);
                 if score != 0 {
                     assert!(score == actual_scores.remove(0));
                 }
@@ -527,7 +539,7 @@ mod tests {
         let sorted_moves: String = bmf.sortMoves(&mut m, &mut z, &moves, gs.bitboards, gs.hash_key, gs.whites_turn, 0);
         let mut score: i32 = i32::MAX;
         for i in (0..sorted_moves.len()).step_by(4) {
-            let current_score: i32 = bmf.scoreMove(gs.bitboards, &sorted_moves[i..i+4], gs.whites_turn, 0);
+            let current_score: i32 = bmf.scoreMove(gs.bitboards, &sorted_moves[i..i+4], 0);
             assert!(current_score <= score);
             score = current_score;
         }
@@ -538,17 +550,31 @@ mod tests {
         let mut z: Zobrist = Zobrist::new();
         let mut gs: GameState = GameState::new(&mut z);
         let mut m: Moves = Moves::new();
+        let mut bmf: BestMoveFinder = BestMoveFinder::new(8);
+        let mut tt: TransTable = TransTable::new();
+        // gs.importFEN(&m.masks, &mut z, String::from("rnbqkb1r/pp1p1pPp/8/2p1pP2/1P1P4/3P3P/P1P1P3/RNBQKBNR w KQkq e6 0 1")); // killer
         gs.importFEN(&m.masks, &mut z, String::from("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1 ")); // tricky
         // gs.importFEN(&m.masks, &mut z, String::from("r2q1rk1/ppp2ppp/2n1bn2/2b1p3/3pP3/3P1NPP/PPP1NPB1/R1BQ1RK1 b - - 0 9 ")); // cmk
         // gs.importFEN(&m.masks, &mut z, String::from("6k1/2p3b1/2p2p2/p1Pp4/3P4/P4NPK/1r6/8 b - - 0 1")); // best move seq bug for search depth 8
         // gs.importFEN(&m.masks, &mut z, String::from("8/8/8/8/8/8/PK5k/8 w - - 0 1")); // winning position
         // gs.importFEN(&m.masks, &mut z, String::from("4k3/Q7/8/4K3/8/8/8/8 w - - ")); // checking mate
         // gs.importFEN(&m.masks, &mut z, String::from("2r3k1/R7/8/1R6/8/8/P4KPP/8 w - - 0 1"));
-        gs.drawGameArray();
-        let mut bmf: BestMoveFinder = BestMoveFinder::new(4);
-        let mut tt: TransTable = TransTable::new();
-        println!("starting hash key: {:x}", gs.hash_key);
+        // println!("starting hash key: {:x}", gs.hash_key);
         bmf.searchPosition(&mut m, &mut z, &mut tt, gs.bitboards, gs.castle_rights, gs.hash_key, gs.whites_turn);
+        // gs.drawGameArray();
+        // let moves: String = m.getPossibleMoves(gs.bitboards, gs.castle_rights, gs.whites_turn);
+        // bmf.killer_moves[0][0] = moves[28..28+4].to_string();
+        // bmf.killer_moves[1][0] = moves[16..16+4].to_string();
+        // let (r1, c1, r2, c2) = move_to_u32s!(moves[20..20+4]);
+        // bmf.history_moves[Piece::WP][(r2*8+c2) as usize] = 35;
+        // for i in (0..moves.len()).step_by(4) {
+        //     println!("{:?} with score {}", move_to_algebra!(moves[i..i+4]), bmf.scoreMove(gs.bitboards, &moves[i..i+4], gs.whites_turn, 0));
+        // }
+        // println!("\n\n");
+        // let sorted_moves: String = bmf.sortMoves(&mut m, &mut z, &moves, gs.bitboards, gs.hash_key, gs.whites_turn, 0);
+        // for i in (0..sorted_moves.len()).step_by(4) {
+        //     println!("{:?} with score {}", move_to_algebra!(sorted_moves[i..i+4]), bmf.scoreMove(gs.bitboards, &sorted_moves[i..i+4], gs.whites_turn, 0));
+        // }
         panic!();
     }
 }
