@@ -75,12 +75,12 @@ impl Zobrist {
         let mut final_key: u64 = 0;
         for piece in [Piece::WP, Piece::WN, Piece::WB, Piece::WR, Piece::WQ, Piece::WK, Piece::BP, Piece::BN, Piece::BB, Piece::BR, Piece::BQ, Piece::BK] {
             let mut bitboard: u64 = bitboards[piece];
-            let mut bitboard_ls1b: u64 = bitboard & !wrap_op!(bitboard, 1, '-'); // selects single 1 bit
+            let mut bitboard_ls1b: u64 = get_ls1b!(bitboard); // selects single 1 bit
             while bitboard_ls1b != 0 {
                 let idx: u32 = bitboard_ls1b.leading_zeros();
                 final_key ^= self.piece_keys[piece][idx as usize];
-                bitboard &= !bitboard_ls1b;
-                bitboard_ls1b = bitboard & !wrap_op!(bitboard, 1, '-');
+                pop_bits!(bitboard, bitboard_ls1b);
+                bitboard_ls1b = get_ls1b!(bitboard);
             }
         }
         // encode enpassant column as single square

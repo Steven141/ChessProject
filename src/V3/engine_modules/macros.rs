@@ -1,6 +1,75 @@
 //! Holds all project macros
 
 
+/*
+Macro to set a bit in a bitboard.
+square is 0..64 where 0 is top-left.
+*/
+#[macro_export]
+macro_rules! set_bit {
+    ($bitboard:expr, $square:expr) => {
+        $bitboard |= 1u64 << (63 - $square);
+    };
+}
+
+
+/*
+Macro to set multiple bits in a bitboard.
+bits are represented by another bitboard.
+*/
+#[macro_export]
+macro_rules! set_bits {
+    ($bitboard:expr, $bits:expr) => {
+        $bitboard |= $bits;
+    };
+}
+
+
+/*
+Macro to remove a bit in a bitboard.
+square is 0..64 where 0 is top-left.
+*/
+#[macro_export]
+macro_rules! pop_bit {
+    ($bitboard:expr, $square:expr) => {
+        $bitboard &= !(1u64 << (63 - $square));
+    };
+}
+
+
+/*
+Macro to remove multiple bits in a bitboard.
+bits are represented by another bitboard.
+*/
+#[macro_export]
+macro_rules! pop_bits {
+    ($bitboard:expr, $bits:expr) => {
+        $bitboard &= !$bits;
+    };
+}
+
+
+/*
+Macro to get a bit from bitboard.
+square is 0..64 where 0 is top-left.
+*/
+#[macro_export]
+macro_rules! get_bit {
+    ($bitboard:expr, $square:expr) => {
+        ($bitboard >> (63 - $square)) & 1
+    };
+}
+
+
+/// Macro to get the least significant '1' bit from bitboard
+#[macro_export]
+macro_rules! get_ls1b {
+    ($bitboard:expr) => {
+        $bitboard & !wrap_op!($bitboard, 1, '-')
+    };
+}
+
+
 /// Macro to convert the 4 characters of a move string as u32
 #[macro_export]
 macro_rules! move_to_u32s {
@@ -56,18 +125,11 @@ macro_rules! draw_array {
 }
 
 
-/// Macro to convert i64 to binary string with 0 padding
-#[macro_export]
-macro_rules! as_bin_str {
-    ($int64:expr) => {
-        format!("{:064b}", $int64)
-    };
-}
-
-
 /*
 Macro to perform wrapping operations. Used because bits
 in overflow positions are not cared about in bitboard context.
+Rust lib is compiled in release mode which does not have overflow
+checks so we want to make sure no undefined behavior.
 */
 #[macro_export]
 macro_rules! wrap_op {

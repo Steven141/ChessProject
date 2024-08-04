@@ -66,16 +66,6 @@ impl BestMoveFinder {
                     [0,   5,   5,  -5,  -5,   0,   5,   0],
                     [0,   0,   5,   0, -15,   0,  10,   0],
                 ]),
-                ('Q', [
-                    [0,   0,   0,  10,   0,   0,   0,   0],
-                    [0,   5,  10,  10,  10,   0,   0,   0],
-                    [0,  10,  10,  10,  10,  10,   5,   0],
-                    [0,   5,  10,  10,  10,   5,   5,   0],
-                    [0,   5,  10,  10,  10,   5,   5,   0],
-                    [0,  10,  10,  10,  10,  10,   5,   0],
-                    [0,   5,  10,  10,  10,   0,   0,   0],
-                    [0,   0,   0,  10,   0,   0,   0,   0],
-                ]),
                 ('R', [
                     [50,  50,  50,  50,  50,  50,  50,  50],
                     [50,  50,  50,  50,  50,  50,  50,  50],
@@ -187,7 +177,7 @@ impl BestMoveFinder {
         self.move_counter = 0;
 
         // iterative deepening
-        for current_depth in 1..(self.search_depth+1) {
+        for current_depth in 1..=self.search_depth {
             // enable PV following
             self.follow_pv = true;
             self.max_depth = current_depth;
@@ -377,41 +367,40 @@ impl BestMoveFinder {
     fn evaluateBoard(&self, bitboards: [u64; 13]) -> i32 {
         let mut score: i32 = 0;
         for i in 0..64 {
-            let shift = 64 - 1 - i;
-            if (bitboards[Piece::WP] >> shift) & 1 == 1 {
+            if get_bit!(bitboards[Piece::WP], i) == 1 {
                 score += self.piece_scores[&'P'] + self.piece_position_scores[&'P'][i / 8][i % 8];
             }
-            if (bitboards[Piece::WN] >> shift) & 1 == 1 {
+            if get_bit!(bitboards[Piece::WN], i) == 1 {
                 score += self.piece_scores[&'N'] + self.piece_position_scores[&'N'][i / 8][i % 8];
             }
-            if (bitboards[Piece::WB] >> shift) & 1 == 1 {
+            if get_bit!(bitboards[Piece::WB], i) == 1 {
                 score += self.piece_scores[&'B'] + self.piece_position_scores[&'B'][i / 8][i % 8];
             }
-            if (bitboards[Piece::WR] >> shift) & 1 == 1 {
+            if get_bit!(bitboards[Piece::WR], i) == 1 {
                 score += self.piece_scores[&'R'] + self.piece_position_scores[&'R'][i / 8][i % 8];
             }
-            if (bitboards[Piece::WQ] >> shift) & 1 == 1 {
-                score += self.piece_scores[&'Q'];// + self.piece_position_scores[&'Q'][i / 8][i % 8];
+            if get_bit!(bitboards[Piece::WQ], i) == 1 {
+                score += self.piece_scores[&'Q'];
             }
-            if (bitboards[Piece::WK] >> shift) & 1 == 1 {
+            if get_bit!(bitboards[Piece::WK], i) == 1 {
                 score += self.piece_scores[&'K'] + self.piece_position_scores[&'K'][i / 8][i % 8];
             }
-            if (bitboards[Piece::BP] >> shift) & 1 == 1 {
+            if get_bit!(bitboards[Piece::BP], i) == 1 {
                 score -= self.piece_scores[&'P'] + self.piece_position_scores[&'P'][7 - (i / 8)][i % 8];
             }
-            if (bitboards[Piece::BN] >> shift) & 1 == 1 {
+            if get_bit!(bitboards[Piece::BN], i) == 1 {
                 score -= self.piece_scores[&'N'] + self.piece_position_scores[&'N'][7 - (i / 8)][i % 8];
             }
-            if (bitboards[Piece::BB] >> shift) & 1 == 1 {
+            if get_bit!(bitboards[Piece::BB], i) == 1 {
                 score -= self.piece_scores[&'B'] + self.piece_position_scores[&'B'][7 - (i / 8)][i % 8];
             }
-            if (bitboards[Piece::BR] >> shift) & 1 == 1 {
+            if get_bit!(bitboards[Piece::BR], i) == 1 {
                 score -= self.piece_scores[&'R'] + self.piece_position_scores[&'R'][7 - (i / 8)][i % 8];
             }
-            if (bitboards[Piece::BQ] >> shift) & 1 == 1 {
-                score -= self.piece_scores[&'Q'];// + self.piece_position_scores[&'Q'][7 - (i / 8)][i % 8];
+            if get_bit!(bitboards[Piece::BQ], i) == 1 {
+                score -= self.piece_scores[&'Q'];
             }
-            if (bitboards[Piece::BK] >> shift) & 1 == 1 {
+            if get_bit!(bitboards[Piece::BK], i) == 1 {
                 score -= self.piece_scores[&'K'] + self.piece_position_scores[&'K'][7 - (i / 8)][i % 8];
             }
         }
@@ -443,39 +432,35 @@ impl BestMoveFinder {
                 return 20000;
             }
         }
-        let start_shift: u32; let end_shift: u32;
+        let start_sq: u32; let end_sq: u32;
         let start_bitboard: u64; let end_bitboard: u64;
         let mut attacker: Piece = Piece::EP; let mut victim: Piece = Piece::EP; // EP used as default value (no attacker / no victim)
         if move_str.chars().nth(3).unwrap().is_numeric() { // regular move
             let (r1, c1, r2, c2) = move_to_u32s!(move_str);
-            start_shift = 64 - 1 - (r1 * 8 + c1);
-            end_shift = 64 - 1 - (r2 * 8 + c2);
+            start_sq = r1 * 8 + c1;
+            end_sq = r2 * 8 + c2;
         } else if move_str.chars().nth(3).unwrap() == 'P' { // pawn promo
             let (c1, c2, _, _) = move_to_u32s!(move_str);
             if move_str.chars().nth(2).unwrap().is_uppercase() { // white promo
                 start_bitboard = mm.masks.file_masks[c1 as usize] & mm.masks.rank_masks[1];
-                start_shift = 64 - 1 - start_bitboard.leading_zeros();
                 end_bitboard = mm.masks.file_masks[c2 as usize] & mm.masks.rank_masks[0];
-                end_shift = 64 - 1 - end_bitboard.leading_zeros();
             } else { // black promo
                 start_bitboard = mm.masks.file_masks[c1 as usize] & mm.masks.rank_masks[6];
-                start_shift = 64 - 1 - start_bitboard.leading_zeros();
                 end_bitboard = mm.masks.file_masks[c2 as usize] & mm.masks.rank_masks[7];
-                end_shift = 64 - 1 - end_bitboard.leading_zeros();
             }
+            start_sq = start_bitboard.leading_zeros();
+            end_sq = end_bitboard.leading_zeros();
         } else if move_str.chars().nth(3).unwrap() == 'E' { // enpassant
             let (c1, c2, _, _) = move_to_u32s!(move_str);
             if move_str.chars().nth(2).unwrap() == 'w' { // white
                 start_bitboard = mm.masks.file_masks[c1 as usize] & mm.masks.rank_masks[3];
-                start_shift = 64 - 1 - start_bitboard.leading_zeros();
                 end_bitboard = mm.masks.file_masks[c2 as usize] & mm.masks.rank_masks[2];
-                end_shift = 64 - 1 - end_bitboard.leading_zeros();
             } else { // black
                 start_bitboard = mm.masks.file_masks[c1 as usize] & mm.masks.rank_masks[4];
-                start_shift = 64 - 1 - start_bitboard.leading_zeros();
                 end_bitboard = mm.masks.file_masks[c2 as usize] & mm.masks.rank_masks[5];
-                end_shift = 64 - 1 - end_bitboard.leading_zeros();
             }
+            start_sq = start_bitboard.leading_zeros();
+            end_sq = end_bitboard.leading_zeros();
         } else {
             panic!("INVALID MOVE TYPE");
         }
@@ -483,12 +468,12 @@ impl BestMoveFinder {
         let possible_attackers: [Piece; 6] = if whites_turn {[Piece::WP, Piece::WN, Piece::WB, Piece::WR, Piece::WQ, Piece::WK]} else {[Piece::BP, Piece::BN, Piece::BB, Piece::BR, Piece::BQ, Piece::BK]};
         let possible_victims: [Piece; 6] = if !whites_turn {[Piece::WP, Piece::WN, Piece::WB, Piece::WR, Piece::WQ, Piece::WK]} else {[Piece::BP, Piece::BN, Piece::BB, Piece::BR, Piece::BQ, Piece::BK]};
         for piece in possible_attackers {
-            if (bitboards[piece] >> start_shift) & 1 == 1 {
+            if get_bit!(bitboards[piece], start_sq) == 1 {
                 attacker = piece;
             }
         }
         for piece in possible_victims {
-            if (bitboards[piece] >> end_shift) & 1 == 1 {
+            if get_bit!(bitboards[piece], end_sq) == 1 {
                 victim = piece;
             }
         }
@@ -585,15 +570,15 @@ mod tests {
     fn basic_test() {
         let mut z: Zobrist = Zobrist::new();
         let mut gs = GameState::new(&mut z);
-        // gs.importFEN(&mut z, String::from("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1 ")); // tricky
+        gs.importFEN(&mut z, String::from("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1 ")); // tricky
         // gs.importFEN(String::from("r2q1rk1/ppp2ppp/2n1bn2/2b1p3/3pP3/3P1NPP/PPP1NPB1/R1BQ1RK1 b - - 0 9 ")); // cmk
         // gs.importFEN(&mut z, String::from("6k1/2p3b1/2p2p2/p1Pp4/3P4/P4NPK/1r6/8 b - - 0 1")); // best move seq bug for search depth 8
         // gs.importFEN(&mut z, String::from("8/8/8/8/8/8/PK5k/8 w - - 0 1")); // winning position
         // gs.importFEN(&mut z, String::from("4k3/Q7/8/4K3/8/8/8/8 w - - ")); // checking mate
-        gs.importFEN(&mut z, String::from("2r3k1/R7/8/1R6/8/8/P4KPP/8 w - - 0 1"));
+        // gs.importFEN(&mut z, String::from("2r3k1/R7/8/1R6/8/8/P4KPP/8 w - - 0 1"));
         gs.drawGameArray();
         let mut m: Moves = Moves::new();
-        let mut bmf: BestMoveFinder = BestMoveFinder::new(6);
+        let mut bmf: BestMoveFinder = BestMoveFinder::new(4);
         let mut tt: TransTable = TransTable::new();
         println!("starting hash key: {:x}", gs.hash_key);
         bmf.searchPosition(&mut m, &mut z, &mut tt, gs.bitboards, gs.castle_rights, gs.hash_key, gs.whites_turn);

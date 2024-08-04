@@ -83,41 +83,40 @@ impl GameState {
     pub fn drawGameArray(&self) {
         let mut new_board: [[char; 8]; 8] = [[' '; 8]; 8];
         for i in 0..64 {
-            let shift = 64 - 1 - i;
-            if (self.bitboards[Piece::WP] >> shift) & 1 == 1 {
+            if get_bit!(self.bitboards[Piece::WP], i) == 1 {
                 new_board[i / 8][i % 8] = 'P';
             }
-            if (self.bitboards[Piece::WN] >> shift) & 1 == 1 {
+            if get_bit!(self.bitboards[Piece::WN], i) == 1 {
                 new_board[i / 8][i % 8] = 'N';
             }
-            if (self.bitboards[Piece::WB] >> shift) & 1 == 1 {
+            if get_bit!(self.bitboards[Piece::WB], i) == 1 {
                 new_board[i / 8][i % 8] = 'B';
             }
-            if (self.bitboards[Piece::WR] >> shift) & 1 == 1 {
+            if get_bit!(self.bitboards[Piece::WR], i) == 1 {
                 new_board[i / 8][i % 8] = 'R';
             }
-            if (self.bitboards[Piece::WQ] >> shift) & 1 == 1 {
+            if get_bit!(self.bitboards[Piece::WQ], i) == 1 {
                 new_board[i / 8][i % 8] = 'Q';
             }
-            if (self.bitboards[Piece::WK] >> shift) & 1 == 1 {
+            if get_bit!(self.bitboards[Piece::WK], i) == 1 {
                 new_board[i / 8][i % 8] = 'K';
             }
-            if (self.bitboards[Piece::BP] >> shift) & 1 == 1 {
+            if get_bit!(self.bitboards[Piece::BP], i) == 1 {
                 new_board[i / 8][i % 8] = 'p';
             }
-            if (self.bitboards[Piece::BN] >> shift) & 1 == 1 {
+            if get_bit!(self.bitboards[Piece::BN], i) == 1 {
                 new_board[i / 8][i % 8] = 'n';
             }
-            if (self.bitboards[Piece::BB] >> shift) & 1 == 1 {
+            if get_bit!(self.bitboards[Piece::BB], i) == 1 {
                 new_board[i / 8][i % 8] = 'b';
             }
-            if (self.bitboards[Piece::BR] >> shift) & 1 == 1 {
+            if get_bit!(self.bitboards[Piece::BR], i) == 1 {
                 new_board[i / 8][i % 8] = 'r';
             }
-            if (self.bitboards[Piece::BQ] >> shift) & 1 == 1 {
+            if get_bit!(self.bitboards[Piece::BQ], i) == 1 {
                 new_board[i / 8][i % 8] = 'q';
             }
-            if (self.bitboards[Piece::BK] >> shift) & 1 == 1 {
+            if get_bit!(self.bitboards[Piece::BK], i) == 1 {
                 new_board[i / 8][i % 8] = 'k';
             }
         }
@@ -134,41 +133,40 @@ impl GameState {
     fn updateBoardArray(&mut self) {
         self.board = [[' '; 8]; 8];
         for i in 0..64 {
-            let shift = 64 - 1 - i;
-            if (self.bitboards[Piece::WP] >> shift) & 1 == 1 {
+            if get_bit!(self.bitboards[Piece::WP], i) == 1 {
                 self.board[i / 8][i % 8] = 'P';
             }
-            if (self.bitboards[Piece::WN] >> shift) & 1 == 1 {
+            if get_bit!(self.bitboards[Piece::WN], i) == 1 {
                 self.board[i / 8][i % 8] = 'N';
             }
-            if (self.bitboards[Piece::WB] >> shift) & 1 == 1 {
+            if get_bit!(self.bitboards[Piece::WB], i) == 1 {
                 self.board[i / 8][i % 8] = 'B';
             }
-            if (self.bitboards[Piece::WR] >> shift) & 1 == 1 {
+            if get_bit!(self.bitboards[Piece::WR], i) == 1 {
                 self.board[i / 8][i % 8] = 'R';
             }
-            if (self.bitboards[Piece::WQ] >> shift) & 1 == 1 {
+            if get_bit!(self.bitboards[Piece::WQ], i) == 1 {
                 self.board[i / 8][i % 8] = 'Q';
             }
-            if (self.bitboards[Piece::WK] >> shift) & 1 == 1 {
+            if get_bit!(self.bitboards[Piece::WK], i) == 1 {
                 self.board[i / 8][i % 8] = 'K';
             }
-            if (self.bitboards[Piece::BP] >> shift) & 1 == 1 {
+            if get_bit!(self.bitboards[Piece::BP], i) == 1 {
                 self.board[i / 8][i % 8] = 'p';
             }
-            if (self.bitboards[Piece::BN] >> shift) & 1 == 1 {
+            if get_bit!(self.bitboards[Piece::BN], i) == 1 {
                 self.board[i / 8][i % 8] = 'n';
             }
-            if (self.bitboards[Piece::BB] >> shift) & 1 == 1 {
+            if get_bit!(self.bitboards[Piece::BB], i) == 1 {
                 self.board[i / 8][i % 8] = 'b';
             }
-            if (self.bitboards[Piece::BR] >> shift) & 1 == 1 {
+            if get_bit!(self.bitboards[Piece::BR], i) == 1 {
                 self.board[i / 8][i % 8] = 'r';
             }
-            if (self.bitboards[Piece::BQ] >> shift) & 1 == 1 {
+            if get_bit!(self.bitboards[Piece::BQ], i) == 1 {
                 self.board[i / 8][i % 8] = 'q';
             }
-            if (self.bitboards[Piece::BK] >> shift) & 1 == 1 {
+            if get_bit!(self.bitboards[Piece::BK], i) == 1 {
                 self.board[i / 8][i % 8] = 'k';
             }
         }
@@ -179,56 +177,55 @@ impl GameState {
         self.bitboards = [0; 13];
         self.castle_rights = [false; 4];
         let mut char_idx: usize = 0;
-        let mut board_idx: i64 = 0;
+        let mut board_idx: u32 = 0;
         while fen_str.chars().nth(char_idx).unwrap() != ' ' {
-            let board_idx_shift: i64 = 64 - 1 - board_idx;
             match fen_str.chars().nth(char_idx).unwrap() {
                 'P' => {
-                    self.bitboards[Piece::WP] |= 1 << board_idx_shift;
+                    set_bit!(self.bitboards[Piece::WP], board_idx);
                     board_idx += 1;
                 },
                 'N' => {
-                    self.bitboards[Piece::WN] |= 1 << board_idx_shift;
+                    set_bit!(self.bitboards[Piece::WN], board_idx);
                     board_idx += 1;
                 },
                 'B' => {
-                    self.bitboards[Piece::WB] |= 1 << board_idx_shift;
+                    set_bit!(self.bitboards[Piece::WB], board_idx);
                     board_idx += 1;
                 },
                 'R' => {
-                    self.bitboards[Piece::WR] |= 1 << board_idx_shift;
+                    set_bit!(self.bitboards[Piece::WR], board_idx);
                     board_idx += 1;
                 },
                 'Q' => {
-                    self.bitboards[Piece::WQ] |= 1 << board_idx_shift;
+                    set_bit!(self.bitboards[Piece::WQ], board_idx);
                     board_idx += 1;
                 },
                 'K' => {
-                    self.bitboards[Piece::WK] |= 1 << board_idx_shift;
+                    set_bit!(self.bitboards[Piece::WK], board_idx);
                     board_idx += 1;
                 },
                 'p' => {
-                    self.bitboards[Piece::BP] |= 1 << board_idx_shift;
+                    set_bit!(self.bitboards[Piece::BP], board_idx);
                     board_idx += 1;
                 },
                 'n' => {
-                    self.bitboards[Piece::BN] |= 1 << board_idx_shift;
+                    set_bit!(self.bitboards[Piece::BN], board_idx);
                     board_idx += 1;
                 },
                 'b' => {
-                    self.bitboards[Piece::BB] |= 1 << board_idx_shift;
+                    set_bit!(self.bitboards[Piece::BB], board_idx);
                     board_idx += 1;
                 },
                 'r' => {
-                    self.bitboards[Piece::BR] |= 1 << board_idx_shift;
+                    set_bit!(self.bitboards[Piece::BR], board_idx);
                     board_idx += 1;
                 },
                 'q' => {
-                    self.bitboards[Piece::BQ] |= 1 << board_idx_shift;
+                    set_bit!(self.bitboards[Piece::BQ], board_idx);
                     board_idx += 1;
                 },
                 'k' => {
-                    self.bitboards[Piece::BK] |= 1 << board_idx_shift;
+                    set_bit!(self.bitboards[Piece::BK], board_idx);
                     board_idx += 1;
                 },
                 '1' => board_idx += 1,
