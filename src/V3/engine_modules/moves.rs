@@ -65,12 +65,10 @@ impl Moves {
 
 
     pub fn makeMove(&self, z: &mut Zobrist, mut bitboard: u64, mut hash_key: u64, move_str: &str, p_type: Piece) -> (u64, u64) {
-        let start_sq: u32; let end_sq: u32;
-        let start_bitboard: u64; let end_bitboard: u64;
+        let (r1, c1, r2, c2) = move_to_u32s!(move_str);
+        let start_sq: u32 = r1 * 8 + c1;
+        let end_sq: u32 = r2 * 8 + c2;
         if move_str.chars().nth(3).unwrap().is_numeric() { // regular move
-            let (r1, c1, r2, c2) = move_to_u32s!(move_str);
-            start_sq = r1 * 8 + c1;
-            end_sq = r2 * 8 + c2;
             if get_bit!(bitboard, end_sq) == 1 {
                 hash_key ^= z.piece_keys[p_type][end_sq as usize]; // remove taken piece from hash
             }
@@ -83,18 +81,6 @@ impl Moves {
                 pop_bit!(bitboard, end_sq);
             }
         } else if move_str.chars().nth(3).unwrap() == 'P' { // pawn promo
-            let whites_turn: bool = move_str.chars().nth(2).unwrap().is_uppercase();
-            let (c1, c2, _, _) = move_to_u32s!(move_str);
-            let (r1, r2) = if whites_turn {(1, 0)} else {(6, 7)};
-            if whites_turn { // white promo
-                start_bitboard = self.masks.file_masks[c1 as usize] & self.masks.rank_masks[1];
-                end_bitboard = self.masks.file_masks[c2 as usize] & self.masks.rank_masks[0];
-            } else { // black promo
-                start_bitboard = self.masks.file_masks[c1 as usize] & self.masks.rank_masks[6];
-                end_bitboard = self.masks.file_masks[c2 as usize] & self.masks.rank_masks[7];
-            }
-            start_sq = start_bitboard.leading_zeros();
-            end_sq = end_bitboard.leading_zeros();
             if get_bit!(bitboard, end_sq) == 1 {
                 hash_key ^= z.piece_keys[p_type][end_sq as usize]; // remove taken piece from hash
             }
@@ -109,27 +95,17 @@ impl Moves {
                 pop_bit!(bitboard, end_sq);
             }
         } else if move_str.chars().nth(3).unwrap() == 'E' { // enpassant
-            let whites_turn: bool = move_str.chars().nth(2).unwrap() == 'w';
-            let (c1, c2, _, _) = move_to_u32s!(move_str);
-            let (r1, r2) = if whites_turn {(3, 2)} else {(4, 5)};
-            if whites_turn { // white
-                start_bitboard = self.masks.file_masks[c1 as usize] & self.masks.rank_masks[3];
-                end_bitboard = self.masks.file_masks[c2 as usize] & self.masks.rank_masks[2];
-                end_sq = end_bitboard.leading_zeros();
+            if move_str.chars().nth(2).unwrap() == 'w' { // white
                 if get_bit!(bitboard, end_sq + 8) == 1 {
                     hash_key ^= z.piece_keys[p_type][(r1 * 8 + c2) as usize] // remove taken piece from hash
                 }
                 pop_bits!(bitboard, self.masks.file_masks[c2 as usize] & self.masks.rank_masks[3]);
             } else { // black
-                start_bitboard = self.masks.file_masks[c1 as usize] & self.masks.rank_masks[4];
-                end_bitboard = self.masks.file_masks[c2 as usize] & self.masks.rank_masks[5];
-                end_sq = end_bitboard.leading_zeros();
                 if get_bit!(bitboard, end_sq - 8) == 1 {
                     hash_key ^= z.piece_keys[p_type][(r1 * 8 + c2) as usize] // remove taken piece from hash
                 }
                 pop_bits!(bitboard, self.masks.file_masks[c2 as usize] & self.masks.rank_masks[4]);
             }
-            start_sq = start_bitboard.leading_zeros();
             if get_bit!(bitboard, start_sq) == 1 {
                 hash_key ^= z.piece_keys[p_type][start_sq as usize]; // remove source piece from hash
                 hash_key ^= z.piece_keys[p_type][end_sq as usize]; // add target piece to hash

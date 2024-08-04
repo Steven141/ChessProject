@@ -272,7 +272,7 @@ impl GameState {
             self.recent_piece_captured = if self.whites_turn {'p'} else {'P'};
             self.recent_piece_moved = if self.whites_turn {'P'} else {'p'};
         } else if move_str.chars().nth(3).unwrap() == 'P' {
-            let (_, c2, _, _) = move_to_u32s!(move_str);
+            let (_, _, _, c2) = move_to_u32s!(move_str);
             self.recent_piece_captured = self.board[if self.whites_turn {0} else {7}][c2 as usize];
             self.recent_piece_moved = if self.whites_turn {'P'} else {'p'};
         } else {
