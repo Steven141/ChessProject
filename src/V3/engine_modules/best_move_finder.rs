@@ -36,7 +36,6 @@ pub struct BestMoveFinder {
 }
 
 
-/// TODO: Look into transpositions tables and iterative deepening
 #[pymethods]
 impl BestMoveFinder {
     #[new]

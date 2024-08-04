@@ -2,9 +2,6 @@
 
 
 use pyo3::prelude::*;
-use std::str::from_utf8;
-use rand::thread_rng;
-use rand::seq::SliceRandom;
 use crate::{
     castle_rights::CastleRights,
     special_bitboards::SpecialBitBoards,
@@ -35,14 +32,8 @@ impl Moves {
     }
 
 
-    pub fn getValidMoves(&mut self, z: &mut Zobrist, bitboards: [u64; 13], castle_rights: [bool; 4], hash_key: u64, whites_turn: bool, depth: u32) -> String {
-        let mut moves: String = self.getPossibleMoves(bitboards, castle_rights, whites_turn);
-        if depth == 0 {
-            // TODO: look to replace shuffling with sorting
-            let mut move_groups: Vec<&str> = moves.as_bytes().chunks(4).map(|chunk| from_utf8(chunk).unwrap()).collect();
-            move_groups.shuffle(&mut thread_rng());
-            moves = move_groups.join("");
-        }
+    pub fn getValidMoves(&mut self, z: &mut Zobrist, bitboards: [u64; 13], castle_rights: [bool; 4], hash_key: u64, whites_turn: bool) -> String {
+        let moves: String = self.getPossibleMoves(bitboards, castle_rights, whites_turn);
         let mut valid_moves: String = String::new();
         for i in (0..moves.len()).step_by(4) {
             let (bitboards_t, _) = self.getUpdatedBitboards(z, &moves[i..i+4], bitboards, hash_key, whites_turn);

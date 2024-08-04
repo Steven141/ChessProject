@@ -63,7 +63,7 @@ def main() -> None:
     m = ChessProject.Moves()
     tt = ChessProject.TransTable()
     ob = ChessProject.OpeningBook()
-    valid_moves = m.getValidMoves(z, gs.bitboards, gs.castle_rights, gs.hash_key, gs.whites_turn, 0)
+    valid_moves = m.getValidMoves(z, gs.bitboards, gs.castle_rights, gs.hash_key, gs.whites_turn)
     move_made = False # flag for when move is made
     animate = False
     opening_node = ob.trie.root # keep track where we are in opeing book
@@ -181,7 +181,7 @@ def main() -> None:
         if move_made:
             if animate:
                 animateMove(gs.move_log[-4:], screen, gs, clk)
-            valid_moves = m.getValidMoves(z, gs.bitboards, gs.castle_rights, gs.hash_key, gs.whites_turn, 0)
+            valid_moves = m.getValidMoves(z, gs.bitboards, gs.castle_rights, gs.hash_key, gs.whites_turn)
             move_made = False
             animate = False
             move_undone = False
