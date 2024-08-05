@@ -266,7 +266,7 @@ impl BestMoveFinder {
         self.move_counter += 1;
 
 
-        // null move pruning
+        // null move pruning: problems arise from wrong mating depth
         // if self.max_depth - depth >= 3 && !mm.isKingAttacked(bitboards, whites_turn) && depth > 0 {
         //     self.repetition_idx += 1;
         //     self.repetition_table[self.repetition_idx] = hash_key;
