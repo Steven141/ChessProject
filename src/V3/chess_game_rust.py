@@ -52,15 +52,16 @@ def main() -> None:
     z = ChessProject.Zobrist()
     gs = ChessProject.GameState(z)
     bmf = ChessProject.BestMoveFinder(DEPTH)
-    # gs.importFEN(z, 'r3r1k1/pbppq1p1/1b4QB/3pp2p/1P6/2PB4/P4PPP/R3R1K1 w - - 1 18') # same as below but ahead
-    # gs.importFEN(z, 'r3r1k1/pbppq1p1/1b3pQB/3pP2p/1P6/2PB4/P4PPP/R3R1K1 b - - 1 18') # same as below but ahead
-    # gs.importFEN(z, 'r3r1k1/pbppqpp1/1b5B/3pP2p/1P6/2PB2Q1/P4PPP/R3R1K1 b - - 1 17') # same problem as below
-    # gs.importFEN(z, 'r3kb1r/ppp1p1pp/4b3/1Q2N3/3q4/2N5/PP3PPP/R1B3K1 b kq - 1 15') # TODO does not look deeper for checking moves
-    # gs.importFEN(z, 'r7/8/6K1/2k5/8/8/8/8 w - - 0 1') # rook winning
-    # gs.importFEN(z, '8/8/8/8/8/8/PK5k/8 w - - 0 1')
-    # gs.importFEN(z, '8/5Q2/k7/2K5/8/8/8/8 b - - 0 1')
-    # gs.importFEN(z, '2r3k1/R7/8/1R6/8/8/P4KPP/8 w - - 0 1') # draw, use depth 3
     m = ChessProject.Moves()
+    # gs.importFEN(m.masks, z, '5k2/8/5PK1/8/7p/2R3P1/8/7r b - - 1 88') # missed mate in 1
+    # gs.importFEN(m.masks, z, 'r3r1k1/pbppq1p1/1b4QB/3pp2p/1P6/2PB4/P4PPP/R3R1K1 w - - 1 18') # same as below but ahead
+    # gs.importFEN(m.masks, z, 'r3r1k1/pbppq1p1/1b3pQB/3pP2p/1P6/2PB4/P4PPP/R3R1K1 b - - 1 18') # same as below but ahead
+    # gs.importFEN(m.masks, z, 'r3r1k1/pbppqpp1/1b5B/3pP2p/1P6/2PB2Q1/P4PPP/R3R1K1 b - - 1 17') # same problem as below
+    # gs.importFEN(m.masks, z, 'r3kb1r/ppp1p1pp/4b3/1Q2N3/3q4/2N5/PP3PPP/R1B3K1 b kq - 1 15') # TODO does not look deeper for checking moves
+    # gs.importFEN(m.masks, z, 'r7/8/6K1/2k5/8/8/8/8 w - - 0 1') # rook winning
+    # gs.importFEN(m.masks, z, '8/8/8/8/8/8/PK5k/8 w - - 0 1')
+    # gs.importFEN(m.masks, z, '8/5Q2/k7/2K5/8/8/8/8 b - - 0 1')
+    # gs.importFEN(m.masks, z, '2r3k1/R7/8/1R6/8/8/P4KPP/8 w - - 0 1') # draw, use depth 3
     tt = ChessProject.TransTable()
     ob = ChessProject.OpeningBook()
     valid_moves = m.getValidMoves(z, gs.bitboards, gs.castle_rights, gs.hash_key, gs.whites_turn)
