@@ -136,7 +136,7 @@ macro_rules! get_move_pieces {
         let (r1, c1, r2, c2) = move_to_u32s!($move);
         let start_sq: u32 = r1 * 8 + c1;
         let end_sq: u32 = r2 * 8 + c2;
-        let pieces: [Piece; 12] = [Piece::WP, Piece::WN, Piece::WB, Piece::WR, Piece::WQ, Piece::WK, Piece::BP, Piece::BN, Piece::BB, Piece::BR, Piece::BQ, Piece::BK];
+        let pieces: [Piece; 12] = Piece::allPieces();
         let mut start_piece: Piece = Piece::EP; // default for no piece captured
         let mut end_piece: Piece = Piece::EP; // default for no piece captured
         for piece in pieces {

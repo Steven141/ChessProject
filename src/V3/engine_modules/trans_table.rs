@@ -43,7 +43,14 @@ pub struct TransTable {
 
 #[pymethods]
 impl TransTable {
-    pub const TRANS_TABLE_SIZE: usize = 0x400000; // 4 MB
+    /*
+    Table Memory Analysis:
+
+    TransTableEntry = u64 + u32 + i32 + i32 = 160 bits
+    Vec = heap-allocated buffer pointer + length + capacity = 3 * u64 = 192 bits
+    Table = TRANS_TABLE_SIZE * TransTableEntry + Vec = 5_000_000 * 160 + 192 ~= 100 MB
+    */
+    pub const TRANS_TABLE_SIZE: usize = 5_000_000;
     pub const NO_HASH_ENTRY: i32 = 100000;
     #[new]
     pub fn new() -> Self {

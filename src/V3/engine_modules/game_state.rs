@@ -83,39 +83,30 @@ impl GameState {
         for i in 0..64 {
             if get_bit!(self.bitboards[Piece::WP], i) == 1 {
                 new_board[i / 8][i % 8] = 'P';
-            }
-            if get_bit!(self.bitboards[Piece::WN], i) == 1 {
+            } else if get_bit!(self.bitboards[Piece::WN], i) == 1 {
                 new_board[i / 8][i % 8] = 'N';
-            }
-            if get_bit!(self.bitboards[Piece::WB], i) == 1 {
+            } else if get_bit!(self.bitboards[Piece::WB], i) == 1 {
                 new_board[i / 8][i % 8] = 'B';
-            }
-            if get_bit!(self.bitboards[Piece::WR], i) == 1 {
+            } else if get_bit!(self.bitboards[Piece::WR], i) == 1 {
                 new_board[i / 8][i % 8] = 'R';
-            }
-            if get_bit!(self.bitboards[Piece::WQ], i) == 1 {
+            } else if get_bit!(self.bitboards[Piece::WQ], i) == 1 {
                 new_board[i / 8][i % 8] = 'Q';
-            }
-            if get_bit!(self.bitboards[Piece::WK], i) == 1 {
+            } else if get_bit!(self.bitboards[Piece::WK], i) == 1 {
                 new_board[i / 8][i % 8] = 'K';
-            }
-            if get_bit!(self.bitboards[Piece::BP], i) == 1 {
+            } else if get_bit!(self.bitboards[Piece::BP], i) == 1 {
                 new_board[i / 8][i % 8] = 'p';
-            }
-            if get_bit!(self.bitboards[Piece::BN], i) == 1 {
+            } else if get_bit!(self.bitboards[Piece::BN], i) == 1 {
                 new_board[i / 8][i % 8] = 'n';
-            }
-            if get_bit!(self.bitboards[Piece::BB], i) == 1 {
+            } else if get_bit!(self.bitboards[Piece::BB], i) == 1 {
                 new_board[i / 8][i % 8] = 'b';
-            }
-            if get_bit!(self.bitboards[Piece::BR], i) == 1 {
+            } else if get_bit!(self.bitboards[Piece::BR], i) == 1 {
                 new_board[i / 8][i % 8] = 'r';
-            }
-            if get_bit!(self.bitboards[Piece::BQ], i) == 1 {
+            } else if get_bit!(self.bitboards[Piece::BQ], i) == 1 {
                 new_board[i / 8][i % 8] = 'q';
-            }
-            if get_bit!(self.bitboards[Piece::BK], i) == 1 {
+            } else if get_bit!(self.bitboards[Piece::BK], i) == 1 {
                 new_board[i / 8][i % 8] = 'k';
+            } else {
+                new_board[i / 8][i % 8] = '-';
             }
         }
         for row in 0..8 {

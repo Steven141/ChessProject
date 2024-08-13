@@ -49,10 +49,14 @@ def main() -> None:
     clk = pg.time.Clock()
     screen.fill(pg.Color('white'))
     move_log_font = pg.font.SysFont('Arial', 14, False, False)
+    file_row_char_font = pg.font.SysFont('Arial', 12, True, False)
     z = ChessProject.Zobrist()
     gs = ChessProject.GameState(z)
     bmf = ChessProject.BestMoveFinder(DEPTH)
     m = ChessProject.Moves()
+    # gs.importFEN(m.masks, z, '2k5/6R1/p7/8/6pp/4Kb2/5p1r/5B2 w - - 0 60') # test larger tt
+    # gs.importFEN(m.masks, z, 'r1bqk2r/ppp1bpp1/3p1n1p/4p1B1/2P5/2P2N1P/PP2QPP1/RN2K2R w KQkq - 0 11') # pawn take instead of bish
+    # gs.importFEN(m.masks, z, 'rnb1kb1r/ppp2ppp/5n2/8/3N4/8/PPP2PPP/RNB1KB1R w KQkq - 0 1') # moves king when should not
     # gs.importFEN(m.masks, z, '5k2/8/5PK1/8/7p/2R3P1/8/7r b - - 1 88') # missed mate in 1
     # gs.importFEN(m.masks, z, 'r3r1k1/pbppq1p1/1b4QB/3pp2p/1P6/2PB4/P4PPP/R3R1K1 w - - 1 18') # same as below but ahead
     # gs.importFEN(m.masks, z, 'r3r1k1/pbppq1p1/1b3pQB/3pP2p/1P6/2PB4/P4PPP/R3R1K1 b - - 1 18') # same as below but ahead
@@ -181,13 +185,13 @@ def main() -> None:
 
         if move_made:
             if animate:
-                animateMove(gs.move_log[-4:], screen, gs, clk)
+                animateMove(gs.move_log[-4:], screen, gs, clk, file_row_char_font)
             valid_moves = m.getValidMoves(z, gs.bitboards, gs.castle_rights, gs.hash_key, gs.whites_turn)
             move_made = False
             animate = False
             move_undone = False
 
-        drawGameState(screen, gs, valid_moves, sq_selected, move_log_font, m)
+        drawGameState(screen, gs, valid_moves, sq_selected, move_log_font, file_row_char_font, m)
 
         if valid_moves == '':
             game_over = True
@@ -200,8 +204,8 @@ def main() -> None:
 """
 Responsible for all the graphics within a current game state
 """
-def drawGameState(screen, game_state, valid_moves, sq_selected, move_log_font, m) -> None:
-    drawBoard(screen)
+def drawGameState(screen, game_state, valid_moves, sq_selected, move_log_font, file_row_char_font, m) -> None:
+    drawBoard(screen, file_row_char_font)
     highlightSquares(screen, game_state, valid_moves, sq_selected)
     drawPieces(screen, game_state.board)
     drawMoveLog(screen, game_state, move_log_font, m)
@@ -210,13 +214,29 @@ def drawGameState(screen, game_state, valid_moves, sq_selected, move_log_font, m
 """
 Draw the squares on the board
 """
-def drawBoard(screen) -> None:
+def drawBoard(screen, file_row_char_font) -> None:
     global colors
     colors = (pg.Color('white'), pg.Color('wheat4'))
     for r in range(BOARD_DIM):
         for c in range(BOARD_DIM):
             color = colors[(r + c) % 2]
-            pg.draw.rect(screen, color, pg.Rect(c*SQ_SIZE, r*SQ_SIZE, SQ_SIZE, SQ_SIZE))
+            curr_rect = pg.Rect(c*SQ_SIZE, r*SQ_SIZE, SQ_SIZE, SQ_SIZE)
+            pg.draw.rect(screen, color, curr_rect)
+            drawFileRowChars(screen, curr_rect, file_row_char_font, r, c)
+
+
+"""
+Draw file and row chars on board
+"""
+def drawFileRowChars(screen, curr_rect, file_row_char_font, r, c) -> None:
+    if c == 0:
+        text_object = file_row_char_font.render(str(8-int(r)), True, colors[1] if r % 2 == 0 else colors[0])
+        text_location = curr_rect.move(3, 1)
+        screen.blit(text_object, text_location)
+    if r == 7:
+        text_object = file_row_char_font.render(chr(ord('a') + int(c)), True, colors[0] if c % 2 == 0 else colors[1])
+        text_location = curr_rect.move(SQ_SIZE-7, SQ_SIZE-16)
+        screen.blit(text_object, text_location)
 
 
 """
@@ -285,7 +305,7 @@ def drawMoveLog(screen, game_state, font, m) -> None:
 """
 Animating a move
 """
-def animateMove(move, screen, gs, clk) -> None:
+def animateMove(move, screen, gs, clk, file_row_char_font) -> None:
     global colors
     if move[3] == 'E' or move[3] == 'P':
         dR = -1 if not gs.whites_turn else 1
@@ -302,19 +322,23 @@ def animateMove(move, screen, gs, clk) -> None:
             r, c = (6 if gs.whites_turn else 1) + dR * f / frame_count, int(move[0]) + dC * f / frame_count
         else:
             r, c = int(move[0]) + dR * f / frame_count, int(move[1]) + dC * f / frame_count
-        drawBoard(screen)
+        drawBoard(screen, file_row_char_font)
         drawPieces(screen, gs.board, skip_sq=())
         # erase piece moved from its ending square
         if move[3] == 'P':
+            end_r, end_c = 7 if gs.whites_turn else 0, int(move[1])
             color = colors[((7 if gs.whites_turn else 0) + int(move[1])) % 2]
             end_sq = pg.Rect(int(move[1])*SQ_SIZE, (7 if gs.whites_turn else 0)*SQ_SIZE, SQ_SIZE, SQ_SIZE)
         elif move[3] == 'E':
+            end_r, end_c = 5 if gs.whites_turn else 2, int(move[1])
             color = colors[((5 if gs.whites_turn else 2) + int(move[1])) % 2]
             end_sq = pg.Rect(int(move[1])*SQ_SIZE, (5 if gs.whites_turn else 2)*SQ_SIZE, SQ_SIZE, SQ_SIZE)
         else:
+            end_r, end_c = int(move[2]), int(move[3])
             color = colors[(int(move[2]) + int(move[3])) % 2]
             end_sq = pg.Rect(int(move[3])*SQ_SIZE, int(move[2])*SQ_SIZE, SQ_SIZE, SQ_SIZE)
         pg.draw.rect(screen, color, end_sq)
+        drawFileRowChars(screen, end_sq, file_row_char_font, end_r, end_c)
         # draw captured piece onto rectange
         is_enpassant_move = (move[3] == 'E')
         is_promo_move = (move[3] == 'P')

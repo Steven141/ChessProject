@@ -16,7 +16,7 @@ pub struct SpecialBitBoards {
     queen_side: u64,
     pub king_span_c7: u64, // where c7 king can attack
     pub knight_span_c6: u64, // where c6 knight can attack
-    pub not_allied_pieces: u64, // if in white func: all pieces white can capture (not black king
+    pub not_allied_pieces: u64, // if in white func: all pieces white can capture (not black king)
     pub enemy_pieces: u64, // if in white func: black pieces but no black king
     pub empty: u64,
     pub occupied: u64,
@@ -26,6 +26,9 @@ pub struct SpecialBitBoards {
     pub file_masks: [u64; 8], // from file a to file h
     pub diagonal_masks: [u64; 15], // from top left to bottom right
     pub anti_diagonal_masks: [u64; 15], // from top right to bottom left
+    pub isolated_masks: [u64; 8], // 0 file between 1 files (unless a/h), from file a to file h
+    pub w_passed_pawn_masks: [u64; 64], // rect of 1's for past pawn detection for white
+    pub b_passed_pawn_masks: [u64; 64], // rect of 1's for past pawn detection for black
 }
 
 
@@ -33,7 +36,7 @@ pub struct SpecialBitBoards {
 impl SpecialBitBoards {
     #[new]
     pub fn new() -> Self {
-        SpecialBitBoards {
+        let mut sb: SpecialBitBoards = SpecialBitBoards {
             file_ab: 13889313184910721216,
             file_gh: 217020518514230019,
             centre: 103481868288,
@@ -100,6 +103,64 @@ impl SpecialBitBoards {
                 32832,
                 128,
             ],
+            isolated_masks: [
+                4629771061636907072,
+                11574427654092267680,
+                5787213827046133840,
+                2893606913523066920,
+                1446803456761533460,
+                723401728380766730,
+                361700864190383365,
+                144680345676153346,
+            ],
+            w_passed_pawn_masks: [0; 64],
+            b_passed_pawn_masks: [0; 64],
+        };
+        sb.generatePassedPawnMasks();
+        sb
+    }
+
+
+    fn generatePassedPawnMasks(&mut self) {
+        self.generatePassedPawnMasksW();
+        self.generatePassedPawnMasksB();
+    }
+
+
+    fn generatePassedPawnMasksW(&mut self) {
+        for r in 1..8 {
+            for c in 0..8 {
+                let mut rect: u64 = self.file_masks[c as usize];
+                if c > 0 {
+                    set_bits!(rect, self.file_masks[(c-1) as usize]);
+                }
+                if c+1 < 8 {
+                    set_bits!(rect, self.file_masks[(c+1) as usize]);
+                }
+                for rect_row in r..=7 {
+                    pop_bits!(rect, self.rank_masks[rect_row as usize]);
+                }
+                self.w_passed_pawn_masks[r * 8 + c] = rect;
+            }
+        }
+    }
+
+
+    fn generatePassedPawnMasksB(&mut self) {
+        for r in 0..7 {
+            for c in 0..8 {
+                let mut rect: u64 = self.file_masks[c as usize];
+                if c > 0 {
+                    set_bits!(rect, self.file_masks[(c-1) as usize]);
+                }
+                if c+1 < 8 {
+                    set_bits!(rect, self.file_masks[(c+1) as usize]);
+                }
+                for rect_row in 0..=r {
+                    pop_bits!(rect, self.rank_masks[rect_row as usize]);
+                }
+                self.b_passed_pawn_masks[r * 8 + c] = rect;
+            }
         }
     }
 }

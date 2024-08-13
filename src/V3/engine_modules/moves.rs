@@ -180,9 +180,9 @@ impl Moves {
 
 
     pub fn possibleMovesW(&mut self, bitboards: [u64; 13], castle_rights: [bool; 4]) -> String {
-        self.masks.not_allied_pieces = !or_array_elems!([Piece::WP, Piece::WN, Piece::WB, Piece::WR, Piece::WQ, Piece::WK, Piece::BK], bitboards); // avoid illegal bK capture
-        self.masks.enemy_pieces = or_array_elems!([Piece::BP, Piece::BN, Piece::BB, Piece::BR, Piece::BQ], bitboards); // avoid illegal bK capture
-        self.masks.occupied = or_array_elems!([Piece::WP, Piece::WN, Piece::WB, Piece::WR, Piece::WQ, Piece::WK, Piece::BP, Piece::BN, Piece::BB, Piece::BR, Piece::BQ, Piece::BK], bitboards);
+        self.masks.not_allied_pieces = !or_array_elems!(Piece::whitePiecesWithEnemyKing(), bitboards); // avoid illegal bK capture
+        self.masks.enemy_pieces = or_array_elems!(Piece::blackPiecesNoKing(), bitboards); // avoid illegal bK capture
+        self.masks.occupied = or_array_elems!(Piece::allPieces(), bitboards);
         self.masks.empty = !self.masks.occupied;
         self.possibleWP(bitboards[Piece::WP], bitboards[Piece::BP], bitboards[Piece::EP])
             + &self.possibleB(bitboards[Piece::WB])
@@ -195,9 +195,9 @@ impl Moves {
 
 
     pub fn possibleMovesB(&mut self, bitboards: [u64; 13], castle_rights: [bool; 4]) -> String {
-        self.masks.not_allied_pieces = !or_array_elems!([Piece::BP, Piece::BN, Piece::BB, Piece::BR, Piece::BQ, Piece::BK, Piece::WK], bitboards); // avoid illegal wK capture
-        self.masks.enemy_pieces = or_array_elems!([Piece::WP, Piece::WN, Piece::WB, Piece::WR, Piece::WQ], bitboards); // avoid illegal bK capture
-        self.masks.occupied = or_array_elems!([Piece::WP, Piece::WN, Piece::WB, Piece::WR, Piece::WQ, Piece::WK, Piece::BP, Piece::BN, Piece::BB, Piece::BR, Piece::BQ, Piece::BK], bitboards);
+        self.masks.not_allied_pieces = !or_array_elems!(Piece::blackPiecesWithEnemyKing(), bitboards); // avoid illegal wK capture
+        self.masks.enemy_pieces = or_array_elems!(Piece::whitePiecesNoKing(), bitboards); // avoid illegal bK capture
+        self.masks.occupied = or_array_elems!(Piece::allPieces(), bitboards);
         self.masks.empty = !self.masks.occupied;
         self.possibleBP(bitboards[Piece::WP], bitboards[Piece::BP], bitboards[Piece::EP])
             + &self.possibleB(bitboards[Piece::BB])
@@ -575,7 +575,7 @@ impl Moves {
     }
 
 
-    fn possibleHAndVMoves(&self, piece_idx: usize) -> u64 {
+    pub fn possibleHAndVMoves(&self, piece_idx: usize) -> u64 {
         // piece_idx = 0 -> top left of board -> 1000...000
         let binary_idx: u64 = 1 << (64 - 1 - piece_idx);
         let rank_mask = self.masks.rank_masks[piece_idx / 8];
@@ -586,7 +586,7 @@ impl Moves {
     }
 
 
-    fn possibleDiagAndAntiDiagMoves(&self, piece_idx: usize) -> u64 {
+    pub fn possibleDiagAndAntiDiagMoves(&self, piece_idx: usize) -> u64 {
         // piece_idx = 0 -> top left of board -> 1000...000
         let binary_idx: u64 = 1 << (64 - 1 - piece_idx);
         let diag_mask = self.masks.diagonal_masks[(piece_idx / 8) + (piece_idx % 8)];
@@ -598,7 +598,7 @@ impl Moves {
 
 
     pub fn unsafeForBlack(&mut self, mut bitboards: [u64; 13]) -> u64 {
-        self.masks.occupied = or_array_elems!([Piece::WP, Piece::WN, Piece::WB, Piece::WR, Piece::WQ, Piece::WK, Piece::BP, Piece::BN, Piece::BB, Piece::BR, Piece::BQ, Piece::BK], bitboards);
+        self.masks.occupied = or_array_elems!(Piece::allPieces(), bitboards);
         // pawn threats
         let mut unsafe_b: u64 = (bitboards[Piece::WP] << 7) & !self.masks.file_masks[0]; // pawn right capture
         set_bits!(unsafe_b, (bitboards[Piece::WP] << 9) & !self.masks.file_masks[7]); // pawn left capture
@@ -675,7 +675,7 @@ impl Moves {
 
 
     pub fn unsafeForWhite(&mut self, mut bitboards: [u64; 13]) -> u64 {
-        self.masks.occupied = or_array_elems!([Piece::WP, Piece::WN, Piece::WB, Piece::WR, Piece::WQ, Piece::WK, Piece::BP, Piece::BN, Piece::BB, Piece::BR, Piece::BQ, Piece::BK], bitboards);
+        self.masks.occupied = or_array_elems!(Piece::allPieces(), bitboards);
         // pawn threats
         let mut unsafe_w: u64 = (bitboards[Piece::BP] >> 7) & !self.masks.file_masks[7]; // pawn right capture
         set_bits!(unsafe_w, (bitboards[Piece::BP] >> 9) & !self.masks.file_masks[0]); // pawn left capture
@@ -838,12 +838,12 @@ impl Moves {
         self.isValidMove(bitboards_t, whites_turn)
         && (
             (!whites_turn
-                && or_array_elems!([Piece::WP, Piece::WN, Piece::WB, Piece::WR, Piece::WQ], bitboards).count_ones()
-                != or_array_elems!([Piece::WP, Piece::WN, Piece::WB, Piece::WR, Piece::WQ], bitboards_t).count_ones()
+                && or_array_elems!(Piece::whitePiecesNoKing(), bitboards).count_ones()
+                != or_array_elems!(Piece::whitePiecesNoKing(), bitboards_t).count_ones()
             )
             || (whites_turn
-                && or_array_elems!([Piece::BP, Piece::BN, Piece::BB, Piece::BR, Piece::BQ], bitboards).count_ones()
-                != or_array_elems!([Piece::BP, Piece::BN, Piece::BB, Piece::BR, Piece::BQ], bitboards_t).count_ones()
+                && or_array_elems!(Piece::blackPiecesNoKing(), bitboards).count_ones()
+                != or_array_elems!(Piece::blackPiecesNoKing(), bitboards_t).count_ones()
             )
         )
     }

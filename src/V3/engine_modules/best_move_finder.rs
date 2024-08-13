@@ -24,6 +24,12 @@ pub struct BestMoveFinder {
     move_counter: u32,
     piece_scores: HashMap<char, i32>,
     piece_position_scores: HashMap<char, [[i32; 8]; 8]>,
+    double_pawn_penalty: i32,
+    isolated_pawn_penalty: i32,
+    passed_pawn_bonus: [i32; 8],
+    semi_open_file_score: i32,
+    open_file_score: i32,
+    king_blocking_bonus: i32,
     mvv_lva: [[i32; 12]; 12], // [attacker][victim]
     killer_moves: Vec<Vec<String>>, // [id][ply]
     history_moves: [[i32; 64]; 12], // [piece][square]
@@ -83,8 +89,8 @@ impl BestMoveFinder {
                     [0,   0,   0,  10,  10,   0,   0,   0],
                     [0,   0,  10,  20,  20,  10,   0,   0],
                     [0,   0,  10,  20,  20,  10,   0,   0],
-                    [0,  10,   0,   0,   0,   0,  10,   0],
-                    [0,  30,   0,   0,   0,   0,  30,   0],
+                    [0,  10,   5,  10,  10,   5,  10,   0],
+                    [0,  20,   5,   5,   5,   5,  20,   0],
                     [0,   0, -10,   0,   0, -10,   0,   0],
                 ]),
                 ('N', [
@@ -101,13 +107,19 @@ impl BestMoveFinder {
                     [90,  90,  90,  90,  90,  90,  90,  90],
                     [30,  30,  30,  40,  40,  30,  30,  30],
                     [20,  20,  20,  30,  30,  30,  20,  20],
-                    [10,  10,  10,  20,  20,  10,  10,  10],
-                    [ 5,   5,  10,  20,  20,   5,   5,   5],
-                    [ 0,   0,   0,   5,   5,   0,   0,   0],
+                    [15,  10,  10,  20,  20,  10,  10,  15],
+                    [10,   5,  10,  20,  20,   5,   5,  10],
+                    [ 5,   0,   0,   5,   5,   0,   0,   5],
                     [ 0,   0,   0, -10, -10,   0,   0,   0],
                     [ 0,   0,   0,   0,   0,   0,   0,   0],
                 ]),
             ]),
+            double_pawn_penalty: -10,
+            isolated_pawn_penalty: -10,
+            passed_pawn_bonus: [0, 10, 30, 50, 75, 100, 150, 200],
+            semi_open_file_score: 10,
+            open_file_score: 15,
+            king_blocking_bonus: 5,
             mvv_lva: [
                 // (Victims) Pawn Knight Bishop   Rook  Queen   King            (Attackers)
                 [105, 205, 305, 405, 505, 605,  105, 205, 305, 405, 505, 605], // Pawn
@@ -209,7 +221,7 @@ impl BestMoveFinder {
     fn quiescenceSearch(&mut self, mut alpha: i32, beta: i32, mm: &mut Moves, z: &mut Zobrist, bitboards: [u64; 13], castle_rights: [bool; 4], hash_key: u64, whites_turn: bool, depth: u32) -> i32 {
         // look deeper for non-quiet moves (attacking)
         self.move_counter += 1;
-        let eval: i32 = (if whites_turn {1} else {-1}) * self.evaluateBoard(bitboards);
+        let eval: i32 = (if whites_turn {1} else {-1}) * self.evaluateBoard(mm, bitboards);
         if eval >= beta {
             return beta;
         }
@@ -261,7 +273,7 @@ impl BestMoveFinder {
         if depth >= 64 {
             // prevent PV table overflow
             self.move_counter += 1;
-            return (if whites_turn {1} else {-1}) * self.evaluateBoard(bitboards);
+            return (if whites_turn {1} else {-1}) * self.evaluateBoard(mm, bitboards);
         }
         self.move_counter += 1;
 
@@ -400,44 +412,147 @@ impl BestMoveFinder {
     }
 
 
-    fn evaluateBoard(&self, bitboards: [u64; 13]) -> i32 {
+    fn evaluateBoard(&self, mm: &mut Moves, bitboards: [u64; 13]) -> i32 {
+        // TODO better way to do doubled pawns with shifting
         let mut score: i32 = 0;
         for i in 0..64 {
             if get_bit!(bitboards[Piece::WP], i) == 1 {
                 score += self.piece_scores[&'P'] + self.piece_position_scores[&'P'][i / 8][i % 8];
+                // double/isolated/past pawn scoring
+                let double_pawns: i32 = (bitboards[Piece::WP] & mm.masks.file_masks[i % 8]).count_ones() as i32;
+                if double_pawns > 1 {
+                    score += double_pawns * self.double_pawn_penalty;
+                }
+                if bitboards[Piece::WP] & mm.masks.isolated_masks[i % 8] == 0 {
+                    score += self.isolated_pawn_penalty;
+                }
+                if bitboards[Piece::BP] & mm.masks.w_passed_pawn_masks[i] == 0 {
+                    score += self.passed_pawn_bonus[7 - (i / 8)];
+                }
             }
             if get_bit!(bitboards[Piece::WN], i) == 1 {
                 score += self.piece_scores[&'N'] + self.piece_position_scores[&'N'][i / 8][i % 8];
             }
             if get_bit!(bitboards[Piece::WB], i) == 1 {
                 score += self.piece_scores[&'B'] + self.piece_position_scores[&'B'][i / 8][i % 8];
+                // bishop mobility scoring
+                mm.masks.occupied = or_array_elems!(Piece::allPieces(), bitboards);
+                score += (mm.possibleDiagAndAntiDiagMoves(bitboards[Piece::WB].leading_zeros() as usize)
+                    & !or_array_elems!(Piece::whitePiecesWithEnemyKing(), bitboards)).count_ones() as i32; // avoid illegal bK capture
             }
             if get_bit!(bitboards[Piece::WR], i) == 1 {
                 score += self.piece_scores[&'R'] + self.piece_position_scores[&'R'][i / 8][i % 8];
+                // rook semi/open file scoring
+                if bitboards[Piece::WP] & mm.masks.file_masks[i % 8] == 0 {
+                    score += self.semi_open_file_score;
+                }
+                if or_array_elems!([Piece::WP, Piece::BP], bitboards) & mm.masks.file_masks[i % 8] == 0 {
+                    score += self.open_file_score;
+                }
             }
             if get_bit!(bitboards[Piece::WQ], i) == 1 {
                 score += self.piece_scores[&'Q'];
+                // queen mobility scoring
+                mm.masks.occupied = or_array_elems!(Piece::allPieces(), bitboards);
+                score += ((mm.possibleDiagAndAntiDiagMoves(bitboards[Piece::WQ].leading_zeros() as usize)
+                    | (mm.possibleHAndVMoves(bitboards[Piece::WQ].leading_zeros() as usize)))
+                    & !or_array_elems!(Piece::whitePiecesWithEnemyKing(), bitboards)).count_ones() as i32; // avoid illegal bK capture
             }
             if get_bit!(bitboards[Piece::WK], i) == 1 {
                 score += self.piece_scores[&'K'] + self.piece_position_scores[&'K'][i / 8][i % 8];
+                // king semi/open file scoring
+                if bitboards[Piece::WP] & mm.masks.file_masks[i % 8] == 0 {
+                    score -= self.semi_open_file_score;
+                }
+                if or_array_elems!([Piece::WP, Piece::BP], bitboards) & mm.masks.file_masks[i % 8] == 0 {
+                    score -= self.open_file_score;
+                }
+                // king protection scoring
+                let king_idx: usize = bitboards[Piece::WK].leading_zeros() as usize;
+                let king_span_c7_idx: usize = 10;
+                // allign the king_span_c7 mask
+                let mut moves: u64;
+                if king_idx <= king_span_c7_idx {
+                    moves = mm.masks.king_span_c7 << (king_span_c7_idx - king_idx);
+                } else {
+                    moves = mm.masks.king_span_c7 >> (king_idx - king_span_c7_idx);
+                }
+                // remove moves sliding off board or allied pieces
+                if king_idx % 8 < 4 {
+                    pop_bits!(moves, mm.masks.file_gh);
+                } else {
+                    pop_bits!(moves, mm.masks.file_ab);
+                }
+                score += self.king_blocking_bonus * (moves & or_array_elems!(Piece::whitePiecesNoKing(), bitboards)).count_ones() as i32;
             }
             if get_bit!(bitboards[Piece::BP], i) == 1 {
                 score -= self.piece_scores[&'P'] + self.piece_position_scores[&'P'][7 - (i / 8)][i % 8];
+                // double/isolated/past pawn scoring
+                let double_pawns: i32 = (bitboards[Piece::BP] & mm.masks.file_masks[i % 8]).count_ones() as i32;
+                if double_pawns > 1 {
+                    score -= double_pawns * self.double_pawn_penalty;
+                }
+                if bitboards[Piece::BP] & mm.masks.isolated_masks[i % 8] == 0 {
+                    score -= self.isolated_pawn_penalty;
+                }
+                if bitboards[Piece::WP] & mm.masks.b_passed_pawn_masks[i] == 0 {
+                    score -= self.passed_pawn_bonus[i / 8];
+                }
             }
             if get_bit!(bitboards[Piece::BN], i) == 1 {
                 score -= self.piece_scores[&'N'] + self.piece_position_scores[&'N'][7 - (i / 8)][i % 8];
             }
             if get_bit!(bitboards[Piece::BB], i) == 1 {
                 score -= self.piece_scores[&'B'] + self.piece_position_scores[&'B'][7 - (i / 8)][i % 8];
+                // bishop mobility scoring
+                mm.masks.occupied = or_array_elems!(Piece::allPieces(), bitboards);
+                score -= (mm.possibleDiagAndAntiDiagMoves(bitboards[Piece::BB].leading_zeros() as usize)
+                    & !or_array_elems!(Piece::blackPiecesWithEnemyKing(), bitboards)).count_ones() as i32; // avoid illegal bK capture
             }
             if get_bit!(bitboards[Piece::BR], i) == 1 {
                 score -= self.piece_scores[&'R'] + self.piece_position_scores[&'R'][7 - (i / 8)][i % 8];
+                // rook semi/open file scoring
+                if bitboards[Piece::BP] & mm.masks.file_masks[i % 8] == 0 {
+                    score -= self.semi_open_file_score;
+                }
+                if or_array_elems!([Piece::WP, Piece::BP], bitboards) & mm.masks.file_masks[i % 8] == 0 {
+                    score -= self.open_file_score;
+                }
             }
             if get_bit!(bitboards[Piece::BQ], i) == 1 {
                 score -= self.piece_scores[&'Q'];
+                // queen mobility scoring
+                mm.masks.occupied = or_array_elems!(Piece::allPieces(), bitboards);
+                score -= ((mm.possibleDiagAndAntiDiagMoves(bitboards[Piece::BQ].leading_zeros() as usize)
+                    | (mm.possibleHAndVMoves(bitboards[Piece::BQ].leading_zeros() as usize)))
+                    & !or_array_elems!(Piece::blackPiecesWithEnemyKing(), bitboards)).count_ones() as i32; // avoid illegal bK capture
             }
             if get_bit!(bitboards[Piece::BK], i) == 1 {
                 score -= self.piece_scores[&'K'] + self.piece_position_scores[&'K'][7 - (i / 8)][i % 8];
+                // king semi/open file scoring
+                if bitboards[Piece::BP] & mm.masks.file_masks[i % 8] == 0 {
+                    score += self.semi_open_file_score;
+                }
+                if or_array_elems!([Piece::WP, Piece::BP], bitboards) & mm.masks.file_masks[i % 8] == 0 {
+                    score += self.open_file_score;
+                }
+                // king protection scoring
+                let king_idx: usize = bitboards[Piece::BK].leading_zeros() as usize;
+                let king_span_c7_idx: usize = 10;
+                // allign the king_span_c7 mask
+                let mut moves: u64;
+                if king_idx <= king_span_c7_idx {
+                    moves = mm.masks.king_span_c7 << (king_span_c7_idx - king_idx);
+                } else {
+                    moves = mm.masks.king_span_c7 >> (king_idx - king_span_c7_idx);
+                }
+                // remove moves sliding off board or allied pieces
+                if king_idx % 8 < 4 {
+                    pop_bits!(moves, mm.masks.file_gh);
+                } else {
+                    pop_bits!(moves, mm.masks.file_ab);
+                }
+                score -= self.king_blocking_bonus * (moves & or_array_elems!(Piece::blackPiecesNoKing(), bitboards)).count_ones() as i32;
             }
         }
         score
@@ -570,14 +685,14 @@ mod tests {
         let mut bmf: BestMoveFinder = BestMoveFinder::new(7);
         let mut tt: TransTable = TransTable::new();
         // gs.importFEN(&m.masks, &mut z, String::from("rnbqkb1r/pp1p1pPp/8/2p1pP2/1P1P4/3P3P/P1P1P3/RNBQKBNR w KQkq e6 0 1")); // killer
-        gs.importFEN(&m.masks, &mut z, String::from("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1 ")); // tricky
+        // gs.importFEN(&m.masks, &mut z, String::from("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1 ")); // tricky
         // gs.importFEN(&m.masks, &mut z, String::from("r2q1rk1/ppp2ppp/2n1bn2/2b1p3/3pP3/3P1NPP/PPP1NPB1/R1BQ1RK1 b - - 0 9 ")); // cmk
         // gs.importFEN(&m.masks, &mut z, String::from("6k1/2p3b1/2p2p2/p1Pp4/3P4/P4NPK/1r6/8 b - - 0 1")); // best move seq bug for search depth 8
         // gs.importFEN(&m.masks, &mut z, String::from("8/8/8/8/8/8/PK5k/8 w - - 0 1")); // winning position
         // gs.importFEN(&m.masks, &mut z, String::from("4k3/Q7/8/4K3/8/8/8/8 w - - ")); // checking mate
         // gs.importFEN(&m.masks, &mut z, String::from("2r3k1/R7/8/1R6/8/8/P4KPP/8 w - - 0 1"));
         // println!("starting hash key: {:x}", gs.hash_key);
-        bmf.searchPosition(&mut m, &mut z, &mut tt, gs.bitboards, gs.castle_rights, gs.hash_key, gs.whites_turn);
+        // bmf.searchPosition(&mut m, &mut z, &mut tt, gs.bitboards, gs.castle_rights, gs.hash_key, gs.whites_turn);
         // gs.drawGameArray();
         // let moves: String = m.getPossibleMoves(gs.bitboards, gs.castle_rights, gs.whites_turn);
         // bmf.killer_moves[0][0] = moves[28..28+4].to_string();
@@ -592,6 +707,9 @@ mod tests {
         // for i in (0..sorted_moves.len()).step_by(4) {
         //     println!("{:?} with score {}", move_to_algebra!(sorted_moves[i..i+4]), bmf.scoreMove(gs.bitboards, &sorted_moves[i..i+4], gs.whites_turn, 0));
         // }
+        gs.importFEN(&m.masks, &mut z, String::from("6k1/ppppprbp/8/8/8/8/PPPPPRBP/6K1 w - - "));
+        gs.drawGameArray();
+        println!("score: {}", bmf.evaluateBoard(&mut m, gs.bitboards));
         panic!();
     }
 }

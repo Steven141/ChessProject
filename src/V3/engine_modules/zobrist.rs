@@ -35,7 +35,7 @@ impl Zobrist {
 
 
     fn initRandomKeys(&mut self) {
-        for piece in [Piece::WP, Piece::WN, Piece::WB, Piece::WR, Piece::WQ, Piece::WK, Piece::BP, Piece::BN, Piece::BB, Piece::BR, Piece::BQ, Piece::BK] {
+        for piece in Piece::allPieces() {
             for sq in 0..64 {
                 self.piece_keys[piece][sq] = self.getRandomU64();
             }
@@ -73,7 +73,7 @@ impl Zobrist {
 
     pub fn generateHashKey(&self, bitboards: [u64; 13], castle_rights: [bool; 4], whites_turn: bool) -> u64 {
         let mut final_key: u64 = 0;
-        for piece in [Piece::WP, Piece::WN, Piece::WB, Piece::WR, Piece::WQ, Piece::WK, Piece::BP, Piece::BN, Piece::BB, Piece::BR, Piece::BQ, Piece::BK] {
+        for piece in Piece::allPieces() {
             let mut bitboard: u64 = bitboards[piece];
             let mut bitboard_ls1b: u64 = get_ls1b!(bitboard); // selects single 1 bit
             while bitboard_ls1b != 0 {

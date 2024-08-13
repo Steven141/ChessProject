@@ -104,3 +104,71 @@ impl PartialEq<char> for Piece {
         }
     }
 }
+
+
+impl Piece {
+    pub fn whitePiecesNoKing() -> [Piece; 5] {
+        [
+            Piece::WP,
+            Piece::WN,
+            Piece::WB,
+            Piece::WR,
+            Piece::WQ,
+        ]
+    }
+
+
+    pub fn blackPiecesNoKing() -> [Piece; 5] {
+        [
+            Piece::BP,
+            Piece::BN,
+            Piece::BB,
+            Piece::BR,
+            Piece::BQ,
+        ]
+    }
+
+
+    pub fn whitePiecesWithEnemyKing() -> [Piece; 7] {
+        [
+            Piece::WP,
+            Piece::WN,
+            Piece::WB,
+            Piece::WR,
+            Piece::WQ,
+            Piece::WK,
+            Piece::BK,
+        ]
+    }
+
+
+    pub fn blackPiecesWithEnemyKing() -> [Piece; 7] {
+        [
+            Piece::BP,
+            Piece::BN,
+            Piece::BB,
+            Piece::BR,
+            Piece::BQ,
+            Piece::WK,
+            Piece::BK,
+        ]
+    }
+
+
+    pub fn allPieces() -> [Piece; 12] {
+        [
+            Piece::WP,
+            Piece::WN,
+            Piece::WB,
+            Piece::WR,
+            Piece::WQ,
+            Piece::WK,
+            Piece::BP,
+            Piece::BN,
+            Piece::BB,
+            Piece::BR,
+            Piece::BQ,
+            Piece::BK,
+        ]
+    }
+}
