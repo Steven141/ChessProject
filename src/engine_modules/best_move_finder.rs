@@ -676,40 +676,4 @@ mod tests {
             score = current_score;
         }
     }
-
-    #[test]
-    fn basic_test() {
-        let mut z: Zobrist = Zobrist::new();
-        let mut gs: GameState = GameState::new(&mut z);
-        let mut m: Moves = Moves::new();
-        let mut bmf: BestMoveFinder = BestMoveFinder::new(7);
-        let mut tt: TransTable = TransTable::new();
-        // gs.importFEN(&m.masks, &mut z, String::from("rnbqkb1r/pp1p1pPp/8/2p1pP2/1P1P4/3P3P/P1P1P3/RNBQKBNR w KQkq e6 0 1")); // killer
-        // gs.importFEN(&m.masks, &mut z, String::from("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1 ")); // tricky
-        // gs.importFEN(&m.masks, &mut z, String::from("r2q1rk1/ppp2ppp/2n1bn2/2b1p3/3pP3/3P1NPP/PPP1NPB1/R1BQ1RK1 b - - 0 9 ")); // cmk
-        // gs.importFEN(&m.masks, &mut z, String::from("6k1/2p3b1/2p2p2/p1Pp4/3P4/P4NPK/1r6/8 b - - 0 1")); // best move seq bug for search depth 8
-        // gs.importFEN(&m.masks, &mut z, String::from("8/8/8/8/8/8/PK5k/8 w - - 0 1")); // winning position
-        // gs.importFEN(&m.masks, &mut z, String::from("4k3/Q7/8/4K3/8/8/8/8 w - - ")); // checking mate
-        // gs.importFEN(&m.masks, &mut z, String::from("2r3k1/R7/8/1R6/8/8/P4KPP/8 w - - 0 1"));
-        // println!("starting hash key: {:x}", gs.hash_key);
-        // bmf.searchPosition(&mut m, &mut z, &mut tt, gs.bitboards, gs.castle_rights, gs.hash_key, gs.whites_turn);
-        // gs.drawGameArray();
-        // let moves: String = m.getPossibleMoves(gs.bitboards, gs.castle_rights, gs.whites_turn);
-        // bmf.killer_moves[0][0] = moves[28..28+4].to_string();
-        // bmf.killer_moves[1][0] = moves[16..16+4].to_string();
-        // let (r1, c1, r2, c2) = move_to_u32s!(moves[20..20+4]);
-        // bmf.history_moves[Piece::WP][(r2*8+c2) as usize] = 35;
-        // for i in (0..moves.len()).step_by(4) {
-        //     println!("{:?} with score {}", move_to_algebra!(moves[i..i+4]), bmf.scoreMove(gs.bitboards, &moves[i..i+4], gs.whites_turn, 0));
-        // }
-        // println!("\n\n");
-        // let sorted_moves: String = bmf.sortMoves(&mut m, &mut z, &moves, gs.bitboards, gs.hash_key, gs.whites_turn, 0);
-        // for i in (0..sorted_moves.len()).step_by(4) {
-        //     println!("{:?} with score {}", move_to_algebra!(sorted_moves[i..i+4]), bmf.scoreMove(gs.bitboards, &sorted_moves[i..i+4], gs.whites_turn, 0));
-        // }
-        gs.importFEN(&m.masks, &mut z, String::from("6k1/ppppprbp/8/8/8/8/PPPPPRBP/6K1 w - - "));
-        gs.drawGameArray();
-        println!("score: {}", bmf.evaluateBoard(&mut m, gs.bitboards));
-        panic!();
-    }
 }
