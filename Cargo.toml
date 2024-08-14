@@ -7,10 +7,16 @@ edition = "2021"
 # library crate config
 [lib]
 name = "ChessProject"
-crate-type = ["cdylib"]
-path = "src/V3/lib.rs"
+crate-type = ["cdylib", "rlib"] # rlib for benchmarking
 
 # pyo3 gives rust bindings for python
 [dependencies]
 pyo3 = "0.20.0"
 rand = "0.8"
+
+[dev-dependencies]
+criterion = "0.3"
+
+[[bench]]
+name = "move_gen_benchmark"
+harness = false
