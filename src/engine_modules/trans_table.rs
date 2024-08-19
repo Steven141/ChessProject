@@ -70,7 +70,14 @@ impl TransTable {
     }
 
 
-    pub fn readEntry(&self, alpha: i32, beta: i32, hash_key: u64, depth: i32, ply: u32) -> i32 {
+    pub fn readEntry(
+        &self,
+        alpha: i32,
+        beta: i32,
+        hash_key: u64,
+        depth: i32,
+        ply: u32,
+    ) -> i32 {
         let table_entry: &TransTableEntry = &self.table[hash_key as usize % TransTable::TRANS_TABLE_SIZE];
         if table_entry.hash_key == hash_key && table_entry.depth as i32 >= depth {
             let mut score: i32 = table_entry.score;
@@ -90,7 +97,14 @@ impl TransTable {
     }
 
 
-    pub fn writeEntry(&mut self, mut score: i32, hash_key: u64, depth: u32, ply: u32, hash_flag: i32) {
+    pub fn writeEntry(
+        &mut self,
+        mut score: i32,
+        hash_key: u64,
+        depth: u32,
+        ply: u32,
+        hash_flag: i32,
+    ) {
         let table_entry: &mut TransTableEntry = &mut self.table[hash_key as usize % TransTable::TRANS_TABLE_SIZE];
         // mate scores should be path independant in table, remove distance from root to current node from score
         score += if score > 48000 {ply as i32} else if score < -48000 {-(ply as i32)} else {0};

@@ -162,7 +162,12 @@ impl GameState {
     }
 
 
-    pub fn importFEN(&mut self, sb: &SpecialBitBoards, z: &Zobrist, fen_str: String) {
+    pub fn importFEN(
+        &mut self,
+        sb: &SpecialBitBoards,
+        z: &Zobrist,
+        fen_str: String,
+    ) {
         self.bitboards = [0; 13];
         self.castle_rights = [false; 4];
         let mut char_idx: usize = 0;
@@ -256,7 +261,12 @@ impl GameState {
     }
 
 
-    fn makeMove(&mut self, mm: &Moves, z: &mut Zobrist, move_str: String) {
+    fn makeMove(
+        &mut self,
+        mm: &Moves,
+        z: &mut Zobrist,
+        move_str: String,
+    ) {
         if move_str.chars().nth(3).unwrap() == 'E' {
             self.recent_piece_captured = if self.whites_turn {'p'} else {'P'};
             self.recent_piece_moved = if self.whites_turn {'P'} else {'p'};

@@ -71,7 +71,12 @@ impl Zobrist {
     }
 
 
-    pub fn generateHashKey(&self, bitboards: [u64; 13], castle_rights: [bool; 4], whites_turn: bool) -> u64 {
+    pub fn generateHashKey(
+        &self,
+        bitboards: [u64; 13],
+        castle_rights: [bool; 4],
+        whites_turn: bool,
+    ) -> u64 {
         let mut final_key: u64 = 0;
         for piece in Piece::allPieces() {
             let mut bitboard: u64 = bitboards[piece];

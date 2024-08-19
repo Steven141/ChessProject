@@ -32,7 +32,14 @@ impl Moves {
     }
 
 
-    pub fn getValidMoves(&mut self, z: &mut Zobrist, bitboards: [u64; 13], castle_rights: [bool; 4], hash_key: u64, whites_turn: bool) -> String {
+    pub fn getValidMoves(
+        &mut self,
+        z: &mut Zobrist,
+        bitboards: [u64; 13],
+        castle_rights: [bool; 4],
+        hash_key: u64,
+        whites_turn: bool,
+    ) -> String {
         let moves: String = self.getPossibleMoves(bitboards, castle_rights, whites_turn);
         let mut valid_moves: String = String::new();
         for i in (0..moves.len()).step_by(4) {
@@ -55,7 +62,14 @@ impl Moves {
     }
 
 
-    pub fn makeMove(&self, z: &mut Zobrist, mut bitboard: u64, mut hash_key: u64, move_str: &str, p_type: Piece) -> (u64, u64) {
+    pub fn makeMove(
+        &self,
+        z: &mut Zobrist,
+        mut bitboard: u64,
+        mut hash_key: u64,
+        move_str: &str,
+        p_type: Piece,
+    ) -> (u64, u64) {
         let (r1, c1, r2, c2) = move_to_u32s!(move_str);
         let start_sq: u32 = r1 * 8 + c1;
         let end_sq: u32 = r2 * 8 + c2;
@@ -110,7 +124,15 @@ impl Moves {
     }
 
 
-    pub fn makeMoveCastle(&self, z: &mut Zobrist, mut rook: u64, king: u64, mut hash_key: u64, move_str: &str, p_type: Piece) -> (u64, u64) {
+    pub fn makeMoveCastle(
+        &self,
+        z: &mut Zobrist,
+        mut rook: u64,
+        king: u64,
+        mut hash_key: u64,
+        move_str: &str,
+        p_type: Piece,
+    ) -> (u64, u64) {
         let (r1, c1, _, _) = move_to_u32s!(move_str);
         let start_sq: u32 = r1 * 8 + c1;
         if get_bit!(king, start_sq) == 1 && ((move_str == "0402") || (move_str == "0406") || (move_str == "7472") || (move_str == "7476")) {
@@ -152,7 +174,15 @@ impl Moves {
     }
 
 
-    pub fn makeMoveEP(&self, z: &mut Zobrist, ep: u64, bitboard: u64, mut hash_key: u64, move_str: &str, whites_turn: bool) -> (u64, u64) {
+    pub fn makeMoveEP(
+        &self,
+        z: &mut Zobrist,
+        ep: u64,
+        bitboard: u64,
+        mut hash_key: u64,
+        move_str: &str,
+        whites_turn: bool,
+    ) -> (u64, u64) {
         // remove current enpassant status from hash
         if ep != 0 {
             let col: usize = ep.leading_zeros() as usize;
@@ -173,13 +203,22 @@ impl Moves {
     }
 
 
-    pub fn getPossibleMoves(&mut self, bitboards: [u64; 13], castle_rights: [bool; 4], whites_turn: bool) -> String {
+    pub fn getPossibleMoves(
+        &mut self,
+        bitboards: [u64; 13],
+        castle_rights: [bool; 4],
+        whites_turn: bool,
+    ) -> String {
         if whites_turn {self.possibleMovesW(bitboards, castle_rights)}
         else {self.possibleMovesB(bitboards, castle_rights)}
     }
 
 
-    pub fn possibleMovesW(&mut self, bitboards: [u64; 13], castle_rights: [bool; 4]) -> String {
+    pub fn possibleMovesW(
+        &mut self,
+        bitboards: [u64; 13],
+        castle_rights: [bool; 4],
+    ) -> String {
         self.masks.not_allied_pieces = !or_array_elems!(Piece::whitePiecesWithEnemyKing(), bitboards); // avoid illegal bK capture
         self.masks.enemy_pieces = or_array_elems!(Piece::blackPiecesNoKing(), bitboards); // avoid illegal bK capture
         self.masks.occupied = or_array_elems!(Piece::allPieces(), bitboards);
@@ -194,7 +233,11 @@ impl Moves {
     }
 
 
-    pub fn possibleMovesB(&mut self, bitboards: [u64; 13], castle_rights: [bool; 4]) -> String {
+    pub fn possibleMovesB(
+        &mut self,
+        bitboards: [u64; 13],
+        castle_rights: [bool; 4],
+    ) -> String {
         self.masks.not_allied_pieces = !or_array_elems!(Piece::blackPiecesWithEnemyKing(), bitboards); // avoid illegal wK capture
         self.masks.enemy_pieces = or_array_elems!(Piece::whitePiecesNoKing(), bitboards); // avoid illegal bK capture
         self.masks.occupied = or_array_elems!(Piece::allPieces(), bitboards);
@@ -537,7 +580,11 @@ impl Moves {
     }
 
 
-    fn possibleCastleW(&mut self, bitboards: [u64; 13], castle_rights: [bool; 4]) -> String {
+    fn possibleCastleW(
+        &mut self,
+        bitboards: [u64; 13],
+        castle_rights: [bool; 4],
+    ) -> String {
         let unsafe_w: u64 = self.unsafeForWhite(bitboards);
         let mut move_list: String = String::new(); // king move r1c1r2c1
         if unsafe_w & bitboards[Piece::WK] == 0 {
@@ -556,7 +603,11 @@ impl Moves {
     }
 
 
-    fn possibleCastleB(&mut self, bitboards: [u64; 13], castle_rights: [bool; 4]) -> String {
+    fn possibleCastleB(
+        &mut self,
+        bitboards: [u64; 13],
+        castle_rights: [bool; 4],
+    ) -> String {
         let unsafe_b = self.unsafeForBlack(bitboards);
         let mut move_list: String = String::new(); // king move r1c1r2c1
         if unsafe_b & bitboards[Piece::BK] == 0 {
@@ -580,8 +631,18 @@ impl Moves {
         let binary_idx: u64 = 1 << (64 - 1 - piece_idx);
         let rank_mask = self.masks.rank_masks[piece_idx / 8];
         let file_mask = self.masks.file_masks[piece_idx % 8];
-        let possible_h = (wrap_op!(self.masks.occupied, wrap_op!(binary_idx, 2, '*'), '-')) ^ (wrap_op!(self.masks.occupied.reverse_bits(), wrap_op!(binary_idx.reverse_bits(), 2, '*'), '-')).reverse_bits();
-        let possible_v = (wrap_op!((self.masks.occupied & file_mask), wrap_op!(binary_idx, 2, '*'), '-')) ^ (wrap_op!((self.masks.occupied & file_mask).reverse_bits(), wrap_op!(binary_idx.reverse_bits(), 2, '*'), '-')).reverse_bits();
+        let possible_h = (wrap_op!(self.masks.occupied, wrap_op!(binary_idx, 2, '*'), '-'))
+            ^ (wrap_op!(
+                self.masks.occupied.reverse_bits(),
+                wrap_op!(binary_idx.reverse_bits(), 2, '*'),
+                '-'
+            )).reverse_bits();
+        let possible_v = (wrap_op!((self.masks.occupied & file_mask), wrap_op!(binary_idx, 2, '*'), '-'))
+            ^ (wrap_op!(
+                (self.masks.occupied & file_mask).reverse_bits(),
+                wrap_op!(binary_idx.reverse_bits(), 2, '*'),
+                '-'
+            )).reverse_bits();
         (possible_h & rank_mask) | (possible_v & file_mask)
     }
 
@@ -591,8 +652,18 @@ impl Moves {
         let binary_idx: u64 = 1 << (64 - 1 - piece_idx);
         let diag_mask = self.masks.diagonal_masks[(piece_idx / 8) + (piece_idx % 8)];
         let a_diag_mask = self.masks.anti_diagonal_masks[7 + (piece_idx / 8) - (piece_idx % 8)];
-        let possible_d = (wrap_op!((self.masks.occupied & diag_mask), wrap_op!(binary_idx, 2, '*'), '-')) ^ (wrap_op!((self.masks.occupied & diag_mask).reverse_bits(), wrap_op!(binary_idx.reverse_bits(), 2, '*'), '-')).reverse_bits();
-        let possible_ad = (wrap_op!((self.masks.occupied & a_diag_mask), wrap_op!(binary_idx, 2, '*'), '-')) ^ (wrap_op!((self.masks.occupied & a_diag_mask).reverse_bits(), wrap_op!(binary_idx.reverse_bits(), 2, '*'), '-')).reverse_bits();
+        let possible_d = (wrap_op!((self.masks.occupied & diag_mask), wrap_op!(binary_idx, 2, '*'), '-'))
+            ^ (wrap_op!(
+                (self.masks.occupied & diag_mask).reverse_bits(),
+                wrap_op!(binary_idx.reverse_bits(), 2, '*'),
+                '-'
+            )).reverse_bits();
+        let possible_ad = (wrap_op!((self.masks.occupied & a_diag_mask), wrap_op!(binary_idx, 2, '*'), '-'))
+            ^ (wrap_op!(
+                (self.masks.occupied & a_diag_mask).reverse_bits(),
+                wrap_op!(binary_idx.reverse_bits(), 2, '*'),
+                '-'
+            )).reverse_bits();
         (possible_d & diag_mask) | (possible_ad & a_diag_mask)
     }
 
@@ -751,7 +822,14 @@ impl Moves {
     }
 
 
-    pub fn getUpdatedCastleRights(&self, z: &mut Zobrist, move_str: &str, castle_rights: [bool; 4], bitboards: [u64; 13], mut hash_key: u64) -> ([bool; 4], u64) {
+    pub fn getUpdatedCastleRights(
+        &self,
+        z: &mut Zobrist,
+        move_str: &str,
+        castle_rights: [bool; 4],
+        bitboards: [u64; 13],
+        mut hash_key: u64,
+    ) -> ([bool; 4], u64) {
         // remove current castle rights from hash
         hash_key ^= z.castle_keys[
             ((castle_rights[CastleRights::CBQ] as usize) << 3)
@@ -806,15 +884,19 @@ impl Moves {
     }
 
 
-    pub fn getUpdatedBitboards(&self, z: &mut Zobrist, move_str: &str, bitboards: [u64; 13], mut hash_key: u64, whites_turn: bool) -> ([u64; 13], u64) {
+    pub fn getUpdatedBitboards(
+        &self,
+        z: &mut Zobrist,
+        move_str: &str,
+        bitboards: [u64; 13],
+        mut hash_key: u64,
+        whites_turn: bool,
+    ) -> ([u64; 13], u64) {
         hash_key ^= z.side_key; // hash side
         let mut bitboards_t: [u64; 13] = [0; 13];
-        (bitboards_t[Piece::WP], hash_key) = self.makeMove(z, bitboards[Piece::WP], hash_key, move_str, Piece::WP); (bitboards_t[Piece::WN], hash_key) = self.makeMove(z, bitboards[Piece::WN], hash_key, move_str, Piece::WN);
-        (bitboards_t[Piece::WB], hash_key) = self.makeMove(z, bitboards[Piece::WB], hash_key, move_str, Piece::WB); (bitboards_t[Piece::WR], hash_key) = self.makeMove(z, bitboards[Piece::WR], hash_key, move_str, Piece::WR);
-        (bitboards_t[Piece::WQ], hash_key) = self.makeMove(z, bitboards[Piece::WQ], hash_key, move_str, Piece::WQ); (bitboards_t[Piece::WK], hash_key) = self.makeMove(z, bitboards[Piece::WK], hash_key, move_str, Piece::WK);
-        (bitboards_t[Piece::BP], hash_key) = self.makeMove(z, bitboards[Piece::BP], hash_key, move_str, Piece::BP); (bitboards_t[Piece::BN], hash_key) = self.makeMove(z, bitboards[Piece::BN], hash_key, move_str, Piece::BN);
-        (bitboards_t[Piece::BB], hash_key) = self.makeMove(z, bitboards[Piece::BB], hash_key, move_str, Piece::BB); (bitboards_t[Piece::BR], hash_key) = self.makeMove(z, bitboards[Piece::BR], hash_key, move_str, Piece::BR);
-        (bitboards_t[Piece::BQ], hash_key) = self.makeMove(z, bitboards[Piece::BQ], hash_key, move_str, Piece::BQ); (bitboards_t[Piece::BK], hash_key) = self.makeMove(z, bitboards[Piece::BK], hash_key, move_str, Piece::BK);
+        for piece in Piece::allPieces() {
+            (bitboards_t[piece], hash_key) = self.makeMove(z, bitboards[piece], hash_key, move_str, piece);
+        }
         (bitboards_t[Piece::WR], hash_key) = self.makeMoveCastle(z, bitboards_t[Piece::WR], bitboards[Piece::WK], hash_key, move_str, Piece::WR);
         (bitboards_t[Piece::BR], hash_key) = self.makeMoveCastle(z, bitboards_t[Piece::BR], bitboards[Piece::BK], hash_key, move_str, Piece::BR);
         (bitboards_t[Piece::EP], hash_key) = self.makeMoveEP(z, bitboards[Piece::EP], or_array_elems!([Piece::WP, Piece::BP], bitboards), hash_key, move_str, whites_turn);
@@ -834,7 +916,12 @@ impl Moves {
     }
 
 
-    pub fn isAttackingMove(&mut self, bitboards: [u64; 13], bitboards_t: [u64; 13], whites_turn: bool) -> bool {
+    pub fn isAttackingMove(
+        &mut self,
+        bitboards: [u64; 13],
+        bitboards_t: [u64; 13],
+        whites_turn: bool,
+    ) -> bool {
         self.isValidMove(bitboards_t, whites_turn)
         && (
             (!whites_turn

@@ -184,7 +184,16 @@ impl BestMoveFinder {
     }
 
 
-    fn searchPosition(&mut self, mm: &mut Moves, z: &mut Zobrist, tt: &mut TransTable, bitboards: [u64; 13], castle_rights: [bool; 4], hash_key: u64, whites_turn: bool) {
+    fn searchPosition(
+        &mut self,
+        mm: &mut Moves,
+        z: &mut Zobrist,
+        tt: &mut TransTable,
+        bitboards: [u64; 13],
+        castle_rights: [bool; 4],
+        hash_key: u64,
+        whites_turn: bool,
+    ) {
         self.pv_length = [0; 64];
         self.pv_table = vec![vec![String::with_capacity(4); 64]; 64];
         self.follow_pv = false; self.score_pv = false;
@@ -218,7 +227,18 @@ impl BestMoveFinder {
     }
 
 
-    fn quiescenceSearch(&mut self, mut alpha: i32, beta: i32, mm: &mut Moves, z: &mut Zobrist, bitboards: [u64; 13], castle_rights: [bool; 4], hash_key: u64, whites_turn: bool, depth: u32) -> i32 {
+    fn quiescenceSearch(
+        &mut self,
+        mut alpha: i32,
+        beta: i32,
+        mm: &mut Moves,
+        z: &mut Zobrist,
+        bitboards: [u64; 13],
+        castle_rights: [bool; 4],
+        hash_key: u64,
+        whites_turn: bool,
+        depth: u32,
+    ) -> i32 {
         // look deeper for non-quiet moves (attacking)
         self.move_counter += 1;
         let eval: i32 = (if whites_turn {1} else {-1}) * self.evaluateBoard(mm, bitboards);
@@ -255,7 +275,19 @@ impl BestMoveFinder {
     beta = maximum score that the minimizing player is assured of
     depth = how deep current iteration is
     */
-    fn negaMaxAlphaBeta(&mut self, mut alpha: i32, beta: i32, mm: &mut Moves, z: &mut Zobrist, tt: &mut TransTable, bitboards: [u64; 13], castle_rights: [bool; 4], hash_key: u64, whites_turn: bool, depth: u32) -> i32 {
+    fn negaMaxAlphaBeta(
+        &mut self,
+        mut alpha: i32,
+        beta: i32,
+        mm: &mut Moves,
+        z: &mut Zobrist,
+        tt: &mut TransTable,
+        bitboards: [u64; 13],
+        castle_rights: [bool; 4],
+        hash_key: u64,
+        whites_turn: bool,
+        depth: u32,
+    ) -> i32 {
         if depth > 0 && self.isRepetition(hash_key) {
             return 0; // draw score
         }
@@ -301,7 +333,6 @@ impl BestMoveFinder {
         //         return beta;
         //     }
         // }
-
 
 
         let mut best_score: i32 = -self.mate_score;
@@ -574,7 +605,12 @@ impl BestMoveFinder {
     }
 
 
-    fn scoreMove(&mut self, bitboards: [u64; 13], move_str: &str, depth: u32) -> i32 {
+    fn scoreMove(
+        &mut self,
+        bitboards: [u64; 13],
+        move_str: &str,
+        depth: u32,
+    ) -> i32 {
         if self.score_pv {
             if self.pv_table[0][depth as usize] == move_str {
                 self.score_pv = false;
@@ -613,7 +649,16 @@ impl BestMoveFinder {
 
     3. Resulted in 1.24 times speedup on average (24% faster) than no pre-allocation or in-place sorting
     */
-    fn sortMoves(&mut self, mm: &mut Moves, z: &mut Zobrist, moves: &str, bitboards: [u64; 13], hash_key: u64, whites_turn: bool, depth: u32) -> String {
+    fn sortMoves(
+        &mut self,
+        mm: &mut Moves,
+        z: &mut Zobrist,
+        moves: &str,
+        bitboards: [u64; 13],
+        hash_key: u64,
+        whites_turn: bool,
+        depth: u32,
+    ) -> String {
         let mut move_scores: Vec<(i32, &str)> = Vec::with_capacity(moves.len() / 4);
         for i in (0..moves.len()).step_by(4) {
             let move_slice: &str = &moves[i..i + 4];
