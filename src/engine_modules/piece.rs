@@ -85,6 +85,7 @@ impl<T> IndexMut<Piece> for [T] {
 }
 
 
+/// Allows for equality between enum and char
 impl PartialEq<char> for Piece {
     fn eq(&self, other: &char) -> bool {
         match self {
@@ -106,6 +107,7 @@ impl PartialEq<char> for Piece {
 }
 
 
+/// Specific groups of enums that are useful
 impl Piece {
     pub fn whitePiecesNoKing() -> [Piece; 5] {
         [

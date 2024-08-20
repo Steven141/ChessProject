@@ -32,6 +32,7 @@ impl Moves {
     }
 
 
+    /// Gets the valid moves of a game state
     pub fn getValidMoves(
         &mut self,
         z: &mut Zobrist,
@@ -62,6 +63,7 @@ impl Moves {
     }
 
 
+    /// Makes a move for a specified piece type given a move string
     pub fn makeMove(
         &self,
         z: &mut Zobrist,
@@ -124,6 +126,7 @@ impl Moves {
     }
 
 
+    /// Makes a casteling move given a move string
     pub fn makeMoveCastle(
         &self,
         z: &mut Zobrist,
@@ -174,6 +177,7 @@ impl Moves {
     }
 
 
+    /// Sets the EP bitboard given a move string
     pub fn makeMoveEP(
         &self,
         z: &mut Zobrist,
@@ -203,6 +207,7 @@ impl Moves {
     }
 
 
+    /// Wrapper to get all possible white or black moves
     pub fn getPossibleMoves(
         &mut self,
         bitboards: [u64; 13],
@@ -214,6 +219,7 @@ impl Moves {
     }
 
 
+    /// Generates a move string with all possible white moves
     pub fn possibleMovesW(
         &mut self,
         bitboards: [u64; 13],
@@ -233,6 +239,7 @@ impl Moves {
     }
 
 
+    /// Generates a move string with all possible black moves
     pub fn possibleMovesB(
         &mut self,
         bitboards: [u64; 13],
@@ -252,6 +259,7 @@ impl Moves {
     }
 
 
+    /// Generates a move string with all possible white pawn moves
     fn possibleWP(&self, wP: u64, bP: u64, EP: u64) -> String {
         // standard moves and captures
         let mut move_list: String = String::new(); // r1,c1,r2,c2
@@ -346,6 +354,7 @@ impl Moves {
     }
 
 
+    /// Generates a move string with all possible black pawn moves
     fn possibleBP(&self, wP: u64, bP: u64, EP: u64) -> String {
         // standard moves and captures
         let mut move_list: String = String::new(); // r1,c1,r2,c2
@@ -440,6 +449,7 @@ impl Moves {
     }
 
 
+    /// Generates a move string with all possible bishop moves
     fn possibleB(&self, mut B: u64) -> String {
         let mut move_list: String = String::new();
         let mut bishop: u64 = get_ls1b!(B);
@@ -462,6 +472,7 @@ impl Moves {
     }
 
 
+     /// Generates a move string with all possible queen moves
     fn possibleQ(&self, mut Q: u64) -> String {
         let mut move_list: String = String::new();
         let mut queen: u64 = get_ls1b!(Q);
@@ -484,6 +495,7 @@ impl Moves {
     }
 
 
+     /// Generates a move string with all possible rook moves
     fn possibleR(&self, mut R: u64) -> String {
         let mut move_list: String = String::new();
         let mut rook: u64 = get_ls1b!(R);
@@ -506,6 +518,7 @@ impl Moves {
     }
 
 
+     /// Generates a move string with all possible knight moves
     fn possibleN(&self, mut N: u64) -> String {
         let mut move_list: String = String::new();
         let mut knight: u64 = get_ls1b!(N);
@@ -543,6 +556,7 @@ impl Moves {
     }
 
 
+     /// Generates a move string with all possible king moves
     fn possibleK(&self, mut K: u64) -> String {
         let mut move_list: String = String::new();
         let mut king: u64 = get_ls1b!(K);
@@ -580,6 +594,7 @@ impl Moves {
     }
 
 
+    /// Generates casteling moves for white
     fn possibleCastleW(
         &mut self,
         bitboards: [u64; 13],
@@ -603,6 +618,7 @@ impl Moves {
     }
 
 
+    /// Generates casteling moves for black
     fn possibleCastleB(
         &mut self,
         bitboards: [u64; 13],
@@ -626,6 +642,23 @@ impl Moves {
     }
 
 
+    /*
+    Returns all possible horizontal and vertical moves of piece at index piece_idx
+
+    Example for formula derivation:
+    occupied = o = 11000101 -> wP wP -- -- -- bR -- wP
+    slider = s = 00000100
+    o - s = 11000001 -> removes slider bit
+    o - 2s = 10111101 -> flips bits left of slider bit until first seen occupied bit (inclusive)
+    left = o^(o-2s) = 01111000 -> extracts all possible left sliding positions including first taken piece
+    let o' denote reverse of o
+    right = (o'^(o'-2s'))' = o^(o'-2s')' = 00000011
+    lineAttacks_h = right^left = o^(o'-2s')' ^ o^(o-2s) = (o'-2s')' ^ (o-2s)
+    m = mask
+    lineAttacks_v = (((o&m)'-2s')' ^ ((o&m)-2s))
+
+    return (possible_h & rank_m) | (possible_v & file_m) to only consider one file and rank
+    */
     pub fn possibleHAndVMoves(&self, piece_idx: usize) -> u64 {
         // piece_idx = 0 -> top left of board -> 1000...000
         let binary_idx: u64 = 1 << (64 - 1 - piece_idx);
@@ -647,6 +680,11 @@ impl Moves {
     }
 
 
+    /*
+    Returns all possible diagonal and anti-diagonal moves of piece at index piece_idx
+
+    See possibleHAndVMoves func description for formula derivation
+    */
     pub fn possibleDiagAndAntiDiagMoves(&self, piece_idx: usize) -> u64 {
         // piece_idx = 0 -> top left of board -> 1000...000
         let binary_idx: u64 = 1 << (64 - 1 - piece_idx);
@@ -668,6 +706,7 @@ impl Moves {
     }
 
 
+    /// Generates a bitboard with 1's where white attacks
     pub fn unsafeForBlack(&mut self, mut bitboards: [u64; 13]) -> u64 {
         self.masks.occupied = or_array_elems!(Piece::allPieces(), bitboards);
         // pawn threats
@@ -745,6 +784,7 @@ impl Moves {
     }
 
 
+    /// Generates a bitboard with 1's where black attacks
     pub fn unsafeForWhite(&mut self, mut bitboards: [u64; 13]) -> u64 {
         self.masks.occupied = or_array_elems!(Piece::allPieces(), bitboards);
         // pawn threats
@@ -822,6 +862,7 @@ impl Moves {
     }
 
 
+    /// Return the new casteling rights and hashkey after performing the specified move
     pub fn getUpdatedCastleRights(
         &self,
         z: &mut Zobrist,
@@ -884,6 +925,7 @@ impl Moves {
     }
 
 
+    /// Return the new bitboards and hashkey after performing the specified move
     pub fn getUpdatedBitboards(
         &self,
         z: &mut Zobrist,
@@ -904,18 +946,21 @@ impl Moves {
     }
 
 
+    /// Checks if a move is valid (looks for illegal moves while in check)
     pub fn isValidMove(&mut self, bitboards: [u64; 13], whites_turn: bool) -> bool {
         (whites_turn && (bitboards[Piece::WK] & self.unsafeForWhite(bitboards)) == 0)
             || (!whites_turn && (bitboards[Piece::BK] & self.unsafeForBlack(bitboards)) == 0)
     }
 
 
+    /// Checks if the king is being attacked
     pub fn isKingAttacked(&mut self, bitboards: [u64; 13], whites_turn: bool) -> bool {
         (whites_turn && (bitboards[Piece::WK] & self.unsafeForWhite(bitboards)) != 0)
             || (!whites_turn && (bitboards[Piece::BK] & self.unsafeForBlack(bitboards)) != 0)
     }
 
 
+    /// Checks if the specified move is attacking
     pub fn isAttackingMove(
         &mut self,
         bitboards: [u64; 13],

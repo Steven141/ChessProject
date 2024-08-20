@@ -55,6 +55,7 @@ impl GameState {
     }
 
 
+    /// Populate the bitboards based on starting game array state.
     fn arrayToI64(&mut self) {
         for i in 0..64 {
             let mut bin_str: String = String::from("0000000000000000000000000000000000000000000000000000000000000000");
@@ -78,6 +79,7 @@ impl GameState {
     }
 
 
+    /// Draw the current state of the game bitboards
     pub fn drawGameArray(&self) {
         let mut new_board: [[char; 8]; 8] = [[' '; 8]; 8];
         for i in 0..64 {
@@ -119,6 +121,7 @@ impl GameState {
     }
 
 
+    /// Update the game array from the current bitboards
     fn updateBoardArray(&mut self) {
         self.board = [[' '; 8]; 8];
         for i in 0..64 {
@@ -162,6 +165,7 @@ impl GameState {
     }
 
 
+    /// Set the game state to a FEN string
     pub fn importFEN(
         &mut self,
         sb: &SpecialBitBoards,
@@ -261,6 +265,7 @@ impl GameState {
     }
 
 
+    /// Makes a move and updates bitboards and hashkey
     fn makeMove(
         &mut self,
         mm: &Moves,

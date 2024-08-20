@@ -34,6 +34,7 @@ impl Zobrist {
     }
 
 
+    /// Generate the random Zorbist keys
     fn initRandomKeys(&mut self) {
         for piece in Piece::allPieces() {
             for sq in 0..64 {
@@ -71,6 +72,7 @@ impl Zobrist {
     }
 
 
+    /// Generate a entire hashkey based on a game state
     pub fn generateHashKey(
         &self,
         bitboards: [u64; 13],

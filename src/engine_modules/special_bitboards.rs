@@ -121,12 +121,14 @@ impl SpecialBitBoards {
     }
 
 
+    /// Wrapper to generate white and black passed pawn masks
     fn generatePassedPawnMasks(&mut self) {
         self.generatePassedPawnMasksW();
         self.generatePassedPawnMasksB();
     }
 
 
+    /// Generate passed pawn masks for white
     fn generatePassedPawnMasksW(&mut self) {
         for r in 1..8 {
             for c in 0..8 {
@@ -146,6 +148,7 @@ impl SpecialBitBoards {
     }
 
 
+    /// Generate passed pawn masks for black
     fn generatePassedPawnMasksB(&mut self) {
         for r in 0..7 {
             for c in 0..8 {

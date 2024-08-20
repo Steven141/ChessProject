@@ -152,7 +152,7 @@ macro_rules! get_move_pieces {
 }
 
 
-/// Macro to convert the 4 characters of a move string as u32
+/// Macro to convert the 4 characters of a move string as u32 rows and cols
 #[macro_export]
 macro_rules! move_to_u32s {
     ($str:expr) => {{

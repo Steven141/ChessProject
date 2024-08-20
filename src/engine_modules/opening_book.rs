@@ -30,6 +30,7 @@ impl Trie {
     }
 
 
+    /// Insert a sequence of moves at once into the Trie
     pub fn insert(&mut self, moves: &str) {
         let mut curr_node: &mut TrieNode = &mut self.root;
         for i in (0..moves.len()).step_by(4) {

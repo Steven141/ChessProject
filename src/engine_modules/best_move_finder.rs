@@ -1,4 +1,4 @@
-//! Module with different ways to find the best next move
+//! Module that finds the next best move for the engine.
 
 
 use pyo3::prelude::*;
@@ -174,6 +174,7 @@ impl BestMoveFinder {
     }
 
 
+    /// Detect if the current game state has been reached before
     fn isRepetition(&self, hash_key: u64) -> bool {
         for i in 0..self.repetition_idx {
             if self.repetition_table[i] == hash_key {
@@ -184,6 +185,10 @@ impl BestMoveFinder {
     }
 
 
+    /*
+    Populates the PV table with the best move sequence.
+    Follows an iterative deepening framework.
+    */
     fn searchPosition(
         &mut self,
         mm: &mut Moves,
@@ -227,6 +232,7 @@ impl BestMoveFinder {
     }
 
 
+    /// Infinite depth search that stops when no attacking (non-quiet) moves left
     fn quiescenceSearch(
         &mut self,
         mut alpha: i32,
@@ -269,11 +275,15 @@ impl BestMoveFinder {
         alpha
     }
 
+
     /*
-    Positive = better for current recursive player perspective
-    alpha = minimum score that the maximizing player is assured of
-    beta = maximum score that the minimizing player is assured of
-    depth = how deep current iteration is
+    Performs the base negaMax search with the following optimization techniques:
+        - Alpha-Beta pruning
+        - PV / killer / history move ordering
+        - PVS (Principle Variation Search)
+        - LMR (Late Move Reduction)
+        - NMP (Null Move Pruning) but not activated
+        - Transposition Table
     */
     fn negaMaxAlphaBeta(
         &mut self,
@@ -443,6 +453,15 @@ impl BestMoveFinder {
     }
 
 
+    /*
+    Evaluate the current board state numerically with the following methods:
+        - Piece value
+        - Piece position
+        - Double / Isolated / Passed pawns
+        - Semi / Open File
+        - Bishop / Queen mobility
+        - King saftey
+    */
     fn evaluateBoard(&self, mm: &mut Moves, bitboards: [u64; 13]) -> i32 {
         // TODO better way to do doubled pawns with shifting
         let mut score: i32 = 0;
@@ -590,6 +609,7 @@ impl BestMoveFinder {
     }
 
 
+    /// Flag if PV scoring should be used.
     fn enablePVScoring(&mut self, moves: &str, depth: u32) {
         // disable PV following
         self.follow_pv = false;
@@ -605,6 +625,12 @@ impl BestMoveFinder {
     }
 
 
+    /*
+    Score a move based on the following methods:
+        - PV
+        - MVVLVA (most valuable victim, least valuable attacker)
+        - Killer / History moves
+    */
     fn scoreMove(
         &mut self,
         bitboards: [u64; 13],

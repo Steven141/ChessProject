@@ -28,6 +28,7 @@ impl Perft {
     }
 
 
+    /// Counts the nodes in a specific depth game tree
     fn perft(
         &mut self,
         mm: &mut Moves,
@@ -56,6 +57,7 @@ impl Perft {
     }
 
 
+    /// Root function to count the nodes in a specific depth game tree
     pub fn perftRoot(
         &mut self,
         mm: &mut Moves,

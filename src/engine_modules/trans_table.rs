@@ -60,6 +60,7 @@ impl TransTable {
     }
 
 
+    /// Clears the transposition table
     pub fn clearTable(&mut self) {
         for i in 0..TransTable::TRANS_TABLE_SIZE {
             self.table[i].hash_key = 0;
@@ -70,6 +71,7 @@ impl TransTable {
     }
 
 
+    /// Read an entry in the transposition table
     pub fn readEntry(
         &self,
         alpha: i32,
@@ -97,6 +99,7 @@ impl TransTable {
     }
 
 
+    /// Write an entry in the transposition table
     pub fn writeEntry(
         &mut self,
         mut score: i32,
