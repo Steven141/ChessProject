@@ -1,9 +1,39 @@
-Chess Game and Engine - DOWNLOAD LINK - https://stevenb4.itch.io/chess-game
 
-The objective of this project was to develop a chess game where a player could play against another player or play against a homemade engine. This is still a work in progress but so far three versions have been made. All versions have a similar python frontend but vary with different chess engine architectures for the backend.
+# Chess Engine
 
-The first version used python for the engine and represented the game state as a 2 dimensional array. This representation led to the development of a greedy and advanced approach for move generation. This was great for player vs player games but when it came time to develop the best move finder which looks many moves ahead it was way too slow.
+This repository contains a ~2100 Elo chess engine developed with a Rust backend and Python frontend by Steven Brown. Click the [DOWNLOAD LINK](https://stevenb4.itch.io/chess-game) then unzip and run the executable to play against the engine!
 
-The second version was more of a quick trial to explore a new engine architecture. The chess board would now be represented by 12 bitboards (one for each piece). A bitboard is represented by a 64-bit number where each bit corresponds to a square on the chess board. A '1' represents the square being populated by a specific piece and a '0' represents an empty square. This allows for fast bitwise opperations during move generation instead of looping over a 2 dimensional array many times. This engine was developed until successful performance testing but not fully integrated with the frontend. The main goal of this version was to pass performance testing and gather some timing data where this architecture could then be re-written and improved in a faster language and integrated with the frontend to produce a full game.
 
-The third version used the same bitboards architecture but was improved and written in Rust. Py03 and Maturin were used to allow python to import and interact with the Rust engine library. PyO3 is a Rust library that provides bindings to the Python interpreter. Maturin is a command-line tool that streamlines the process of building and publishing Rust-based Python packages. It leverages PyO3 under the hood to create Python wheels (binary distributions). This resulted in a 2100 Elo chess engine that can be played against after downloading the zip file in the github repository.
+## Features
+
+- Python GUI
+- [Bitboard](https://www.chessprogramming.org/Bitboards) Game Board Representation
+- Pre-calculated BitBoard Masks
+- Sliding Piece Attack Squares Algorithm
+- Encoding Moves as String
+- Recursive Move Making Approach
+- [Perf Testing](https://www.chessprogramming.org/Perft)
+- [Negated Minimax Search](https://www.chessprogramming.org/Negamax) With [Alpha Beta Pruning](https://www.chessprogramming.org/Alpha-Beta)
+- [Quiescence Search](https://www.chessprogramming.org/Quiescence_Search)
+- [MVVLVA](https://www.chessprogramming.org/MVV-LVA) Move Ordering
+- PV/[Killer](https://www.chessprogramming.org/Killer_Heuristic)/[History](https://www.chessprogramming.org/History_Heuristic) Move Ordering
+- [Principle Variation (PV) Search](https://www.chessprogramming.org/Principal_Variation_Search) & [Triangular PV-Table](https://www.chessprogramming.org/Triangular_PV-Table#:~:text=A%20Triangular%20PV%2DTable%20is,propagated%20up%20to%20the%20root.)
+- [LMR](https://www.chessprogramming.org/Late_Move_Reductions) (Late Move Reduction)
+- [Iterative Deepening](https://www.chessprogramming.org/Iterative_Deepening)
+- Repetition Detection
+- [Transposition Table](https://www.chessprogramming.org/Transposition_Table) (100 MB)
+- [Zobrist Hashing](https://www.chessprogramming.org/Zobrist_Hashing)
+- Isolated/Passed/Doubled Pawn Evaluation
+- King Saftey Evaluation
+- Open / Semi-Open File Evaluation
+- [Opening Book](https://www.chessprogramming.org/Opening_Book)
+
+
+## Documentation
+
+More in-depth feature documentation can be found on my [website](https://steven141.github.io/chess.html).
+
+
+## Demo
+
+<img src="demo.gif" width="900">
